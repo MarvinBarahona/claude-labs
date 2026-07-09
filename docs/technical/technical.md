@@ -1,0 +1,17 @@
+# Claude Labs — Technical
+
+Permanent index of project-level technical decisions — tech stack, repo layout, testing strategy, and further decisions as they're made. This file holds no decision content itself, only a pointer to the one file that does: each row below links to the file where that topic actually lives.
+
+This is decisions only — not documentation for a graduated task (a shared functionality a lab depends on). Those live in `docs/shared/<slug>.md` instead; see `writing-docs`.
+
+The linked files never link to each other or back to this index — this table is the only place that can go stale when a topic is added, split, or retired, and it's the only entry point for finding technical detail.
+
+| Topic | One-line summary | File |
+|---|---|---|
+| Tech stack | Frontend/backend frameworks, Docker-only runtime | [`tech-stack.md`](tech-stack.md) |
+| Repo layout | Monorepo structure, decision model for where new code goes, secrets files | [`repo-layout.md`](repo-layout.md) |
+| Architecture | How frontend, backend, data sources, and the Claude API communicate: request/response envelope, streaming transport, tool-loop vs. server-tool handling, error contract | [`architecture.md`](architecture.md) |
+| Testing strategy | Unit/integration test levels, the no-real-credentials-in-tests rule, and how external clients get mocked | [`testing-strategy.md`](testing-strategy.md) |
+| Guiding principles | Project-wide design principles applying to every lab and shared functionality | [`guiding-principles.md`](guiding-principles.md) |
+
+Coding conventions — how to actually write frontend or backend code — aren't architecture decisions and don't belong here.

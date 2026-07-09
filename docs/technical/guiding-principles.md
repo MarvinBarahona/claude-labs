@@ -1,0 +1,9 @@
+# Technical — Guiding Principles
+
+These principles apply project-wide, to every lab and shared functionality — including ones not yet drafted — so they belong here rather than in any one step's plan file. Update as the project's direction evolves.
+
+- **Workflows first, agents last.** Workflows (fixed call sequences) are the default — they're testable, predictable, and what most production apps actually need. Agent-style tool loops are only built where the task genuinely can't be pinned down in advance, and are framed as a deliberate contrast to the workflow approach, not the default pattern.
+- **Real data, not fixtures.** Every lab pulls from a real public API or public MCP server. No hardcoded mock responses standing in for external data.
+- **Minimize integrations.** Rather than a different data source per lab, the app leans on a small set of shared, key-free sources reused across multiple labs — fewer moving parts, fewer things that can rate-limit or go down, and one coherent "story" running through the app instead of many disconnected demos.
+- **Docs travel with code.** The frontend surfaces each lab's in-app doc inline in that lab — the app is the documentation. This in-app doc is a product artifact (see `repo-layout.md`, "In-app lab docs"), written for a developer learning to use the Claude API, authored via the `write-lab-doc` skill directly from a lab's code. Nothing runs this automatically — it's a deliberate manual step: once a lab's code is finished, remember to run `write-lab-doc` against it. There's no reminder anywhere else, so a lab can sit finished with no in-app doc unless this step actually happens.
+- **One inspector, many labs.** A shared "raw payload" panel (request JSON, response JSON, `stop_reason`, `usage`, cache read/write status, streaming events) is visible in every lab, so the underlying API mechanics are never hidden behind the demo UI.
