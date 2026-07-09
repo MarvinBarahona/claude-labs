@@ -1,0 +1,24 @@
+# Technical — Testing Strategy
+
+Update as the system evolves.
+
+- **Four test buckets, no end-to-end/browser-driven suite.**
+  - **Backend unit** — Nest's `Test.createTestingModule` with mocked providers, including the fake Anthropic/data-source clients (see the shared test doubles below). No real network access, no real backend process involved.
+  - **Backend integration** — `@nestjs/testing` + supertest against a real Nest application instance, exercising the real HTTP pipeline (routing, DI, validation pipes); external calls are intercepted with `nock` instead of reaching the real network.
+  - **Frontend unit** — Angular's `TestBed` with CDK harnesses, HTTP calls mocked via Angular's own HTTP-testing utilities. No real backend process involved.
+  - **Frontend integration** — frontend services/components tested against an actually-running backend process, over real HTTP, verifying the real request/response contract end to end (including SSE parsing) — not mocked at the frontend's own HTTP layer. That backend process is the same kind used for backend integration tests: a real Nest instance with test doubles bound in place of its own external clients, so this never needs a real credential either. This is *not* browser-driven e2e — no simulated clicks or page navigation, just the real network boundary between frontend code and a real backend process.
+  - See `nest-conventions` / `angular-conventions` for the general test-writing mechanics each side uses; this file only covers what those don't.
+
+- **No container that runs tests ever holds a real credential.** `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, and any future data-source key exist only in the developer's own `backend/.env`, used for manually running the app via `docker compose up`. Anything that builds or runs the test suite — a local `npm test`, a future CI run, or this app being built out during a coding session — uses placeholder values instead, never the real ones.
+
+- **Startup validation only checks presence, never validity.** The backend's fail-fast startup check for a required credential (missing → a clear startup error) verifies the variable is *set*, not that it's a genuine working key — confirming a real key would need an actual network round-trip, which config validation doesn't do. This is exactly what makes a placeholder string sufficient wherever a real key isn't available: it satisfies "set" without ever being used for a real call, since every external call in a test is mocked before it would reach the network (see below).
+
+- **Every external client sits behind a mockable seam.** The Anthropic SDK client and each data-source client (GitHub, Open-Meteo, arXiv, Wikimedia Commons) are injected via DI, per the existing Nest convention of depending on an interface/token for anything that needs mocking — never `new`'d up inline in a service. This is what makes both backend test levels possible without a real credential or real network access:
+  - **Backend unit tests** substitute a fake implementation of the client entirely (a canned response, no HTTP involved at all).
+  - **Backend integration tests** let the real client code run (real SDK calls, real Octokit/axios calls), but `nock` intercepts the outbound HTTP request before it leaves the process and returns a canned fixture response — so the integration test still exercises the app's actual request-building and response-handling code, just without a real network round trip. The same real-but-doubled backend process is what frontend integration tests run against, per the bucket above.
+
+- **Shared test doubles, not one ad hoc mock per lab.** A fake Anthropic client and fixture responses for each data source live in one shared place that every lab's tests reuse, rather than each lab inventing its own — the same "more than one consumer needs this" reasoning already applied to the caching layer and the content-block builder.
+
+- **Tests exist to catch real regressions, not to pad a coverage number.** Write a test because some specific behavior could plausibly break and would matter if it did — business logic, request/response shaping, error handling, edge cases in a shared module several labs depend on. Skip tests for trivial pass-through code (a plain getter, a DTO's own field assignment, framework wiring with no logic of its own) — a test that can't fail in any way that matters isn't worth writing or maintaining.
+
+- **CI isn't in scope yet** (this repo has no remote to run it against), but whatever CI is eventually added follows this same rule unchanged — placeholder credentials only, nothing about this policy depends on where the tests actually run.
