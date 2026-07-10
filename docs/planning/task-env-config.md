@@ -1,6 +1,6 @@
 # Task — Env/Config Loading
 
-**Status:** Draft.
+**Status:** Planned.
 
 **Depends on:** [`task-project-scaffold.md`](task-project-scaffold.md) (needs the backend project scaffold to exist).
 

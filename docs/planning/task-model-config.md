@@ -1,6 +1,6 @@
 # Task — Config/Model Layer
 
-**Status:** Draft.
+**Status:** Planned.
 
 **Depends on:** [`task-env-config.md`](task-env-config.md) (reads `ANTHROPIC_API_KEY` through it, not directly).
 

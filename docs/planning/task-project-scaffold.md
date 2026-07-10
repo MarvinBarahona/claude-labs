@@ -1,6 +1,6 @@
 # Task — Project Scaffold
 
-**Status:** Draft.
+**Status:** Planned.
 
 ## Purpose
 
@@ -45,4 +45,4 @@ The very first thing built in the entire project, before [`task-env-config.md`](
 
 ## Open questions
 
-- Whether this task also writes the initial `backend/.env.example` (currently `task-env-config.md`'s own to-do) or leaves that entirely to that task, since this task's scaffold doesn't need any real environment variable yet — leaning toward leaving it to `task-env-config.md`.
+None. Resolved: `backend/.env.example` is entirely [`task-env-config.md`](task-env-config.md)'s to-do (see its own to-do list) — this task's scaffold doesn't need any real environment variable, so its to-do list above deliberately doesn't include it.

@@ -1,10 +1,10 @@
 # Task — Docs Panel
 
-**Status:** Draft.
+**Status:** Planned.
 
 ## Purpose
 
-The "docs travel with code" principle made concrete: a shared frontend component that renders a lab's **in-app** Markdown doc inline next to its demo, so the app is its own documentation instead of a separate docs site. This is a product artifact, not a workflow one: the doc it renders is written for a developer learning a Claude API concept, authored by the `write-lab-doc` skill directly against that lab's code. It is unrelated to, and never reads, `docs/features/<slug>.md` — this workflow's own permanent doc, written for a future maintainer extending the repo, not for an app end user.
+Per `guiding-principles.md`, "Docs travel with code": a shared frontend component that renders a lab's **in-app** Markdown doc inline next to its demo, so the app is its own documentation instead of a separate docs site. This is a product artifact, not a workflow one: the doc it renders is written for a developer learning a Claude API concept, authored by the `write-lab-doc` skill directly against that lab's code. It is unrelated to, and never reads, `docs/features/<slug>.md` — this workflow's own permanent doc, written for a future maintainer extending the repo, not for an app end user.
 
 ## Interface
 

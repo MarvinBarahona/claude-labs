@@ -1,6 +1,6 @@
 # Task — Test Doubles for External Clients
 
-**Status:** Draft.
+**Status:** Planned.
 
 ## Purpose
 
@@ -38,4 +38,4 @@ Order relative to [`task-model-config.md`](task-model-config.md) / [`task-inspec
 
 ## Open questions
 
-- Whether the fake Anthropic client needs to simulate every content-block/streaming-event shape from day one, or grow incrementally as each feature (tool use, thinking, citations, etc.) actually needs a new shape — leaning toward incremental, since Foundations Console only needs the basic non-streaming/streaming text-response shape at first.
+None. Resolved: incremental — the fake Anthropic client starts with only the basic non-streaming/streaming text-response shape (all Foundations Console needs), and gains a new content-block/streaming-event shape only when the feature that actually needs it (tool use, thinking, citations, etc.) is built, matching the to-do list above.

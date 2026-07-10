@@ -1,10 +1,10 @@
 # Task — Inspector Panel
 
-**Status:** Draft.
+**Status:** Planned.
 
 ## Purpose
 
-The shared "raw payload" panel visible in every feature (per the "One inspector, many labs" guiding principle): request JSON, response JSON, streaming event log, `stop_reason`, token `usage`, and cache read/write status per call — so the underlying API mechanics are never hidden behind a feature's demo UI.
+The shared "raw payload" panel visible in every feature (per `guiding-principles.md`, "One inspector, many labs"): request JSON, response JSON, streaming event log, `stop_reason`, token `usage`, and cache read/write status per call — so the underlying API mechanics are never hidden behind a feature's demo UI.
 
 ## Interface
 

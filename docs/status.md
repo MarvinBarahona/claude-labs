@@ -18,13 +18,13 @@ This table is a summary pointer — each skill above is the authoritative defini
 
 | Work item | Type | Slug | Status | Doc |
 |---|---|---|---|---|
-| Project scaffold | Task | `project-scaffold` | Draft | [`task-project-scaffold.md`](planning/task-project-scaffold.md) |
-| Env/config loading | Task | `env-config` | Draft | [`task-env-config.md`](planning/task-env-config.md) |
-| Config/model layer | Task | `model-config` | Draft | [`task-model-config.md`](planning/task-model-config.md) |
-| Inspector panel | Task | `inspector-panel` | Draft | [`task-inspector-panel.md`](planning/task-inspector-panel.md) |
-| Docs panel | Task | `docs-panel` | Draft | [`task-docs-panel.md`](planning/task-docs-panel.md) |
-| App shell | Task | `app-shell` | Draft | [`task-app-shell.md`](planning/task-app-shell.md) |
-| Test doubles for external clients | Task | `test-doubles` | Draft | [`task-test-doubles.md`](planning/task-test-doubles.md) |
+| Project scaffold | Task | `project-scaffold` | Planned | [`task-project-scaffold.md`](planning/task-project-scaffold.md) |
+| Env/config loading | Task | `env-config` | Planned | [`task-env-config.md`](planning/task-env-config.md) |
+| Config/model layer | Task | `model-config` | Planned | [`task-model-config.md`](planning/task-model-config.md) |
+| Inspector panel | Task | `inspector-panel` | Planned | [`task-inspector-panel.md`](planning/task-inspector-panel.md) |
+| Docs panel | Task | `docs-panel` | Planned | [`task-docs-panel.md`](planning/task-docs-panel.md) |
+| App shell | Task | `app-shell` | Planned | [`task-app-shell.md`](planning/task-app-shell.md) |
+| Test doubles for external clients | Task | `test-doubles` | Planned | [`task-test-doubles.md`](planning/task-test-doubles.md) |
 | Foundations Console | Feature | `foundations-console` | Draft | [`feature-foundations-console.md`](planning/feature-foundations-console.md) |
 | GitHub data provider | Task | `github-provider` | Draft | [`task-github-provider.md`](planning/task-github-provider.md) |
 | Live Tool-Use Console | Feature | `live-tool-use-console` | Draft | [`feature-live-tool-use-console.md`](planning/feature-live-tool-use-console.md) |
