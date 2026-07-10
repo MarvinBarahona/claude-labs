@@ -5,3 +5,11 @@ A full-stack reference app that exercises every major Claude API feature (tool u
 **Status:** see [`status.md`](docs/status.md).
 
 **Stack:** Angular (frontend) + NestJS (backend), run exclusively via Docker Compose. See [`technical.md`](docs/technical/technical.md) for details.
+
+**Quick start:**
+
+```
+docker compose up --build
+```
+
+Frontend: http://localhost:4200 · Backend: http://localhost:3000
