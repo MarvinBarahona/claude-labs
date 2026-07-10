@@ -20,7 +20,7 @@ Because it's already capturing one call's full request/response, it's a natural 
 
 ## Build order & dependencies
 
-Order relative to [`task-model-config.md`](task-model-config.md) / [`task-docs-panel.md`](task-docs-panel.md) / [`task-app-shell.md`](task-app-shell.md) doesn't matter — all four sit between [`task-env-config.md`](task-env-config.md) and the first feature, Foundations Console (see `status.md` for current position). No dependency on other tasks; testable against fixture request/response JSON before any feature exists to feed it real data.
+Order relative to [`task-model-config.md`](task-model-config.md) / [`task-docs-panel.md`](task-docs-panel.md) / [`task-app-shell.md`](task-app-shell.md) doesn't matter — all four sit between [`env-config.md`](../shared/env-config.md) and the first feature, Foundations Console (see `status.md` for current position). No dependency on other tasks; testable against fixture request/response JSON before any feature exists to feed it real data.
 
 ## Test scenarios
 

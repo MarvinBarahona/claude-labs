@@ -26,7 +26,7 @@ Ask a research question about the subject repo or its ecosystem; Claude combines
 First (and only) MCP integration, built once tool-use patterns from Live Tool-Use Console are proven (see `status.md` for current position).
 
 - Requires Live Tool-Use Console's tool-use/tool-loop patterns to already be proven.
-- Requires the **DeepWiki MCP connector** ([`task-deepwiki-connector.md`](task-deepwiki-connector.md)) — this feature is its first consumer; Agent Playground (last) reuses it too. Does **not** require the GitHub data provider directly — DeepWiki MCP is a separate, already-key-free integration — but shares the `GITHUB_TARGET_REPO` env var with it (via [`task-env-config.md`](task-env-config.md)).
+- Requires the **DeepWiki MCP connector** ([`task-deepwiki-connector.md`](task-deepwiki-connector.md)) — this feature is its first consumer; Agent Playground (last) reuses it too. Does **not** require the GitHub data provider directly — DeepWiki MCP is a separate, already-key-free integration — but shares the `GITHUB_TARGET_REPO` env var with it (via [`env-config.md`](../shared/env-config.md)).
 
 ## Shared functionality used
 

@@ -20,7 +20,7 @@ None specific right now — kept generic (render whatever Markdown file sits at 
 
 ## Build order & dependencies
 
-Order relative to [`task-model-config.md`](task-model-config.md) / [`task-inspector-panel.md`](task-inspector-panel.md) / [`task-app-shell.md`](task-app-shell.md) doesn't matter — all four sit between [`task-env-config.md`](task-env-config.md) and the first feature, Foundations Console (see `status.md` for current position). No dependency on other tasks; testable against a fixture Markdown file and a mock route before any feature exists.
+Order relative to [`task-model-config.md`](task-model-config.md) / [`task-inspector-panel.md`](task-inspector-panel.md) / [`task-app-shell.md`](task-app-shell.md) doesn't matter — all four sit between [`env-config.md`](../shared/env-config.md) and the first feature, Foundations Console (see `status.md` for current position). No dependency on other tasks; testable against a fixture Markdown file and a mock route before any feature exists.
 
 ## Test scenarios
 

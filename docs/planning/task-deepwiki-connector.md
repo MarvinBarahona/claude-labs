@@ -21,7 +21,7 @@ Any later feature that wants codebase-aware Q&A about the subject repo can call 
 
 ## Build order & dependencies
 
-Right before Web & Repo Research Reporter (see `status.md` for current position) — nothing built before it depends on it, and it unlocks both Web & Repo Research Reporter and, later, Agent Playground. Shares `GITHUB_TARGET_REPO` with the GitHub data provider (via [`task-env-config.md`](task-env-config.md)) but doesn't depend on the GitHub data provider itself — DeepWiki is a separate, already-key-free integration, the same relationship Web & Repo Research Reporter's own plan file already describes.
+Right before Web & Repo Research Reporter (see `status.md` for current position) — nothing built before it depends on it, and it unlocks both Web & Repo Research Reporter and, later, Agent Playground. Shares `GITHUB_TARGET_REPO` with the GitHub data provider (via [`env-config.md`](../shared/env-config.md)) but doesn't depend on the GitHub data provider itself — DeepWiki is a separate, already-key-free integration, the same relationship Web & Repo Research Reporter's own plan file already describes.
 
 ## Open questions
 

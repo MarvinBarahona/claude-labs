@@ -2,7 +2,7 @@
 
 **Status:** Draft.
 
-**Depends on:** [`task-env-config.md`](task-env-config.md) (reads `GITHUB_TARGET_REPO` / `GITHUB_TOKEN` through it).
+**Depends on:** [`env-config.md`](../shared/env-config.md) (reads `GITHUB_TARGET_REPO` / `GITHUB_TOKEN` through it).
 
 ## Purpose
 
@@ -35,7 +35,7 @@ Right after Foundations Console, before Live Tool-Use Console (see `status.md` f
 ## To-do list
 
 - [ ] Implement the backend module wrapping issues/commits/releases/file-tree endpoints.
-- [ ] Wire `GITHUB_TARGET_REPO` / `GITHUB_TOKEN` through `task-env-config.md`.
+- [ ] Wire `GITHUB_TARGET_REPO` / `GITHUB_TOKEN` through `env-config.md`.
 - [ ] Handle GitHub API errors (rate limit, not found) with clear error surfaces.
 - [ ] Decide whether to add a short TTL cache per endpoint+repo (see "Potential other uses" above).
 

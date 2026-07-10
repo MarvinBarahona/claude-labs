@@ -22,7 +22,7 @@ None beyond the default route already committed above (see "Interface"). A short
 
 ## Build order & dependencies
 
-Order relative to `task-model-config.md` / `task-inspector-panel.md` / `task-docs-panel.md` likely doesn't matter — all are plausible candidates to sit between `task-env-config.md` and the first feature, Foundations Console (see `status.md` for current position). No dependency on other tasks; the routing/layout/nav mechanics don't need the backend config, GitHub provider, or any feature to exist first.
+Order relative to `task-model-config.md` / `task-inspector-panel.md` / `task-docs-panel.md` likely doesn't matter — all are plausible candidates to sit between `env-config.md` and the first feature, Foundations Console (see `status.md` for current position). No dependency on other tasks; the routing/layout/nav mechanics don't need the backend config, GitHub provider, or any feature to exist first.
 
 ## Test scenarios
 

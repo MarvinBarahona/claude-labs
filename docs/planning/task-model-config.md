@@ -2,7 +2,7 @@
 
 **Status:** Planned.
 
-**Depends on:** [`task-env-config.md`](task-env-config.md) (reads `ANTHROPIC_API_KEY` through it, not directly).
+**Depends on:** [`env-config.md`](../shared/env-config.md) (reads `ANTHROPIC_API_KEY` through it, not directly).
 
 ## Purpose
 
@@ -34,7 +34,7 @@ Since it already knows the cost/speed tradeoff per tier, it's a natural place to
 
 ## Build order & dependencies
 
-Order relative to [`task-inspector-panel.md`](task-inspector-panel.md) / [`task-docs-panel.md`](task-docs-panel.md) / [`task-app-shell.md`](task-app-shell.md) doesn't matter — all four sit between `task-env-config.md` and the first feature, Foundations Console (see `status.md` for current position). Depends only on `task-env-config.md` existing.
+Order relative to [`task-inspector-panel.md`](task-inspector-panel.md) / [`task-docs-panel.md`](task-docs-panel.md) / [`task-app-shell.md`](task-app-shell.md) doesn't matter — all four sit between `env-config.md` and the first feature, Foundations Console (see `status.md` for current position). Depends only on `env-config.md` existing.
 
 ## Test scenarios
 
@@ -47,7 +47,7 @@ Order relative to [`task-inspector-panel.md`](task-inspector-panel.md) / [`task-
 ## To-do list
 
 - [ ] Implement the lookup service mapping tier → model identifier, per the taxonomy above.
-- [ ] Wire it to read from `task-env-config.md`'s config service wherever a value should be environment-overridable.
+- [ ] Wire it to read from `env-config.md`'s config service wherever a value should be environment-overridable.
 - [ ] Document the mapping so later features know which tier to ask for.
 
 ## Open questions
