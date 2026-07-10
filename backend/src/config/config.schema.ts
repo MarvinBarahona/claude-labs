@@ -1,0 +1,20 @@
+import { z } from 'zod';
+
+export const envSchema = z.object({
+  ANTHROPIC_API_KEY: z.string().min(1, 'ANTHROPIC_API_KEY is required'),
+  GITHUB_TARGET_REPO: z.string().min(1).default('angular/angular'),
+  GITHUB_TOKEN: z.string().optional(),
+});
+
+export type EnvConfig = z.infer<typeof envSchema>;
+
+export function validateEnv(config: Record<string, unknown>): EnvConfig {
+  const result = envSchema.safeParse(config);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((issue) => `  - ${issue.path.join('.')}: ${issue.message}`)
+      .join('\n');
+    throw new Error(`Invalid environment configuration:\n${issues}`);
+  }
+  return result.data;
+}
