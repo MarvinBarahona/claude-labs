@@ -2,7 +2,7 @@
 
 **Status:** Planned.
 
-**Depends on:** [`task-project-scaffold.md`](task-project-scaffold.md) (needs the backend project scaffold to exist).
+**Depends on:** [`project-scaffold.md`](../shared/project-scaffold.md) (needs the backend project scaffold to exist).
 
 ## Purpose
 
@@ -28,7 +28,7 @@ Designed as a general typed-config service rather than three hardcoded getters, 
 
 ## Build order & dependencies
 
-Built right after [`task-project-scaffold.md`](task-project-scaffold.md), before any feature and before any other task (see `status.md` for current position). No dependency on anything else in the app.
+Built right after [`project-scaffold.md`](../shared/project-scaffold.md), before any feature and before any other task (see `status.md` for current position). No dependency on anything else in the app.
 
 ## Test scenarios
 
