@@ -41,6 +41,12 @@ Whoever implements this work item later reads only its own plan file, plus exact
 - A `## Test scenarios` section — concrete, testable scenarios covering the work item's functionality, written now, not invented later during `build-work-item`.
 - A `## To-do list` section — a checklist (`- [ ]` items) of concrete implementation tasks, to be checked off as `build-work-item` completes them.
 
+## Independent implementation tracks
+
+When the to-do list spans genuinely independent tracks — most often frontend and backend, but any grouping where one track doesn't need another track's output to proceed — pin down the contract between them now rather than leaving it to be worked out during implementation: the exact request/response shape, endpoint route and method, error cases, and field names each track relies on. State it precisely enough that either track could be implemented and tested against that contract alone, without reading the other track's code or waiting on it. This is a property of the plan's precision, not an instruction about how the work gets carried out later — the plan file should read the same regardless of who or how many end up building it.
+
+If the to-do list doesn't actually split into independent tracks — one track structurally depends on another's output, or there's only one track — skip this; don't force an artificial contract onto work that isn't actually separable.
+
 ## Write decisions back
 
 If detailed planning surfaces something that reaches beyond this one work item's file, write it back where future planning passes will actually see it, not only into the work item's own file:

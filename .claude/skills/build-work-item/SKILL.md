@@ -27,6 +27,14 @@ This phase's one deliberate, narrow exception to "never touch `docs/status.md`":
 
 Implement the work item per its plan file. Reuse other work items' output that has already graduated rather than re-implementing it; if this work item depends on something whose permanent doc doesn't exist yet, stop and say so instead of building around the gap.
 
+### Parallelizing across independent tracks
+
+Before starting, check whether the to-do list splits into genuinely independent tracks — most often frontend and backend (per `plan-work-item`'s "Independent implementation tracks", when the plan pinned down a contract for exactly this reason), but also any other grouping in this to-do list where one track doesn't need another's output to proceed. When it does, and there's enough work on each side to be worth the coordination overhead, hand each track to its own subagent via the Agent tool, launched together so they run in parallel. Give each subagent only what it needs: its slice of the to-do list, the plan's cited contract, and whichever coding-conventions skill governs that track (`angular-conventions` for frontend, `nest-conventions` for backend, or whatever this repo's skills name for the track in question) — not the whole plan file wholesale. Don't ask a subagent to go looking for further parallelization opportunities of its own; that judgment stays with the main agent.
+
+Keep for the main agent, never delegate to a subagent: communicating with the user, checking off to-do items as tracks report back, verifying the finished tracks actually integrate against the contract (not just that each one passes its own tests in isolation), Phase 2 testing below, and every step under "Record development notes" and "Stop and wait" below.
+
+If the to-do list has only one track, or the tracks aren't actually independent, implement it directly — parallelizing work that isn't separable adds coordination overhead without saving anything.
+
 As tasks are completed, check them off in the plan file's `## To-do list` section — this skill only keeps that list updated, it doesn't define it.
 
 ## Phase 2 — Test
