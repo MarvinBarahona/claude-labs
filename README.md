@@ -1,6 +1,6 @@
 # Claude Labs
 
-A full-stack reference app that exercises every major Claude API feature (tool use, server-side tools, MCP connector, extended thinking, multimodal input, prompt caching, and the four workflow patterns — evaluator-optimizer, parallelization, chaining, routing — plus one deliberate agent example) against real public data sources. It is meant to serve as both a working demo and self-contained documentation: each lab's doc is rendered inline next to its live demo in the app.
+A full-stack reference app that exercises every major Claude API feature (tool use, server-side tools, MCP connector, extended thinking, multimodal input, prompt caching, and the four workflow patterns — evaluator-optimizer, parallelization, chaining, routing — plus one deliberate agent example) against real public data sources. It is meant to serve as both a working demo and self-contained documentation: each lab's doc is rendered inline next to its live demo in the app. It's a hands-on companion to Anthropic's official Claude API documentation — see real requests and responses and try each concept yourself — not a replacement for reading the docs themselves.
 
 **Status:** see [`status.md`](docs/status.md).
 

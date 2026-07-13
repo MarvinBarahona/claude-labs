@@ -43,6 +43,10 @@ Test against the scenarios defined in the plan file's `## Test scenarios` sectio
 
 If the plan file has no `## Test scenarios` section yet, stop and flag it — test scenarios are authored during `plan-work-item`, not invented ad hoc here.
 
+### Full-composition preview for shared UI infrastructure
+
+If this work item builds shared frontend UI infrastructure — a layout, shell, nav, or other piece other work items will compose into their own screens — and a test scenario calls for verifying it manually but no real downstream consumer exists yet to test against, temporarily wire up a full-composition preview: the real shared component(s) assembled the way an actual downstream consumer will use them, mocking only the data/routes a real consumer isn't yet available to supply. Isolated unit tests and a thin placeholder screen can both pass while still missing integration issues (responsive/viewport states, ordering between the composed pieces, interaction between adjacent components) that only surface once something resembling a real consumer is assembled — this preview is how Phase 2 catches those without a real consumer to test against. It's scaffolding for this phase only: once manual verification is done, remove it rather than leaving it in the codebase.
+
 ## Record development notes
 
 Append a `## Development notes` section to the work item's own plan file (create it if it doesn't exist yet) recording anything that deviated from the plan, any ad hoc decision made during implementation, or anything a future work item should know about. Tag each note by kind so `graduate-work-item` can route it correctly: a technical decision made during implementation (tag it for `docs/technical/`); a fact that would change what `README.md`, `CLAUDE.md`, or another skill should claim (tag it as a non-owned-file suggestion); or a coding-convention/process observation. This skill never edits `docs/technical/`, `README.md`, `CLAUDE.md`, or skill files itself — only records the observation for later review.
