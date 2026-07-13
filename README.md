@@ -9,6 +9,7 @@ A full-stack reference app that exercises every major Claude API feature (tool u
 **Quick start:**
 
 ```
+cp backend/.env.example backend/.env
 docker compose up --build
 ```
 
