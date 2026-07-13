@@ -1,6 +1,6 @@
 # Task — Test Doubles for External Clients
 
-**Status:** Planned.
+**Status:** In progress.
 
 ## Purpose
 
@@ -24,18 +24,26 @@ Order relative to [`model-config.md`](../shared/model-config.md) / [`inspector-p
 
 ## Test scenarios
 
-- [ ] A unit test can inject the fake Anthropic client instead of a real one and get a canned, deterministic response.
-- [ ] A unit test can inject a fake data-source client instead of a real one and get canned fixture data.
-- [ ] An integration test using the `nock`-based fixture helper exercises the app's real HTTP-calling code (real SDK/Octokit/axios calls) without any request leaving the test process.
-- [ ] No test anywhere in the suite requires a real `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, or any other real credential to pass.
+- [x] A unit test can inject the fake Anthropic client instead of a real one and get a canned, deterministic response.
+- [ ] A unit test can inject a fake data-source client instead of a real one and get canned fixture data. — no data-source client exists yet to fake; deferred to whichever task first consumes one (see Development notes).
+- [x] An integration test using the `nock`-based fixture helper exercises the app's real HTTP-calling code (real SDK/Octokit/axios calls) without any request leaving the test process.
+- [x] No test anywhere in the suite requires a real `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`, or any other real credential to pass.
 
 ## To-do list
 
-- [ ] Implement the fake Anthropic client provider (canned non-streaming responses, canned streaming event sequences, canned tool-use loops), swappable via Nest DI.
-- [ ] Wire `nock` as the integration-test HTTP interception layer, with one fixture set per external host.
-- [ ] Add each data-source fake incrementally, alongside the task/feature that first consumes it, rather than building all of them up front.
-- [ ] Document how a new lab's tests should reach for these fakes instead of writing their own.
+- [x] Implement the fake Anthropic client provider (canned non-streaming responses, canned streaming event sequences, canned tool-use loops), swappable via Nest DI.
+- [x] Wire `nock` as the integration-test HTTP interception layer, with one fixture set per external host.
+- [ ] Add each data-source fake incrementally, alongside the task/feature that first consumes it, rather than building all of them up front. — intentionally not started; no data-source task has been built yet (see Development notes).
+- [x] Document how a new lab's tests should reach for these fakes instead of writing their own.
 
 ## Open questions
 
 None. Resolved: incremental — the fake Anthropic client starts with only the basic non-streaming/streaming text-response shape (all Foundations Console needs), and gains a new content-block/streaming-event shape only when the feature that actually needs it (tool use, thinking, citations, etc.) is built, matching the to-do list above.
+
+## Development notes
+
+- **[technical]** No shared "real Anthropic client" module exists yet in this codebase (per `task-key-health.md`'s own note, that's deferred to whichever feature first calls the Messages API for real — not yet built). Since this task's whole job is to establish the mockable seam ahead of that, `AnthropicClient` (an abstract class used as a Nest DI token, `backend/src/testing/anthropic/anthropic-client.ts`) is defined *by this task* rather than promoted from an existing real implementation — `createMessage()`/`streamMessage()`, typed against `@anthropic-ai/sdk`'s own `Message`/`MessageCreateParams`/`RawMessageStreamEvent` types so a future real-client provider can implement it as a thin adapter with no reshaping. `@anthropic-ai/sdk` was added as a real (non-dev) dependency for this reason — its types are load-bearing for the fake now, and the real client will need the package itself later.
+- **[technical]** `backend/src/testing/` is new — a shared-module folder (per `repo-layout.md`'s "shared functionality" rule) but for test-only code, so it's excluded from the production build (`backend/tsconfig.build.json` now excludes `src/testing`, mirroring how `**/*spec.ts` was already excluded) to keep `nock` and other test-only tooling out of `dist`.
+- **[technical]** `nock`'s fixture helper (`backend/src/testing/http-fixtures/`) currently only covers the Anthropic host (`mockAnthropicMessagesCreate`/`mockAnthropicModelsList`/their auth-error variants, plus a generic `useNockFixtures()` lifecycle helper) — no data-source host yet, since no data-source client is consumed anywhere yet. The Models API fixture was included now (not just Messages) because `task-key-health.md`'s own plan already names a `nock`-style intercept of `client.models.list()` as one of its test scenarios; building both now means that task doesn't have to add its own ad hoc Anthropic fixture later.
+- **[process]** Caught by `tsc --noEmit` but not by `npm test`: this project's Jest config runs `ts-jest` with `isolatedModules: true` (fast per-file transpilation), which does *not* type-check — a genuine type error (e.g. referencing an SDK type member that doesn't actually exist) can pass `npm test` silently and only surface via `npm run lint` (type-aware ESLint) or a manual `tsc --noEmit`. Worth flagging as a process gap: neither `CLAUDE.md`'s test commands nor this repo's lint step is documented as a required pre-commit check, so a future build could ship a type error that only `npm run lint`/`tsc --noEmit` would catch. Suggesting (not applying) this as a `docs/process-notes.md` candidate: run `npm run lint` (and/or `tsc --noEmit`) as part of this project's standard test-and-verify step, not just `npm test`.
+- **[data-source fakes]** Deferred exactly as planned — no GitHub/Open-Meteo/arXiv/Wikimedia Commons fake was added in this pass; `task-github-provider.md` (next data-source consumer) is expected to add the first one, following the pattern established here (`backend/src/testing/<source>/`, a `Fake<Source>Client` bound to an abstract-class DI token, exported from `backend/src/testing/index.ts`).
