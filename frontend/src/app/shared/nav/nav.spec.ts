@@ -29,4 +29,32 @@ describe('Nav', () => {
     );
     expect(labels).toEqual(['Alpha', 'Beta', 'Gamma']);
   });
+
+  it('is hidden by default (mobile overlay closed) and shown when open is true', () => {
+    const fixture = TestBed.createComponent(Nav);
+    fixture.componentRef.setInput('features', mockFeatures);
+    fixture.detectChanges();
+
+    const nav = fixture.nativeElement.querySelector('nav') as HTMLElement;
+    expect(nav.classList.contains('hidden')).toBe(true);
+
+    fixture.componentRef.setInput('open', true);
+    fixture.detectChanges();
+    expect(nav.classList.contains('hidden')).toBe(false);
+    expect(nav.classList.contains('flex')).toBe(true);
+  });
+
+  it('emits linkClick when a nav link is clicked', () => {
+    const fixture = TestBed.createComponent(Nav);
+    fixture.componentRef.setInput('features', mockFeatures);
+    fixture.detectChanges();
+
+    let emitted = false;
+    fixture.componentInstance.linkClick.subscribe(() => (emitted = true));
+
+    const link = fixture.nativeElement.querySelector('a') as HTMLElement;
+    link.dispatchEvent(new Event('click', { bubbles: true }));
+
+    expect(emitted).toBe(true);
+  });
 });

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import type { FeatureRoute } from '../../core/feature-route';
 
@@ -10,4 +10,7 @@ import type { FeatureRoute } from '../../core/feature-route';
 })
 export class Nav {
   readonly features = input.required<readonly FeatureRoute[]>();
+  /** Whether the nav is shown below the `lg` breakpoint, where it's an overlay hidden by default. */
+  readonly open = input(false);
+  readonly linkClick = output<void>();
 }

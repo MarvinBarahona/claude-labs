@@ -66,4 +66,23 @@ describe('Layout routing', () => {
     expect(typeof featureRoute?.loadComponent).toBe('function');
     expect(featureRoute?.component).toBeUndefined();
   });
+
+  it('toggles the nav open via the header button, and closes it again after selecting a link', async () => {
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/first-feature');
+    const root = harness.routeNativeElement as HTMLElement;
+    const nav = root.querySelector('nav') as HTMLElement;
+
+    expect(nav.classList.contains('hidden')).toBe(true);
+
+    const toggle = root.querySelector('button[aria-label="Toggle navigation"]') as HTMLElement;
+    toggle.click();
+    harness.fixture.detectChanges();
+    expect(nav.classList.contains('hidden')).toBe(false);
+
+    const link = root.querySelector('a[href="/second-feature"]') as HTMLElement;
+    link.click();
+    harness.fixture.detectChanges();
+    expect(nav.classList.contains('hidden')).toBe(true);
+  });
 });
