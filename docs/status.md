@@ -25,6 +25,7 @@ This table is a summary pointer — each skill above is the authoritative defini
 | Docs panel | Task | `docs-panel` | Planned | [`task-docs-panel.md`](planning/task-docs-panel.md) |
 | App shell | Task | `app-shell` | Planned | [`task-app-shell.md`](planning/task-app-shell.md) |
 | Test doubles for external clients | Task | `test-doubles` | Planned | [`task-test-doubles.md`](planning/task-test-doubles.md) |
+| Production Docker configuration | Task | `prod-docker` | Planned | [`task-prod-docker.md`](planning/task-prod-docker.md) |
 | Fake mode | Task | `fake-mode` | Planned | [`task-fake-mode.md`](planning/task-fake-mode.md) |
 | Foundations Console | Feature | `foundations-console` | Draft | [`feature-foundations-console.md`](planning/feature-foundations-console.md) |
 | GitHub data provider | Task | `github-provider` | Draft | [`task-github-provider.md`](planning/task-github-provider.md) |
