@@ -27,3 +27,7 @@ Also Docker-only — run a project's test command in its own container without s
 - `docker compose run --rm frontend npm test -- --watch=false` — frontend unit tests
 
 All three use only placeholder environment values — no real credential is needed to build or test either project.
+
+## Git
+
+Never run `git commit` as an automatic follow-on to finishing some other piece of work, no matter how many files it left changed. Only commit when the user's current message explicitly asks for it. Finishing a task is never, by itself, a request to commit.
