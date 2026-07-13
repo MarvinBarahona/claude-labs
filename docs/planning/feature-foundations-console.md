@@ -24,7 +24,7 @@ None — user-driven input only. No external data source, no feature-specific en
 
 ## Build order & dependencies
 
-Built right after five foundational tasks already exist (see `status.md` for current position): [`env-config.md`](../shared/env-config.md), [`model-config.md`](../shared/model-config.md), [`inspector-panel.md`](../shared/inspector-panel.md), [`task-docs-panel.md`](task-docs-panel.md), and [`task-app-shell.md`](task-app-shell.md). This feature is the first place all four of the latter are exercised together end-to-end, against a real Claude API call:
+Built right after five foundational tasks already exist (see `status.md` for current position): [`env-config.md`](../shared/env-config.md), [`model-config.md`](../shared/model-config.md), [`inspector-panel.md`](../shared/inspector-panel.md), [`docs-panel.md`](../shared/docs-panel.md), and [`task-app-shell.md`](task-app-shell.md). This feature is the first place all four of the latter are exercised together end-to-end, against a real Claude API call:
 
 - **Inspector panel** — already built against fixture data; this feature is its first real-data consumer.
 - **Docs panel** — already built against a fixture doc; this feature is its first real-feature consumer.

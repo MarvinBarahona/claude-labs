@@ -20,7 +20,7 @@ Every task and feature whose own tests exercise an external client — most dire
 
 ## Build order & dependencies
 
-Order relative to [`model-config.md`](../shared/model-config.md) / [`inspector-panel.md`](../shared/inspector-panel.md) / [`task-docs-panel.md`](task-docs-panel.md) / [`task-app-shell.md`](task-app-shell.md) doesn't matter — all five sit between [`env-config.md`](../shared/env-config.md) and the first feature, Foundations Console (see `status.md` for current position). Depends on [`project-scaffold.md`](../shared/project-scaffold.md) for the test tooling to exist; no dependency on `env-config.md` itself, since these fakes replace the client that a real config value would otherwise feed.
+Order relative to [`model-config.md`](../shared/model-config.md) / [`inspector-panel.md`](../shared/inspector-panel.md) / [`docs-panel.md`](../shared/docs-panel.md) / [`task-app-shell.md`](task-app-shell.md) doesn't matter — all five sit between [`env-config.md`](../shared/env-config.md) and the first feature, Foundations Console (see `status.md` for current position). Depends on [`project-scaffold.md`](../shared/project-scaffold.md) for the test tooling to exist; no dependency on `env-config.md` itself, since these fakes replace the client that a real config value would otherwise feed.
 
 ## Test scenarios
 

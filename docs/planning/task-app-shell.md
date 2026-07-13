@@ -8,7 +8,9 @@ The shared Angular routing, top-level layout, and navigation chrome every lab pl
 
 ## Interface
 
-A routing module (one lazy-loaded route per feature, keyed by slug) plus a layout component (persistent header/chrome, a content outlet) plus a nav component that reads each feature's `**Nav position:**` (`first` / `last` / `before <slug>` / `after <slug>`) and renders it in the correct relative order, rendered as a left sidebar — a vertical list of labs down the left edge, not a top tab bar — so it scales as labs are added without wrapping or crowding the demo/docs/inspector panels that already share every lab's width. Individual shared components are testable in isolation against a mock route (as `task-docs-panel.md` already assumes in its own test scenarios, and `inspector-panel.md` did before graduating); this task is what makes that route real.
+A routing module (one lazy-loaded route per feature, keyed by slug) plus a layout component (persistent header/chrome, a content outlet) plus a nav component that reads each feature's `**Nav position:**` (`first` / `last` / `before <slug>` / `after <slug>`) and renders it in the correct relative order, rendered as a left sidebar — a vertical list of labs down the left edge, not a top tab bar — so it scales as labs are added without wrapping or crowding the demo/docs/inspector panels that already share every lab's width. Individual shared components are testable in isolation against a mock route (as `docs-panel.md` already assumes in its own test scenarios, and `inspector-panel.md` did before graduating); this task is what makes that route real.
+
+Wiring the docs panel into each feature's route is a one-line binding, not new plumbing: `docs-panel.md`'s `DocsPanel` already takes a plain `slug` input and resolves its own fetch path — a feature's route component only needs `[slug]="'<feature-slug>'"` (or resolve it from route data) on `<app-docs-panel>`. No further change to that component is expected here.
 
 This task also owns a minimal default route: the root path (`/`) redirects to whichever feature sorts first in nav order (computed the same way the nav component orders links) — no separate intro-view content, since none is planned elsewhere (see "Open questions" resolution below).
 
@@ -22,7 +24,7 @@ None beyond the default route already committed above (see "Interface"). A short
 
 ## Build order & dependencies
 
-Order relative to [`model-config.md`](../shared/model-config.md) / [`inspector-panel.md`](../shared/inspector-panel.md) / `task-docs-panel.md` likely doesn't matter — all are plausible candidates to sit between `env-config.md` and the first feature, Foundations Console (see `status.md` for current position). No dependency on other tasks; the routing/layout/nav mechanics don't need the backend config, GitHub provider, or any feature to exist first.
+Order relative to [`model-config.md`](../shared/model-config.md) / [`inspector-panel.md`](../shared/inspector-panel.md) / [`docs-panel.md`](../shared/docs-panel.md) likely doesn't matter — all are plausible candidates to sit between `env-config.md` and the first feature, Foundations Console (see `status.md` for current position). No dependency on other tasks; the routing/layout/nav mechanics don't need the backend config, GitHub provider, or any feature to exist first.
 
 ## Test scenarios
 
