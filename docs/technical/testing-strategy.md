@@ -21,4 +21,6 @@ Update as the system evolves.
 
 - **Tests exist to catch real regressions, not to pad a coverage number.** Write a test because some specific behavior could plausibly break and would matter if it did — business logic, request/response shaping, error handling, edge cases in a shared module several labs depend on. Skip tests for trivial pass-through code (a plain getter, a DTO's own field assignment, framework wiring with no logic of its own) — a test that can't fail in any way that matters isn't worth writing or maintaining.
 
+- **`npm test` alone doesn't type-check.** `ts-jest` runs with `isolatedModules: true` for fast per-file transpilation, which skips type-checking — a genuine type error can pass the test suite silently. `npm run lint` (type-aware ESLint) is the step that catches it, which is why `CLAUDE.md`'s "Running tests" lists it alongside the test commands, not as an optional extra.
+
 - **CI isn't in scope yet** (this repo has no remote to run it against), but whatever CI is eventually added follows this same rule unchanged — placeholder credentials only, nothing about this policy depends on where the tests actually run.

@@ -64,6 +64,7 @@ None. Resolved:
 - `tech-stack.md`'s "Runtime" entry: revise to drop "there's no separate production build in scope" and describe the new prod path (compiled Angular + compiled Nest, backend-served, no dev volume) — done as part of this planning pass, see that file directly.
 - `architecture.md`'s "Same origin via the Angular dev server" bullet: revise to note prod's simpler variant of the same one-origin property (backend serves the build directly, so there's nothing to proxy) — done as part of this planning pass, see that file directly.
 - `docs/process-notes.md`: entry added noting `CLAUDE.md`'s "Running the app" section needs a prod command once this task is built (workflow doesn't own `CLAUDE.md`, so it can't apply this itself).
+- `README.md`: once built, split a new "Development" section out from the current single Quick Start — this task is what first makes "running" ambiguous between dev and prod. That section should fold in what's currently only in `CLAUDE.md` (the dev `docker compose up` flow, the test commands, and the `npm run lint` type-check step) so a developer has one README section to read, not just `CLAUDE.md`.
 
 ## Build order & dependencies
 

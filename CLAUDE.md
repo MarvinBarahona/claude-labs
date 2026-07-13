@@ -25,8 +25,9 @@ Also Docker-only — run a project's test command in its own container without s
 - `docker compose run --rm backend npm test` — backend unit tests
 - `docker compose run --rm backend npm run test:e2e` — backend integration tests
 - `docker compose run --rm frontend npm test -- --watch=false` — frontend unit tests
+- `docker compose run --rm backend npm run lint` — type-aware lint; run this too before calling backend work verified, since `npm test` alone (`ts-jest` with `isolatedModules: true`) doesn't type-check and can pass with a genuine type error present
 
-All three use only placeholder environment values — no real credential is needed to build or test either project.
+All four use only placeholder environment values — no real credential is needed to build or test either project.
 
 ## Git
 
