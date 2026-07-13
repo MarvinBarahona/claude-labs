@@ -1,0 +1,62 @@
+<section class="flex flex-col gap-4 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+  <header class="flex flex-wrap items-center gap-3">
+    <h2 class="text-base font-semibold">Inspector</h2>
+    @if (stopReason(); as reason) {
+      <span class="rounded-sm bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">stop_reason: {{ reason }}</span>
+    }
+    @if (usage(); as usage) {
+      <span class="text-xs text-muted-foreground">
+        in {{ usage.inputTokens ?? '—' }} / out {{ usage.outputTokens ?? '—' }}
+      </span>
+    }
+    @if (cacheWrite() > 0) {
+      <span class="rounded-sm bg-accent px-2 py-0.5 text-xs text-accent-foreground">cache write: {{ cacheWrite() }}</span>
+    }
+    @if (cacheRead() > 0) {
+      <span class="rounded-sm bg-accent px-2 py-0.5 text-xs text-accent-foreground">cache read: {{ cacheRead() }}</span>
+    }
+  </header>
+
+  <div class="grid gap-4 md:grid-cols-2">
+    <div class="flex flex-col gap-1">
+      <h3 class="text-xs font-medium text-muted-foreground uppercase">Request</h3>
+      <pre class="overflow-auto rounded-sm bg-muted p-2 text-xs">{{ requestJson() }}</pre>
+    </div>
+    <div class="flex flex-col gap-1">
+      <h3 class="text-xs font-medium text-muted-foreground uppercase">Response</h3>
+      @if (responseJson(); as json) {
+        <pre class="overflow-auto rounded-sm bg-muted p-2 text-xs">{{ json }}</pre>
+      } @else {
+        <p class="text-xs text-muted-foreground">No response yet.</p>
+      }
+    </div>
+  </div>
+
+  @if (contentBlocks().length > 0) {
+    <div class="flex flex-col gap-1">
+      <h3 class="text-xs font-medium text-muted-foreground uppercase">Content blocks</h3>
+      <ul class="flex flex-col gap-2">
+        @for (block of contentBlocks(); track $index) {
+          <li class="rounded-sm border border-border p-2">
+            <span class="rounded-sm bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground">{{ block.type }}</span>
+            <pre class="mt-1 overflow-auto text-xs">{{ block.json }}</pre>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  @if (streamEvents().length > 0) {
+    <div class="flex flex-col gap-1">
+      <h3 class="text-xs font-medium text-muted-foreground uppercase">Stream events</h3>
+      <ol class="flex flex-col gap-1">
+        @for (event of streamEvents(); track $index) {
+          <li class="rounded-sm border border-border p-2">
+            <span class="rounded-sm bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground">{{ event.type }}</span>
+            <pre class="mt-1 overflow-auto text-xs">{{ event.json }}</pre>
+          </li>
+        }
+      </ol>
+    </div>
+  }
+</section>
