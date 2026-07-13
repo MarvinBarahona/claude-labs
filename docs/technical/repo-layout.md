@@ -12,6 +12,8 @@ Update as the system evolves.
 
 - **Shared functionality:** each cross-cutting concern gets its own shared module (backend) or shared component (frontend), one per concern — reading config/secrets, picking a model tier, reaching a given external data source, placing cache breakpoints, and building a file/image content block on the backend; page layout/navigation, the inspector panel, and the docs renderer on the frontend. A shared module or component is never folded into whichever lab happened to need it first, and never duplicated once a second lab needs the same one.
 
+  On the frontend, every shared component lives under `frontend/src/app/shared/<concern>/` (e.g. `frontend/src/app/shared/inspector-panel/`), kept separate from each lab area's own top-level folder (named after its slug, per below) — this keeps the two categories this decision model already distinguishes visually distinct in the file tree as more labs and shared components are added. The backend has no equivalent `shared/` prefix: `backend/src/model-config/` and other shared modules sit at the top level next to lab-specific modules, since a backend `shared/` grouping hasn't been needed yet.
+
   How code is organized *within* a lab area, a shared module, or a shared component is a coding-convention concern, not a layout decision, and isn't tracked here.
 
 - **Secrets:** `backend/.env` (git-ignored) holds environment variables; `backend/.env.example` documents them with placeholder values.
