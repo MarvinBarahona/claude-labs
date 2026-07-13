@@ -20,7 +20,7 @@ This table is a summary pointer — each skill above is the authoritative defini
 |---|---|---|---|---|
 | Project scaffold | Task | `project-scaffold` | Done | [`project-scaffold.md`](shared/project-scaffold.md) |
 | Env/config loading | Task | `env-config` | Done | [`env-config.md`](shared/env-config.md) |
-| Config/model layer | Task | `model-config` | Planned | [`task-model-config.md`](planning/task-model-config.md) |
+| Config/model layer | Task | `model-config` | In progress | [`task-model-config.md`](planning/task-model-config.md) |
 | Inspector panel | Task | `inspector-panel` | Planned | [`task-inspector-panel.md`](planning/task-inspector-panel.md) |
 | Docs panel | Task | `docs-panel` | Planned | [`task-docs-panel.md`](planning/task-docs-panel.md) |
 | App shell | Task | `app-shell` | Planned | [`task-app-shell.md`](planning/task-app-shell.md) |
