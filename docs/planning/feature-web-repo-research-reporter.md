@@ -30,7 +30,7 @@ First (and only) MCP integration, built once tool-use patterns from Live Tool-Us
 
 ## Shared functionality used
 
-- Inspector panel ([`task-inspector-panel.md`](task-inspector-panel.md)), config/model layer ([`task-model-config.md`](task-model-config.md)).
+- Inspector panel ([`task-inspector-panel.md`](task-inspector-panel.md)), config/model layer ([`model-config.md`](../shared/model-config.md)).
 - DeepWiki MCP connector ([`task-deepwiki-connector.md`](task-deepwiki-connector.md)).
 
 ## Files API / base64

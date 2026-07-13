@@ -33,7 +33,7 @@ Right after Live Tool-Use Console proves the GitHub data provider and tool loop,
 ## Shared functionality used
 
 - GitHub data provider ([`task-github-provider.md`](task-github-provider.md)).
-- Config/model layer ([`task-model-config.md`](task-model-config.md)) — notably, this is where routing drops to Haiku for the classification step.
+- Config/model layer ([`model-config.md`](../shared/model-config.md)) — notably, this is where routing drops to Haiku for the classification step.
 - Caching layer ([`task-caching-layer.md`](task-caching-layer.md)), shared with Document Research Assistant.
 
 ## Files API / base64

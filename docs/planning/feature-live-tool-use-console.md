@@ -32,7 +32,7 @@ Right after the GitHub data provider exists (see `status.md` for current positio
 ## Shared functionality used
 
 - Inspector panel ([`task-inspector-panel.md`](task-inspector-panel.md)) — streaming tool-argument events, `tool_use`/`tool_result` blocks.
-- Config/model layer ([`task-model-config.md`](task-model-config.md)).
+- Config/model layer ([`model-config.md`](../shared/model-config.md)).
 - GitHub data provider ([`task-github-provider.md`](task-github-provider.md)) — consumed, not introduced.
 
 ## Files API / base64

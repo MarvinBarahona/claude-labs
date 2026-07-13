@@ -25,7 +25,7 @@ Layers directly onto Workflow Gallery (see `status.md` for current position).
 
 ## Shared functionality used
 
-- Config/model layer ([`task-model-config.md`](task-model-config.md)) — effort-level selection for the thinking-on runs.
+- Config/model layer ([`model-config.md`](../shared/model-config.md)) — effort-level selection for the thinking-on runs.
 
 ## Files API / base64
 
