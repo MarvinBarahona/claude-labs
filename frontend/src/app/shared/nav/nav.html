@@ -1,0 +1,11 @@
+<nav class="flex w-48 shrink-0 flex-col gap-1 border-r border-border bg-card p-2 text-sm text-card-foreground">
+  @for (feature of features(); track feature.slug) {
+    <a
+      [routerLink]="['/', feature.slug]"
+      routerLinkActive="nav-link-active bg-secondary text-secondary-foreground"
+      class="rounded-sm px-3 py-2 hover:bg-muted"
+    >
+      {{ feature.label }}
+    </a>
+  }
+</nav>
