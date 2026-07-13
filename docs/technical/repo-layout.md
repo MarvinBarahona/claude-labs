@@ -2,7 +2,7 @@
 
 Update as the system evolves.
 
-- **Structure:** single monorepo — `frontend/` and `backend/` at the repo root, with a root-level Docker Compose file that runs both together.
+- **Structure:** single monorepo — `frontend/` and `backend/` at the repo root, with two root-level Docker Compose files: `docker-compose.dev.yml` (runs both apps together for development, via each project's own `Dockerfile.dev`) and `docker-compose.prod.yml` (a single service built from a root-level `Dockerfile.prod`, since a production build serves both from one backend-hosted origin — see `tech-stack.md`'s "Runtime"). A root-level `.dockerignore` covers `Dockerfile.prod`'s build context, since that build's context is the repo root rather than a single subpackage — separate from `backend/.dockerignore`/`frontend/.dockerignore`, which only apply when the context is that subdirectory.
 
 - **Deciding where a piece of code goes:** two questions, asked in order, place any new code — a lab's own logic, a shared module, a shared component — without needing a central map that lists every file:
   1. **Frontend or backend?** Anything that calls the Claude API, reaches an external data source, or holds a secret is backend (see `architecture.md`); anything about presentation or user interaction is frontend. Many labs have a piece on each side.
