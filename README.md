@@ -10,7 +10,36 @@ A full-stack reference app that exercises every major Claude API feature (tool u
 
 ```
 cp backend/.env.example backend/.env
-docker compose up --build
+docker compose -f docker-compose.dev.yml up --build
 ```
 
 Frontend: http://localhost:4200 · Backend: http://localhost:3000
+
+## Development
+
+Everything runs via Docker Compose — no local Node/Angular/Nest CLI install needed, even for a fresh clone. Dev and prod are two separate Compose files, and `-f` must always be given; bare `docker compose` doesn't auto-discover either one.
+
+- `docker compose -f docker-compose.dev.yml up --build` — first run, or after a dependency (`package.json`) change
+- `docker compose -f docker-compose.dev.yml up` — subsequent runs (fast — reuses the built image and installed dependencies)
+- `docker compose -f docker-compose.dev.yml down` — stop and remove containers
+- If dependencies changed and `--build` alone doesn't seem to pick them up, also run `docker compose -f docker-compose.dev.yml down -v` first — `node_modules` lives in a named volume that persists across restarts and isn't refreshed by `--build` alone.
+
+`docker compose -f docker-compose.dev.yml ps` shows `(healthy)` once both services are actually ready to use, not just started.
+
+**Tests** — run a project's test command in its own container without starting the whole stack:
+
+- `docker compose -f docker-compose.dev.yml run --rm backend npm test` — backend unit tests
+- `docker compose -f docker-compose.dev.yml run --rm backend npm run test:e2e` — backend integration tests
+- `docker compose -f docker-compose.dev.yml run --rm frontend npm test -- --watch=false` — frontend unit tests
+- `docker compose -f docker-compose.dev.yml run --rm backend npm run lint` — type-aware lint; `npm test` alone (`ts-jest` with `isolatedModules: true`) doesn't type-check, so a genuine type error can slip through the test command alone
+
+All four use only placeholder environment values — no real credential is needed to build or test either project.
+
+## Production
+
+For just *running* the app (locally or on a server) rather than developing it — a compiled build, no dev server, no bind-mounted source:
+
+- `docker compose -f docker-compose.prod.yml up --build` — builds and runs a single container serving the whole app from http://localhost:3000
+- `docker compose -f docker-compose.prod.yml down` — stop and remove the container
+
+Reads `backend/.env` the same way dev does — a real `ANTHROPIC_API_KEY`, or fake mode once it exists, both work unchanged. Dev and prod bind the same host port (3000), so only one can run at a time on a given machine.
