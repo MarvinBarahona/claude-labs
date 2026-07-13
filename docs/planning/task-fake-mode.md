@@ -8,7 +8,7 @@
 - [`task-test-doubles.md`](task-test-doubles.md), "Interface" — the fake implementations of each external client (Anthropic SDK, GitHub, Open-Meteo, arXiv, Wikimedia Commons) this task binds into the actual running app, not just into test suites. Building fake mode before test-doubles exists would mean maintaining two separate sets of fakes for the same clients.
 - [`project-scaffold.md`](../shared/project-scaffold.md), "Structure" — Docker Compose already runs both projects and the backend already reads `backend/.env`; this task only adds a mode switch on top of that, not a change to either existing runtime (`@nestjs/config` loads `.env` directly inside the backend container, independent of Compose's own env handling).
 - [`task-prod-docker.md`](task-prod-docker.md), "Interface" — the second Docker/Compose runtime (a single container where the backend serves the compiled frontend, started via `docker compose -f docker-compose.prod.yml up`, distinct from the dev `docker-compose.yml`). Cited for context only, not for duplicated verification — see "Open questions."
-- [`task-app-shell.md`](task-app-shell.md), "Interface" — the persistent header/chrome component the fake-mode banner (see below) renders inside.
+- [`app-shell.md`](../shared/app-shell.md), "Interface" — the persistent header/chrome component the fake-mode banner (see below) renders inside.
 
 ## Purpose
 
@@ -36,7 +36,7 @@ Every task or feature that talks to an external client (the Claude API, GitHub, 
 
 ## Build order & dependencies
 
-Sits after [`task-test-doubles.md`](task-test-doubles.md) and [`task-app-shell.md`](task-app-shell.md), and before the first feature, Foundations Console (see `status.md` for current position) — both dependencies above (the fakes to bind, and the header to carry the banner) need to already exist. `task-prod-docker.md` sits earlier in `status.md` too, but that ordering is for planning-context accuracy (see "Depends on"), not because this task's own build or test work needs it done first.
+Sits after [`task-test-doubles.md`](task-test-doubles.md) and [`app-shell.md`](../shared/app-shell.md), and before the first feature, Foundations Console (see `status.md` for current position) — both dependencies above (the fakes to bind, and the header to carry the banner) need to already exist. `task-prod-docker.md` sits earlier in `status.md` too, but that ordering is for planning-context accuracy (see "Depends on"), not because this task's own build or test work needs it done first.
 
 ## Test scenarios
 

@@ -6,7 +6,7 @@
 
 - [`task-fake-mode.md`](task-fake-mode.md), "Interface" — the `GET /api/mode` route and the App Shell banner pattern this task extends, rather than inventing a second mode-reporting endpoint and a second banner slot.
 - [`env-config.md`](../shared/env-config.md), "Interface" — `AppConfigService.anthropicApiKey`, the value this task actually validates. `env-config.md`'s own startup check only confirms the variable is *set*, never that it's a working key (see `testing-strategy.md`, "Startup validation only checks presence, never validity") — this task is what closes that gap, at runtime rather than at Nest bootstrap.
-- [`task-app-shell.md`](task-app-shell.md), "Interface" — the persistent header this task's banner renders inside, same as fake mode's banner.
+- [`app-shell.md`](../shared/app-shell.md), "Interface" — the persistent header this task's banner renders inside, same as fake mode's banner.
 
 ## Purpose
 
@@ -59,4 +59,4 @@ None. Resolved — see "Interface" above for each:
 
 ## Build order & dependencies
 
-Not yet placed relative to the rest of the backlog beyond depending on `task-fake-mode.md` and `task-app-shell.md` — provisionally sequenced right after `task-fake-mode.md` in `status.md`, since it extends that task's `GET /api/mode` endpoint and banner mechanism rather than building its own from scratch. `plan-work-item` can adjust if a better position becomes clear.
+Not yet placed relative to the rest of the backlog beyond depending on `task-fake-mode.md` and `app-shell.md` — provisionally sequenced right after `task-fake-mode.md` in `status.md`, since it extends that task's `GET /api/mode` endpoint and banner mechanism rather than building its own from scratch. `plan-work-item` can adjust if a better position becomes clear.
