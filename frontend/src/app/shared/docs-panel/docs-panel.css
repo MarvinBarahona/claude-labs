@@ -1,0 +1,59 @@
+:host ::ng-deep .docs-panel-content h1,
+:host ::ng-deep .docs-panel-content h2,
+:host ::ng-deep .docs-panel-content h3 {
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.4em;
+}
+
+:host ::ng-deep .docs-panel-content h1 {
+  font-size: 1.25rem;
+}
+
+:host ::ng-deep .docs-panel-content h2 {
+  font-size: 1.1rem;
+}
+
+:host ::ng-deep .docs-panel-content h3 {
+  font-size: 1rem;
+}
+
+:host ::ng-deep .docs-panel-content p {
+  margin-bottom: 0.75em;
+  line-height: 1.6;
+}
+
+:host ::ng-deep .docs-panel-content ul,
+:host ::ng-deep .docs-panel-content ol {
+  margin-bottom: 0.75em;
+  padding-left: 1.5em;
+}
+
+:host ::ng-deep .docs-panel-content li {
+  margin-bottom: 0.25em;
+}
+
+:host ::ng-deep .docs-panel-content a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+:host ::ng-deep .docs-panel-content code {
+  background: var(--muted);
+  border-radius: 0.25em;
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+}
+
+:host ::ng-deep .docs-panel-content pre {
+  background: var(--muted);
+  border-radius: 0.375em;
+  padding: 0.75em;
+  overflow-x: auto;
+  margin-bottom: 0.75em;
+}
+
+:host ::ng-deep .docs-panel-content pre code {
+  background: none;
+  padding: 0;
+}

@@ -1,0 +1,11 @@
+<section
+  class="flex flex-col gap-2 rounded-md border border-border bg-card p-4 text-sm text-card-foreground"
+>
+  @if (isLoading()) {
+    <p class="text-xs text-muted-foreground">Loading docs…</p>
+  } @else if (isError()) {
+    <p role="alert" class="text-xs text-destructive">Couldn't load the docs for this lab.</p>
+  } @else {
+    <div class="docs-panel-content" [innerHTML]="html()"></div>
+  }
+</section>
