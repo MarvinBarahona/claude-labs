@@ -17,4 +17,20 @@ export class AppConfigService {
   get githubToken(): string | undefined {
     return this.configService.get('GITHUB_TOKEN', { infer: true });
   }
+
+  get modelDefault(): string {
+    return this.configService.get('MODEL_DEFAULT', { infer: true });
+  }
+
+  get modelClassification(): string {
+    return this.configService.get('MODEL_CLASSIFICATION', { infer: true });
+  }
+
+  get modelHardestCall(): string {
+    return this.configService.get('MODEL_HARDEST_CALL', { infer: true });
+  }
+
+  get thinkingEffortDefault(): EnvConfig['THINKING_EFFORT_DEFAULT'] {
+    return this.configService.get('THINKING_EFFORT_DEFAULT', { infer: true });
+  }
 }

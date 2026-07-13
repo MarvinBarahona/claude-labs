@@ -4,6 +4,12 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1, 'ANTHROPIC_API_KEY is required'),
   GITHUB_TARGET_REPO: z.string().min(1).default('angular/angular'),
   GITHUB_TOKEN: z.string().optional(),
+  MODEL_DEFAULT: z.string().min(1).default('claude-sonnet-5'),
+  MODEL_CLASSIFICATION: z.string().min(1).default('claude-haiku-4-5'),
+  MODEL_HARDEST_CALL: z.string().min(1).default('claude-opus-4-8'),
+  THINKING_EFFORT_DEFAULT: z
+    .enum(['low', 'medium', 'high', 'xhigh', 'max'])
+    .default('medium'),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
