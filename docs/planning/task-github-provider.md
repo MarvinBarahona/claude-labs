@@ -2,7 +2,7 @@
 
 **Status:** Draft.
 
-**Depends on:** [`env-config.md`](../shared/env-config.md) (reads `GITHUB_TARGET_REPO` / `GITHUB_TOKEN` through it).
+**Depends on:** [`env-config.md`](../shared/env-config.md) (reads `GITHUB_TARGET_REPO` / `GITHUB_TOKEN` through it); [`test-doubles.md`](../shared/test-doubles.md) (this is the first task expected to add a data-source fake).
 
 ## Purpose
 
@@ -38,6 +38,7 @@ Right after Foundations Console, before Live Tool-Use Console (see `status.md` f
 - [ ] Wire `GITHUB_TARGET_REPO` / `GITHUB_TOKEN` through `env-config.md`.
 - [ ] Handle GitHub API errors (rate limit, not found) with clear error surfaces.
 - [ ] Decide whether to add a short TTL cache per endpoint+repo (see "Potential other uses" above).
+- [ ] Add the first data-source fake at `backend/src/testing/github/` — a `FakeGithubClient` bound to an abstract-class DI token, exported from `backend/src/testing/index.ts`, following the same pattern as the existing Anthropic fake (see `test-doubles.md`). This is the task `test-doubles.md` deferred this work to.
 
 ## Open questions
 

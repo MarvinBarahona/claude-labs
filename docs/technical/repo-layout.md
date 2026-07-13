@@ -16,5 +16,7 @@ Update as the system evolves.
 
   How code is organized *within* a lab area, a shared module, or a shared component is a coding-convention concern, not a layout decision, and isn't tracked here.
 
+  Test-only shared code follows the same one-home-per-concern rule but lives under its own top-level `backend/src/testing/<concern>/` (e.g. `backend/src/testing/anthropic/`, `backend/src/testing/http-fixtures/`, see `test-doubles.md`), kept out of `backend/tsconfig.build.json`'s build (mirroring how `**/*spec.ts` is already excluded) so test-only tooling never ends up in `dist`.
+
 - **Secrets:** `backend/.env` (git-ignored) holds environment variables; `backend/.env.example` documents them with placeholder values.
 - **In-app lab docs:** each lab's in-app documentation (the Markdown its docs panel renders — Claude API concepts, example requests/responses, written for a developer using the API, not a repo maintainer) lives at `frontend/public/lab-docs/<slug>.md` as a static asset. Authored and kept current by the `write-lab-doc` skill, run directly against a lab's code.

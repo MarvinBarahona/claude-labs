@@ -5,7 +5,7 @@
 **Depends on:**
 
 - [`env-config.md`](../shared/env-config.md), "Interface" and "Using it" — the app's one place reading environment variables. `FAKE_MODE` and `REPO_URL` are added to `envSchema`/`AppConfigService` the same way any new config value is added there, not through a second ad hoc `process.env` read.
-- [`task-test-doubles.md`](task-test-doubles.md), "Interface" — the fake implementations of each external client (Anthropic SDK, GitHub, Open-Meteo, arXiv, Wikimedia Commons) this task binds into the actual running app, not just into test suites. Building fake mode before test-doubles exists would mean maintaining two separate sets of fakes for the same clients.
+- [`test-doubles.md`](../shared/test-doubles.md), "Interface" — the fake implementations of each external client (Anthropic SDK, GitHub, Open-Meteo, arXiv, Wikimedia Commons) this task binds into the actual running app, not just into test suites. Building fake mode before test-doubles exists would mean maintaining two separate sets of fakes for the same clients.
 - [`project-scaffold.md`](../shared/project-scaffold.md), "Structure" — Docker Compose already runs both projects and the backend already reads `backend/.env`; this task only adds a mode switch on top of that, not a change to either existing runtime (`@nestjs/config` loads `.env` directly inside the backend container, independent of Compose's own env handling).
 - [`task-prod-docker.md`](task-prod-docker.md), "Interface" — the second Docker/Compose runtime (a single container where the backend serves the compiled frontend, started via `docker compose -f docker-compose.prod.yml up`, distinct from the dev `docker-compose.yml`). Cited for context only, not for duplicated verification — see "Open questions."
 - [`app-shell.md`](../shared/app-shell.md), "Interface" — the persistent header/chrome component the fake-mode banner (see below) renders inside.
@@ -17,7 +17,7 @@ The app needs to run in two distinct modes:
 - **Real mode** — a real `ANTHROPIC_API_KEY` (and other credentials) in `backend/.env`; every external call goes out for real. This is how the project owner actually uses the app day to day for manual testing, and how anyone else it's shared with is expected to run it: add keys to `.env`, `docker compose up`, nothing else.
 - **Fake mode** — no real credentials, no outbound call to the Claude API or any external data source at all; every external client returns canned/fake data instead. For developing and manually exploring the running app — including a coding agent driving it — without needing a real key or spending real API budget just to click through a lab.
 
-This is distinct from [`task-test-doubles.md`](task-test-doubles.md), which only covers automated test suites (booting an isolated module or a throwaway app instance for a single test run). Fake mode is about the actual long-running app process — started either of the two ways the app runs, dev's `docker compose up` or [`task-prod-docker.md`](task-prod-docker.md)'s `docker compose -f docker-compose.prod.yml up` — behaving fully without any real credential — someone (or something) can open the frontend, click into any lab, and get a working demo end to end on fabricated data.
+This is distinct from [`test-doubles.md`](../shared/test-doubles.md), which only covers automated test suites (booting an isolated module or a throwaway app instance for a single test run). Fake mode is about the actual long-running app process — started either of the two ways the app runs, dev's `docker compose up` or [`task-prod-docker.md`](task-prod-docker.md)'s `docker compose -f docker-compose.prod.yml up` — behaving fully without any real credential — someone (or something) can open the frontend, click into any lab, and get a working demo end to end on fabricated data.
 
 Fake mode never relaxes [`testing-strategy.md`](../technical/testing-strategy.md)'s "no container that runs tests ever holds a real credential" rule — it's a manual/interactive runtime mode only, never grounds for a test gated on real-credential presence. No test suite depends on `FAKE_MODE` at all: tests already substitute fakes directly via DI (per `testing-strategy.md`), independent of this flag.
 
@@ -30,13 +30,13 @@ Fake mode never relaxes [`testing-strategy.md`](../technical/testing-strategy.md
 
 ## Consumers
 
-Every task or feature that talks to an external client (the Claude API, GitHub, or any future data source) wires its own client provider through this task's DI-switch helper — this task sits upstream of most of the backlog, the same way `env-config.md` and `task-test-doubles.md` already do. No such client provider exists yet at this task's own build order position (see "Build order & dependencies"), so this task's own to-do list builds and documents the mechanism generically; each later consumer wires its own provider through it when it's built.
+Every task or feature that talks to an external client (the Claude API, GitHub, or any future data source) wires its own client provider through this task's DI-switch helper — this task sits upstream of most of the backlog, the same way `env-config.md` and `test-doubles.md` already do. No such client provider exists yet at this task's own build order position (see "Build order & dependencies"), so this task's own to-do list builds and documents the mechanism generically; each later consumer wires its own provider through it when it's built.
 
 - [`task-key-health.md`](task-key-health.md) — still `Draft`, sequenced right after this task. It extends this task's `GET /api/mode` route with a key-validity field and shares App Shell's one banner slot with this task's fake-mode banner, rather than building a second mode-reporting endpoint and a second banner.
 
 ## Build order & dependencies
 
-Sits after [`task-test-doubles.md`](task-test-doubles.md) and [`app-shell.md`](../shared/app-shell.md), and before the first feature, Foundations Console (see `status.md` for current position) — both dependencies above (the fakes to bind, and the header to carry the banner) need to already exist. `task-prod-docker.md` sits earlier in `status.md` too, but that ordering is for planning-context accuracy (see "Depends on"), not because this task's own build or test work needs it done first.
+Sits after [`test-doubles.md`](../shared/test-doubles.md) and [`app-shell.md`](../shared/app-shell.md), and before the first feature, Foundations Console (see `status.md` for current position) — both dependencies above (the fakes to bind, and the header to carry the banner) need to already exist. `task-prod-docker.md` sits earlier in `status.md` too, but that ordering is for planning-context accuracy (see "Depends on"), not because this task's own build or test work needs it done first.
 
 ## Test scenarios
 
@@ -56,7 +56,7 @@ These scenarios are exercised once, under dev's `docker compose up` — see "Ope
 
 - [ ] Add `FAKE_MODE` (boolean, default `false`) to `envSchema`/`AppConfigService`, following `env-config.md`'s convention for adding a new config value.
 - [ ] Add `REPO_URL` (optional string, `undefined` if unset) to `envSchema`/`AppConfigService`, same optionality pattern as `githubToken`.
-- [ ] Build the reusable provider-factory helper that binds a client token to its fake implementation (from `task-test-doubles.md`) instead of the real one when `AppConfigService.fakeMode` is true.
+- [ ] Build the reusable provider-factory helper that binds a client token to its fake implementation (from `test-doubles.md`) instead of the real one when `AppConfigService.fakeMode` is true.
 - [ ] Add `FAKE_MODE=false` and a commented-out `REPO_URL=` (with a one-line comment noting it's only used when `FAKE_MODE=true`) to `backend/.env.example`, alongside the existing placeholder values.
 - [ ] Add the `GET /api/mode` backend route returning `{ fakeMode: boolean, repoUrl?: string }`.
 - [ ] Add the fake-mode banner to App Shell's persistent header, rendered when `/api/mode` reports fake mode active — explanatory text always shown, `repoUrl` rendered as a link when present, text-only fallback when absent.
@@ -69,7 +69,7 @@ None. Resolved:
 - **Mode selection:** explicit `FAKE_MODE` env var, not auto-detected from key shape — see "Interface".
 - **Tension with `guiding-principles.md`'s "Real data, not fixtures":** resolved with an explicit carve-out added to that principle, scoping it to a lab's real-mode design and calling out fake mode as a separate, opt-in override layered on top.
 - **Guardrail against untestable-in-CI tests:** stated as an explicit non-goal above — fake mode is manual/interactive only and never justifies a real-credential-gated test; `testing-strategy.md`'s existing rule already covers this unchanged, so it needs no edit.
-- **Fake data per lab:** incremental, reusing `task-test-doubles.md`'s fakes as each lab's own test doubles are added — no bespoke fake-mode-only data set.
+- **Fake data per lab:** incremental, reusing `test-doubles.md`'s fakes as each lab's own test doubles are added — no bespoke fake-mode-only data set.
 - **UI visibility:** yes, a banner in App Shell's header — see "Interface".
 - **Repo link (`REPO_URL`):** optional, `undefined` if unset, no fail-fast validation and no hardcoded default URL — mirrors `githubToken`'s optionality rather than `anthropicApiKey`'s required/fail-fast pattern, since it's purely informational (a banner link), not something any code path depends on to function. The banner degrades to text-only when it's absent instead of hiding itself or blocking startup.
 - **Not re-tested under `task-prod-docker.md`'s runtime:** `FAKE_MODE` is read through `AppConfigService` and the DI-switch helper exactly the same way no matter which Docker Compose file started the process — neither depends on a dev server, a bind mount, or how `node_modules` got into the image, the only things that actually differ between the two runtimes. `task-prod-docker.md`'s own test scenarios already establish that env-var-driven config (any value read via `AppConfigService`, not something specific to `FAKE_MODE`) reaches the app unchanged under its runtime; re-verifying that fact per consuming task would be exactly the "can't fail in any way that matters" case `testing-strategy.md` says to skip. This task's scenarios are exercised once, under dev's `docker compose up`.
