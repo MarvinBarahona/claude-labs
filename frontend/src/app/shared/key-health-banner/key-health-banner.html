@@ -1,0 +1,5 @@
+@if (keyInvalid()) {
+  <div class="border-b-2 border-destructive bg-destructive/10 px-4 py-1.5 text-xs font-semibold text-destructive">
+    Your Anthropic API key is invalid or expired — every feature that calls the Claude API will fail until it's fixed in <code>backend/.env</code>.
+  </div>
+}
