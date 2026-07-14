@@ -26,7 +26,7 @@ This table is a summary pointer — each skill above is the authoritative defini
 | App shell | Task | `app-shell` | Done | [`app-shell.md`](shared/app-shell.md) |
 | Test doubles for external clients | Task | `test-doubles` | Done | [`test-doubles.md`](shared/test-doubles.md) |
 | Production Docker configuration | Task | `prod-docker` | Done | [`prod-docker.md`](shared/prod-docker.md) |
-| Fake mode | Task | `fake-mode` | Planned | [`task-fake-mode.md`](planning/task-fake-mode.md) |
+| Fake mode | Task | `fake-mode` | Done | [`fake-mode.md`](shared/fake-mode.md) |
 | API key health check | Task | `key-health` | Planned | [`task-key-health.md`](planning/task-key-health.md) |
 | Foundations Console | Feature | `foundations-console` | Draft | [`feature-foundations-console.md`](planning/feature-foundations-console.md) |
 | GitHub data provider | Task | `github-provider` | Draft | [`task-github-provider.md`](planning/task-github-provider.md) |
