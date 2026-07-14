@@ -18,6 +18,8 @@ Set a real `ANTHROPIC_API_KEY` in `backend/.env`, then:
 docker compose -f docker-compose.prod.yml up --build
 ```
 
+`--build` is only needed the first time — omit it on later starts for a faster boot.
+
 App: http://localhost:3000
 
 ## Modes
