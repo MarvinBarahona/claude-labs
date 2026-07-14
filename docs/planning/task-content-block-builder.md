@@ -1,6 +1,6 @@
 # Task — Content-Block Builder
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 ## Purpose
 

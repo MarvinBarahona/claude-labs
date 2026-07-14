@@ -1,6 +1,6 @@
 # Feature — Data & Code Sandbox
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Nav position:** after `feature-web-repo-research-reporter`.
 

@@ -1,6 +1,6 @@
 # Feature — Web & Repo Research Reporter
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Nav position:** after `feature-document-research-assistant`.
 

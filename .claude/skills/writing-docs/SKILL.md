@@ -107,7 +107,9 @@ The one legitimate two-way link involving a permanent or semi-permanent file is 
 
 Every `feature-<slug>.md` / `task-<slug>.md` plan file carries a `**Status:**` line, and `docs/status.md`'s table mirrors it — update both together, never just one. Valid values, in lifecycle order:
 
-`Not started` (no plan file yet, just a row in `docs/status.md`) → `Draft` (plan file exists) → `Planned` (self-contained, ready to build) → `In progress` (being implemented and tested) → `Done` (graduated).
+⚪ `Not started` (no plan file yet, just a row in `docs/status.md`) → 📝 `Draft` (plan file exists) → 📋 `Planned` (self-contained, ready to build) → 🔵 `In progress` (being implemented and tested) → ✅ `Done` (graduated).
+
+The leading emoji is the color cue for each status (plain Markdown can't set text color on GitHub) — always ⚪/📝/📋/🔵/✅ in that order, in both the plan file's `**Status:**` line and `docs/status.md`'s table.
 
 What moves a work item between these, what each stage must contain, and how a plan file turns into its permanent doc are defined by the `draft-work-item` / `plan-work-item` / `build-work-item` / `graduate-work-item` / `abandon-work-item` skills, not here — this file only defines what the status values mean and where they're recorded.
 

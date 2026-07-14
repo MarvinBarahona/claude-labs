@@ -1,6 +1,6 @@
 # Task — GitHub Data Provider
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Depends on:** [`env-config.md`](../shared/env-config.md) (reads `GITHUB_TARGET_REPO` / `GITHUB_TOKEN` through it); [`test-doubles.md`](../shared/test-doubles.md) (this is the first task expected to add a data-source fake).
 

@@ -1,6 +1,6 @@
 # Feature — Vision Lab
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Nav position:** after `feature-data-code-sandbox`.
 

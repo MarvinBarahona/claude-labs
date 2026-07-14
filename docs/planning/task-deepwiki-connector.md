@@ -1,6 +1,6 @@
 # Task — DeepWiki MCP Connector
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 ## Purpose
 

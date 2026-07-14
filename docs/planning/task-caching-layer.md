@@ -1,6 +1,6 @@
 # Task — Caching Layer
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 ## Purpose
 

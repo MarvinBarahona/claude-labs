@@ -1,6 +1,6 @@
 # Feature — Agent Playground
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Nav position:** last.
 

@@ -1,6 +1,6 @@
 # Feature — Foundations Console
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Nav position:** first.
 

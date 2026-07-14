@@ -1,6 +1,6 @@
 # Feature — Live Tool-Use Console
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Nav position:** after `feature-foundations-console`.
 

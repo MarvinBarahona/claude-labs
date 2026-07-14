@@ -1,6 +1,6 @@
 # Feature — Document Research Assistant
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Nav position:** after `feature-live-tool-use-console`.
 

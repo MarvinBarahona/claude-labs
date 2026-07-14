@@ -1,6 +1,6 @@
 # Feature — Extended Thinking Bench
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Nav position:** after `feature-workflow-gallery`.
 

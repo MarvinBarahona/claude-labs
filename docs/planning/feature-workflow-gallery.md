@@ -1,6 +1,6 @@
 # Feature — Workflow Gallery: Issue Triage Pipeline
 
-**Status:** Draft.
+**Status:** 📝 Draft.
 
 **Nav position:** after `feature-vision-lab`.
 
