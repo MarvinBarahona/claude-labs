@@ -23,6 +23,13 @@ describe('AppController (e2e)', () => {
       .expect({ message: 'Hello from the claude-labs backend' });
   });
 
+  it('/mode (GET) reports fakeMode: false and no repoUrl by default', () => {
+    return request(app.getHttpServer())
+      .get('/mode')
+      .expect(200)
+      .expect({ fakeMode: false });
+  });
+
   afterEach(async () => {
     await app.close();
   });

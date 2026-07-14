@@ -15,6 +15,8 @@ describe('AppConfigModule wiring', () => {
     delete process.env.MODEL_CLASSIFICATION;
     delete process.env.MODEL_HARDEST_CALL;
     delete process.env.THINKING_EFFORT_DEFAULT;
+    delete process.env.FAKE_MODE;
+    delete process.env.REPO_URL;
   });
 
   afterAll(() => {
@@ -88,5 +90,27 @@ describe('AppConfigModule wiring', () => {
     expect(config.modelClassification).toBe('claude-haiku-4-5-override');
     expect(config.modelHardestCall).toBe('claude-opus-4-8-override');
     expect(config.thinkingEffortDefault).toBe('high');
+  });
+
+  it('defaults fakeMode to false and leaves repoUrl undefined when unset', async () => {
+    process.env.ANTHROPIC_API_KEY = 'placeholder';
+
+    const moduleRef = await buildModule();
+    const config = moduleRef.get(AppConfigService);
+
+    expect(config.fakeMode).toBe(false);
+    expect(config.repoUrl).toBeUndefined();
+  });
+
+  it('reads FAKE_MODE and REPO_URL through AppConfigService when set', async () => {
+    process.env.ANTHROPIC_API_KEY = 'placeholder';
+    process.env.FAKE_MODE = 'true';
+    process.env.REPO_URL = 'https://github.com/example/claude-labs';
+
+    const moduleRef = await buildModule();
+    const config = moduleRef.get(AppConfigService);
+
+    expect(config.fakeMode).toBe(true);
+    expect(config.repoUrl).toBe('https://github.com/example/claude-labs');
   });
 });

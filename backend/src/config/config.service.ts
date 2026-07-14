@@ -33,4 +33,12 @@ export class AppConfigService {
   get thinkingEffortDefault(): EnvConfig['THINKING_EFFORT_DEFAULT'] {
     return this.configService.get('THINKING_EFFORT_DEFAULT', { infer: true });
   }
+
+  get fakeMode(): boolean {
+    return this.configService.get('FAKE_MODE', { infer: true });
+  }
+
+  get repoUrl(): string | undefined {
+    return this.configService.get('REPO_URL', { infer: true });
+  }
 }

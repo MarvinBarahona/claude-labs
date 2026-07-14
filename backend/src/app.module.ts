@@ -5,11 +5,13 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppConfigModule } from './config/config.module';
 import { ModelConfigModule } from './model-config/model-config.module';
+import { FakeModeModule } from './fake-mode/fake-mode.module';
 
 @Module({
   imports: [
     AppConfigModule,
     ModelConfigModule,
+    FakeModeModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api{/*splat}'],

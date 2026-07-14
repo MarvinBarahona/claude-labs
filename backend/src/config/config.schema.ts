@@ -10,6 +10,11 @@ export const envSchema = z.object({
   THINKING_EFFORT_DEFAULT: z
     .enum(['low', 'medium', 'high', 'xhigh', 'max'])
     .default('medium'),
+  FAKE_MODE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  REPO_URL: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

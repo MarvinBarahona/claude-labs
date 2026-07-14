@@ -1,0 +1,10 @@
+@if (fakeMode()) {
+  <div class="border-b border-border bg-accent px-4 py-1.5 text-xs text-accent-foreground">
+    This is a demo instance running on fabricated data — no real Claude API calls are made.
+    @if (repoUrl(); as url) {
+      Visit <a [href]="url" target="_blank" rel="noopener" class="font-medium underline">the repo</a> to run it for real.
+    } @else {
+      Visit the repo to run it for real.
+    }
+  </div>
+}

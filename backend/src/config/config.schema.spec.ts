@@ -37,6 +37,37 @@ describe('validateEnv', () => {
     ).toThrow(/THINKING_EFFORT_DEFAULT/);
   });
 
+  it('defaults FAKE_MODE to false and leaves REPO_URL undefined when unset', () => {
+    const config = validateEnv({ ANTHROPIC_API_KEY: 'placeholder' });
+    expect(config.FAKE_MODE).toBe(false);
+    expect(config.REPO_URL).toBeUndefined();
+  });
+
+  it('coerces FAKE_MODE=true to a boolean', () => {
+    const config = validateEnv({
+      ANTHROPIC_API_KEY: 'placeholder',
+      FAKE_MODE: 'true',
+    });
+    expect(config.FAKE_MODE).toBe(true);
+  });
+
+  it('rejects an invalid FAKE_MODE value', () => {
+    expect(() =>
+      validateEnv({
+        ANTHROPIC_API_KEY: 'placeholder',
+        FAKE_MODE: 'yes',
+      }),
+    ).toThrow(/FAKE_MODE/);
+  });
+
+  it('passes through an explicit REPO_URL', () => {
+    const config = validateEnv({
+      ANTHROPIC_API_KEY: 'placeholder',
+      REPO_URL: 'https://github.com/example/claude-labs',
+    });
+    expect(config.REPO_URL).toBe('https://github.com/example/claude-labs');
+  });
+
   it('passes through explicit values for all variables', () => {
     const config = validateEnv({
       ANTHROPIC_API_KEY: 'placeholder',
@@ -46,6 +77,8 @@ describe('validateEnv', () => {
       MODEL_CLASSIFICATION: 'claude-haiku-4-5-override',
       MODEL_HARDEST_CALL: 'claude-opus-4-8-override',
       THINKING_EFFORT_DEFAULT: 'high',
+      FAKE_MODE: 'true',
+      REPO_URL: 'https://github.com/example/claude-labs',
     });
 
     expect(config).toEqual({
@@ -56,6 +89,8 @@ describe('validateEnv', () => {
       MODEL_CLASSIFICATION: 'claude-haiku-4-5-override',
       MODEL_HARDEST_CALL: 'claude-opus-4-8-override',
       THINKING_EFFORT_DEFAULT: 'high',
+      FAKE_MODE: true,
+      REPO_URL: 'https://github.com/example/claude-labs',
     });
   });
 });

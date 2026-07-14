@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { buildFeatureRoutes } from '../../core/build-feature-routes';
 import type { FeatureRoute } from '../../core/feature-route';
 
@@ -19,7 +21,11 @@ const mockFeatures: FeatureRoute[] = [
 describe('Layout routing', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideRouter(buildFeatureRoutes(mockFeatures), withComponentInputBinding())],
+      providers: [
+        provideRouter(buildFeatureRoutes(mockFeatures), withComponentInputBinding()),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     });
   });
 
