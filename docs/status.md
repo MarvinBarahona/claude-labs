@@ -45,5 +45,6 @@ This table is a summary pointer — each skill above is the authoritative defini
 | Vision Lab | Feature | `vision-lab` | 📝 Draft | [`feature-vision-lab.md`](planning/feature-vision-lab.md) |
 | Extended Thinking Bench | Feature | `extended-thinking-bench` | 📝 Draft | [`feature-extended-thinking-bench.md`](planning/feature-extended-thinking-bench.md) |
 | Agent Playground | Feature | `agent-playground` | 📝 Draft | [`feature-agent-playground.md`](planning/feature-agent-playground.md) |
+| Demo deploy | Task | `demo-deploy` | 📝 Draft | [`task-demo-deploy.md`](planning/task-demo-deploy.md) |
 
 
