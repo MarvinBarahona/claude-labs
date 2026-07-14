@@ -1,6 +1,6 @@
 # Feature — Foundations Console
 
-**Status:** 📝 Draft.
+**Status:** 📋 Planned.
 
 **Nav position:** first.
 
@@ -33,9 +33,118 @@ Built right after five foundational tasks already exist (see `status.md` for cur
 
 No other feature can be built before this one, since the inspector, docs-rendering, and navigation shell (now already in place) are reused by every subsequent feature.
 
+Also depends on [`task-anthropic-client.md`](task-anthropic-client.md) (`Draft` — split off from this feature during planning, since it's shared infrastructure every future feature calling Claude for real will also need, not something specific to this console): its `AnthropicClient` DI token (`createMessage()` / `streamMessage()`) is what this feature's backend service actually calls — build `task-anthropic-client` first, or alongside this feature's backend track, before wiring the service below.
+
 ## Files API / base64
 
 Not applicable — no documents or images in this feature.
+
+## Guiding principles / standing decisions cited
+
+- [`architecture.md`](../technical/architecture.md), "Request/response contract (the inspector's data shape)" — the envelope both endpoints below return.
+- `architecture.md`, "Streaming transport" — the SSE mechanics and terminal-envelope-event rule the streaming path follows.
+- [`repo-layout.md`](../technical/repo-layout.md), "Lab areas" and "Deciding where a piece of code goes" — this feature's own code goes in a fresh top-level `foundations-console` folder on each side (`backend/src/foundations-console/`, `frontend/src/app/foundations-console/`), sibling to `shared/`, not nested under it.
+- [`model-config.md`](../shared/model-config.md) — `ModelConfigService.getModel(tier)` for the `default`/`classification`/`hardest-call` tiers; Fable is deliberately outside that mapping (see Contract below).
+
+## Contract (backend/frontend independent tracks)
+
+Both endpoints live in a new module, `backend/src/foundations-console/foundations-console.module.ts`, importing `ModelConfigModule` and the `AnthropicClientModule` from `task-anthropic-client`.
+
+**Shared type**, `ModelChoice = 'default' | 'classification' | 'hardest-call' | 'fable'` — the four options the model picker shows, labeled in the UI as Sonnet/Haiku/Opus/Fable respectively. The first three resolve via `ModelConfigService.getModel(tier)`; `'fable'` resolves via a small local constant in the service (e.g. `FABLE_MODEL_ID = 'claude-fable-5'`) since Fable is deliberately excluded from `ModelConfigService`'s own tier mapping (see `model-config.md`) and needs no env-override — this console is the one place its raw ID is ever referenced directly.
+
+**`POST /api/foundations-console/messages`** — the main transcript turn.
+
+Request body:
+```ts
+{
+  modelChoice: ModelChoice;
+  systemPrompt?: string;       // omitted/empty → no `system` field sent
+  temperature?: number;        // 0–1; validated with class-validator @Min(0) @Max(1) @IsOptional
+  messages: { role: 'user' | 'assistant'; text: string }[]; // full history, resent every turn
+  stream: boolean;
+}
+```
+
+Validation errors (bad `temperature` range, empty `messages`, invalid `modelChoice`) surface as a `400` via Nest's standard validation pipe — not the `{ error: { message, source } }` shape, which per `architecture.md`'s "Error contract" is for a Claude-API/data-source/app failure, not a request-shape rejection.
+
+Non-streaming response (`stream: false`), one call so no `calls` array — the envelope from `architecture.md`:
+```ts
+{
+  request: MessageCreateParams;   // exact body sent to the Messages API
+  response: Message;              // exact Claude response
+  usage: { inputTokens, outputTokens, cacheCreationInputTokens?, cacheReadInputTokens? };
+  stopReason: string | null;
+}
+```
+
+Streaming response (`stream: true`): `text/event-stream` on the same route. Each Claude event (`message_start`, `content_block_delta`, ...) is forwarded verbatim, named by its own `type`. The stream ends with one terminal event (`event: turn_complete`) whose `data` is the same envelope shape above. No app-level tool-call events — this feature has no custom tool, only the direct Messages API call.
+
+**`POST /api/foundations-console/structured`** — the structured-output demo. No streaming toggle; `client.messages.parse()` is a blocking call.
+
+Request body:
+```ts
+{
+  modelChoice: ModelChoice;
+  input: string;   // free text the user pastes in, e.g. a support message or meeting note
+}
+```
+
+Fixed demo schema (hardcoded in the service, not user-editable — keeps this a demo of the mechanic, not a schema builder):
+```ts
+{ summary: string; sentiment: 'positive' | 'neutral' | 'negative'; actionItems: string[] }
+```
+
+Response: same envelope shape as above. The frontend reads the parsed structured object directly off `response` (wherever the SDK's `parse()` return places it) to render the demo's own output; the inspector panel renders the same `request`/`response` pair opaquely, same as the main transcript.
+
+**Frontend consumes both** by shaping whatever comes back into `InspectorCall` (`request`, `response`, `streamEvents?`, `stopReason`, `usage` — see `inspector-panel.md`) and binding it to `<app-inspector-panel [call]>`; for the streaming case, `streamEvents` is replaced wholesale with a new array reference as SSE events arrive, read via a `fetch()` body reader (never `EventSource`, which can't carry this route's POST body — per `architecture.md`'s "Streaming transport").
+
+## Frontend composition
+
+`frontend/src/app/foundations-console/foundations-console.ts`, registered in `FEATURE_ROUTES` (`frontend/src/app/core/feature-registry.ts`) as the first entry, stacked per `app-shell.md`'s docs → demo → inspector convention:
+
+1. `<app-docs-panel [slug]="'foundations-console'">`.
+2. Demo: model picker (4 options above), system-prompt textarea, temperature slider (0–1, step 0.1), streaming toggle, running transcript (user/assistant turns) with a message input + Send button; a separate "Structured output demo" sub-section (free-text textarea, Run button, rendered parsed-JSON result) below the transcript.
+3. `<app-inspector-panel [call]>` bound to whichever of the two demo actions (transcript send, or structured-demo run) most recently completed.
+
+## Test scenarios
+
+Backend unit (`foundations-console.service.spec.ts`, fake `AnthropicClient` bound via DI):
+- Non-streaming `/messages`: builds a `MessageCreateParams` with `system` omitted when `systemPrompt` is unset, present when set; resolves each of the four `modelChoice` values to the correct model ID (three via `ModelConfigService`, `'fable'` via the local constant); shapes the fake response into the envelope (`stopReason`, `usage`, no `calls` array).
+- Streaming `/messages`: forwards the fake client's canned stream events verbatim, named by `type`, followed by exactly one terminal envelope event.
+- `/structured`: sends the fixed schema via `output_config`; shapes the fake parsed response into the same envelope shape.
+
+Backend integration (`foundations-console.e2e-spec.ts`, `nock` intercepting the real SDK's outbound call):
+- `POST /messages` non-streaming end to end, real request-building/response-shaping code exercised, `nock` fixture stands in for the Messages API.
+- `POST /messages` with an invalid `temperature` (e.g. `1.5`) or empty `messages` returns `400` before any outbound call is attempted.
+- `POST /structured` end to end against a `nock` fixture returning a canned structured response.
+
+Frontend unit (`foundations-console.spec.ts`, `HttpTestingController`):
+- Model picker shows all four options labeled Sonnet/Haiku/Opus/Fable; selecting one is reflected in the next request's `modelChoice`.
+- Temperature slider clamps to 0–1 and is included in the request body.
+- Sending a transcript message appends it to the running transcript and, on response, appends the assistant's reply.
+- Streaming toggle on: transcript updates incrementally as mocked SSE chunks arrive; toggle off: transcript updates once, from a single mocked JSON response.
+- Structured-output demo: running it renders the parsed `summary`/`sentiment`/`actionItems` fields, not just raw JSON text.
+- Inspector panel receives an `InspectorCall` matching whichever action (transcript send or structured-demo run) most recently completed.
+
+Frontend integration (against a real backend process with the fake `AnthropicClient` bound in place, per `test-doubles.md`):
+- A full `/messages` non-streaming round trip renders the assistant's reply and populates the inspector panel from the real HTTP response.
+- A full `/messages` streaming round trip parses real SSE framing over `fetch()` and renders incrementally.
+- A full `/structured` round trip renders the parsed demo output from a real HTTP response.
+
+## To-do list
+
+- [ ] Confirm `task-anthropic-client` has reached at least `Planned` (or build it inline as part of this feature's backend track) before wiring `foundations-console.service.ts` — this feature's backend has a hard dependency on its `AnthropicClient` token existing at a build-included location.
+- [ ] Backend: `foundations-console.module.ts`, `foundations-console.controller.ts`, `foundations-console.service.ts`, `dto/send-message.dto.ts`, `dto/structured-demo.dto.ts` under `backend/src/foundations-console/`.
+- [ ] Backend: implement `ModelChoice` resolution (three tiers via `ModelConfigService`, `'fable'` via a local constant).
+- [ ] Backend: implement `POST /api/foundations-console/messages` (non-streaming + SSE streaming paths, terminal envelope event).
+- [ ] Backend: implement `POST /api/foundations-console/structured` with the fixed demo schema.
+- [ ] Backend tests: unit (fake `AnthropicClient`) + integration (`nock`) per Test scenarios above.
+- [ ] Frontend: `frontend/src/app/foundations-console/foundations-console.ts` composing docs/demo/inspector per the stacking convention.
+- [ ] Frontend: model picker, system-prompt editor, temperature slider, streaming toggle, transcript, structured-output demo sub-section.
+- [ ] Frontend: SSE parsing via `fetch()` body reader (no `EventSource`).
+- [ ] Frontend: register the route as the first entry in `FEATURE_ROUTES` (`frontend/src/app/core/feature-registry.ts`).
+- [ ] Frontend tests: unit (`HttpTestingController`) + integration (real backend process, fake `AnthropicClient` bound) per Test scenarios above.
+- [ ] Run `write-lab-doc` against the finished lab once built (per `guiding-principles.md`'s "Docs travel with code" — no automatic reminder elsewhere).
 
 ## Open questions
 
