@@ -26,6 +26,8 @@ Everything runs via Docker Compose — no local Node/Angular/Nest CLI install ne
 
 `docker compose -f docker-compose.dev.yml ps` shows `(healthy)` once both services are actually ready to use, not just started.
 
+Set `FAKE_MODE=true` in `backend/.env` to run the app for development or manual exploration without a real credential — every external client is swapped for a fake implementation, so no real `ANTHROPIC_API_KEY` (or other data-source key) is needed.
+
 **Tests** — run a project's test command in its own container without starting the whole stack:
 
 - `docker compose -f docker-compose.dev.yml run --rm backend npm test` — backend unit tests
@@ -42,4 +44,4 @@ For just *running* the app (locally or on a server) rather than developing it �
 - `docker compose -f docker-compose.prod.yml up --build` — builds and runs a single container serving the whole app from http://localhost:3000
 - `docker compose -f docker-compose.prod.yml down` — stop and remove the container
 
-Reads `backend/.env` the same way dev does — a real `ANTHROPIC_API_KEY`, or fake mode once it exists, both work unchanged. Dev and prod bind the same host port (3000), so only one can run at a time on a given machine.
+Reads `backend/.env` the same way dev does — a real `ANTHROPIC_API_KEY`, or `FAKE_MODE=true`, both work unchanged. Dev and prod bind the same host port (3000), so only one can run at a time on a given machine.
