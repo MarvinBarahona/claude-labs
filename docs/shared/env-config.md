@@ -4,7 +4,7 @@ A single typed config service — the one place in the backend that reads enviro
 
 ## Interface
 
-`AppConfigModule` (`backend/src/config/config.module.ts`, `@Global()`) wraps `@nestjs/config`'s `ConfigModule`, validated at startup with a Zod schema (`config.schema.ts`) via `ConfigModule.forRoot({ validate })`. Consumers inject `AppConfigService` (`config.service.ts`) — the project-local wrapper, not `@nestjs/config`'s own `ConfigService` directly — to read:
+`AppConfigModule` (`backend/src/shared/config/config.module.ts`, `@Global()`) wraps `@nestjs/config`'s `ConfigModule`, validated at startup with a Zod schema (`config.schema.ts`) via `ConfigModule.forRoot({ validate })`. Consumers inject `AppConfigService` (`config.service.ts`) — the project-local wrapper, not `@nestjs/config`'s own `ConfigService` directly — to read:
 
 - `anthropicApiKey` — required. A missing `ANTHROPIC_API_KEY` fails Nest's startup with a clear error, rather than failing on the first API call. The check only validates the variable is *set*, never that it's a genuine working key (see `testing-strategy.md`), which is what lets any keyless build or test context satisfy it with a placeholder string.
 - `githubTargetRepo` — defaults to `angular/angular` if `GITHUB_TARGET_REPO` is unset.

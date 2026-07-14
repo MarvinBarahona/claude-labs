@@ -4,7 +4,7 @@ The central place to pick a model tier per call: default Sonnet, drop to Haiku f
 
 ## Interface
 
-`ModelConfigModule` (`backend/src/model-config/model-config.module.ts`) exports `ModelConfigService` (`model-config.service.ts`), which injects `AppConfigService` (see [`env-config.md`](env-config.md)) rather than reading `process.env` directly.
+`ModelConfigModule` (`backend/src/shared/model-config/model-config.module.ts`) exports `ModelConfigService` (`model-config.service.ts`), which injects `AppConfigService` (see [`env-config.md`](env-config.md)) rather than reading `process.env` directly.
 
 Two methods, kept separate because they return different shapes:
 
@@ -28,4 +28,4 @@ Since it already knows the cost/speed tradeoff per tier, it's a natural place to
 
 ## Testing
 
-`backend/src/model-config/model-config.service.spec.ts` covers each tier lookup, the thinking-effort lookup, and a mapping-override test (stubbing `AppConfigService`) confirming the service reflects an overridden mapping with no per-consumer change. `config.schema.spec.ts`/`config.module.spec.ts` cover the four new env vars' defaulting, override, and invalid-enum-rejection behavior.
+`backend/src/shared/model-config/model-config.service.spec.ts` covers each tier lookup, the thinking-effort lookup, and a mapping-override test (stubbing `AppConfigService`) confirming the service reflects an overridden mapping with no per-consumer change. `config.schema.spec.ts`/`config.module.spec.ts` cover the four new env vars' defaulting, override, and invalid-enum-rejection behavior.

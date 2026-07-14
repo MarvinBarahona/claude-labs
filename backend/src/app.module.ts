@@ -3,9 +3,9 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { AppConfigModule } from './config/config.module';
-import { ModelConfigModule } from './model-config/model-config.module';
-import { FakeModeModule } from './fake-mode/fake-mode.module';
+import { AppConfigModule } from './shared/config/config.module';
+import { ModelConfigModule } from './shared/model-config/model-config.module';
+import { FakeModeModule } from './shared/fake-mode/fake-mode.module';
 
 @Module({
   imports: [
