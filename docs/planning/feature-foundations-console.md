@@ -33,7 +33,9 @@ Built right after five foundational tasks already exist (see `status.md` for cur
 
 No other feature can be built before this one, since the inspector, docs-rendering, and navigation shell (now already in place) are reused by every subsequent feature.
 
-Also depends on [`task-anthropic-client.md`](task-anthropic-client.md) (`Draft` — split off from this feature during planning, since it's shared infrastructure every future feature calling Claude for real will also need, not something specific to this console): its `AnthropicClient` DI token (`createMessage()` / `streamMessage()`) is what this feature's backend service actually calls — build `task-anthropic-client` first, or alongside this feature's backend track, before wiring the service below.
+Also depends on [`task-anthropic-client.md`](task-anthropic-client.md) (`Planned` — split off from this feature during planning, since it's shared infrastructure every future feature calling Claude for real will also need, not something specific to this console): its `AnthropicClient` DI token (`createMessage()` / `streamMessage()`) is what this feature's backend service actually calls — build `task-anthropic-client` first, or alongside this feature's backend track, before wiring the service below.
+
+Also depends on [`task-api-error-handling.md`](task-api-error-handling.md) (`Planned`) — its global exception filter already shapes the non-streaming `/messages` and `/structured` routes' failures for free (nothing to wire here). Its streaming `/messages` path is the first consumer of that task's `shapeError()` function directly: the SSE loop's own `try`/`catch` calls `shapeError(exception)` and writes the result as a terminal `event: error` frame (`data: <JSON.stringify(body)>`) instead of setting an HTTP status, per that task's "Scope decision" section — no closing `event: turn_complete` envelope follows an error frame.
 
 ## Files API / base64
 
@@ -111,6 +113,7 @@ Response: same envelope shape as above. The frontend reads the parsed structured
 Backend unit (`foundations-console.service.spec.ts`, fake `AnthropicClient` bound via DI):
 - Non-streaming `/messages`: builds a `MessageCreateParams` with `system` omitted when `systemPrompt` is unset, present when set; resolves each of the four `modelChoice` values to the correct model ID (three via `ModelConfigService`, `'fable'` via the local constant); shapes the fake response into the envelope (`stopReason`, `usage`, no `calls` array).
 - Streaming `/messages`: forwards the fake client's canned stream events verbatim, named by `type`, followed by exactly one terminal envelope event.
+- Streaming `/messages`, fake client throws mid-stream: yields a terminal `event: error` frame (via `task-api-error-handling`'s `shapeError()`) instead of the `turn_complete` envelope event.
 - `/structured`: sends the fixed schema via `output_config`; shapes the fake parsed response into the same envelope shape.
 
 Backend integration (`foundations-console.e2e-spec.ts`, `nock` intercepting the real SDK's outbound call):
@@ -137,6 +140,7 @@ Frontend integration (against a real backend process with the fake `AnthropicCli
 - [ ] Backend: `foundations-console.module.ts`, `foundations-console.controller.ts`, `foundations-console.service.ts`, `dto/send-message.dto.ts`, `dto/structured-demo.dto.ts` under `backend/src/foundations-console/`.
 - [ ] Backend: implement `ModelChoice` resolution (three tiers via `ModelConfigService`, `'fable'` via a local constant).
 - [ ] Backend: implement `POST /api/foundations-console/messages` (non-streaming + SSE streaming paths, terminal envelope event).
+- [ ] Backend: streaming path's own `try`/`catch` reuses `task-api-error-handling`'s `shapeError()` to write a terminal `event: error` frame on failure, per that task's "Scope decision" section.
 - [ ] Backend: implement `POST /api/foundations-console/structured` with the fixed demo schema.
 - [ ] Backend tests: unit (fake `AnthropicClient`) + integration (`nock`) per Test scenarios above.
 - [ ] Frontend: `frontend/src/app/foundations-console/foundations-console.ts` composing docs/demo/inspector per the stacking convention.

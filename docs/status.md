@@ -30,7 +30,7 @@ This table is a summary pointer — each skill above is the authoritative defini
 | Production Docker configuration | Task | `prod-docker` | ✅ Done | [`prod-docker.md`](shared/prod-docker.md) |
 | Fake mode | Task | `fake-mode` | ✅ Done | [`fake-mode.md`](shared/fake-mode.md) |
 | API key health check | Task | `key-health` | ✅ Done | [`key-health.md`](shared/key-health.md) |
-| API error handling | Task | `api-error-handling` | 📝 Draft | [`task-api-error-handling.md`](planning/task-api-error-handling.md) |
+| API error handling | Task | `api-error-handling` | 📋 Planned | [`task-api-error-handling.md`](planning/task-api-error-handling.md) |
 | Anthropic client | Task | `anthropic-client` | 📋 Planned | [`task-anthropic-client.md`](planning/task-anthropic-client.md) |
 | Foundations Console | Feature | `foundations-console` | 📋 Planned | [`feature-foundations-console.md`](planning/feature-foundations-console.md) |
 | GitHub data provider | Task | `github-provider` | 📝 Draft | [`task-github-provider.md`](planning/task-github-provider.md) |
