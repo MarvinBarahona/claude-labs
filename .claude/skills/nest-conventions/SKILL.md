@@ -16,7 +16,7 @@ General best practices for writing modern NestJS code, independent of any one pr
 ## DTOs and validation
 
 - DTOs are plain classes decorated with `class-validator` decorators (`@IsString()`, `@IsInt()`, etc.), transformed with `class-transformer`.
-- Enable a global `ValidationPipe` (`whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`) rather than validating manually in controllers.
+- Enable a global `ValidationPipe` (`whitelist: true`, `transform: true`) rather than validating manually in controllers.
 - Keep request/response shapes explicit — a DTO per request body and, where the response shape matters for consumers, a response DTO — rather than passing loosely-typed objects through.
 
 ## Configuration
@@ -43,3 +43,4 @@ General best practices for writing modern NestJS code, independent of any one pr
 
 - Strict TypeScript throughout (`strict: true`); avoid `any` at module boundaries.
 - Use a structured logger (Nest's built-in `Logger` at minimum) instead of `console.log`.
+- Keep a comment to one short line — a longer WHY (a design rationale, a workaround, a decision worth preserving) belongs in the relevant doc, not a multi-line comment block in the source.
