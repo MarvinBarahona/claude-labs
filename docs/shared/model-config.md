@@ -14,7 +14,7 @@ Two methods, kept separate because they return different shapes:
   - `hardest-call` → `claude-opus-4-8` — deepest tier, for the single hardest call in a pipeline.
 - `getThinkingEffort(): ThinkingEffort` — `ThinkingEffort` is `'low' | 'medium' | 'high' | 'xhigh' | 'max'`, the `output_config.effort` level to pass alongside `thinking: {type: "adaptive"}` (e.g. Extended Thinking Bench). This project targets only current-generation models (Sonnet, Opus, Haiku, Fable), none of which accept the older manual `budget_tokens` thinking configuration, so this service only ever hands back an effort level, never a token budget.
 
-Fable is not part of this mapping — it's a distinct, pricier tier a feature can opt into explicitly (e.g. Foundations Console's model picker), never a default any tier falls back to.
+Fable is not part of this mapping — it's a distinct, pricier tier a feature can opt into explicitly, never a default any tier falls back to. No feature currently does.
 
 Each of the three model tiers and the thinking-effort default is environment-overridable through `AppConfigService`: `MODEL_DEFAULT`, `MODEL_CLASSIFICATION`, `MODEL_HARDEST_CALL` (each defaulting to the model ID above), and `THINKING_EFFORT_DEFAULT` (defaulting to `medium`). `backend/.env.example` documents all four with placeholder values.
 
