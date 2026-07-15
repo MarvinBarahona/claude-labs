@@ -35,6 +35,11 @@ describe('AnthropicClientModule', () => {
     expect(client).toBeInstanceOf(FakeAnthropicClient);
   });
 
+  it("enables the fake client's unqueued fallback so a live, unscripted call never throws", async () => {
+    const client = await buildClient(true);
+    expect((client as FakeAnthropicClient).allowUnqueuedFallback).toBe(true);
+  });
+
   it('binds RealAnthropicClient when fakeMode is false', async () => {
     const client = await buildClient(false);
     expect(client).toBeInstanceOf(RealAnthropicClient);

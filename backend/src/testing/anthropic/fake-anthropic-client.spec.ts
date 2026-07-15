@@ -94,4 +94,108 @@ describe('FakeAnthropicClient', () => {
       /no queued message left/,
     );
   });
+
+  it('throws a clear error from streamMessage() when called with nothing queued', async () => {
+    const fake = new FakeAnthropicClient();
+
+    const iterator = fake
+      .streamMessage({ ...params, stream: true })
+      [Symbol.asyncIterator]();
+
+    await expect(iterator.next()).rejects.toThrow(/no queued stream left/);
+  });
+
+  describe('allowUnqueuedFallback', () => {
+    it('still throws with nothing queued when left at its default (false)', async () => {
+      const fake = new FakeAnthropicClient();
+
+      await expect(fake.createMessage(params)).rejects.toThrow(
+        /no queued message left/,
+      );
+    });
+
+    it('returns a generic canned message instead of throwing once enabled', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const message = await fake.createMessage(params);
+
+      expect(message.stop_reason).toBe('end_turn');
+      expect(message.content[0]).toMatchObject({ type: 'text' });
+    });
+
+    it('still prefers a queued message over the fallback once enabled', async () => {
+      const fake = new FakeAnthropicClient().queueMessage(
+        fakeTextMessage('queued, not fallback'),
+      );
+      fake.allowUnqueuedFallback = true;
+
+      const message = await fake.createMessage(params);
+
+      expect(message.content[0]).toMatchObject({
+        type: 'text',
+        text: 'queued, not fallback',
+      });
+    });
+
+    it('returns schema-conformant JSON as the fallback when output_config.format requests structured output', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const message = await fake.createMessage({
+        ...params,
+        output_config: {
+          format: {
+            type: 'json_schema',
+            schema: {
+              type: 'object',
+              properties: {
+                summary: { type: 'string' },
+                sentiment: {
+                  type: 'string',
+                  enum: ['positive', 'neutral', 'negative'],
+                },
+                actionItems: { type: 'array', items: { type: 'string' } },
+              },
+              required: ['summary', 'sentiment', 'actionItems'],
+            },
+          },
+        },
+      });
+
+      const block = message.content[0];
+      expect(block).toMatchObject({ type: 'text' });
+      if (block.type !== 'text') {
+        throw new Error('expected a text block');
+      }
+      const parsed: unknown = JSON.parse(block.text);
+      expect(parsed).toEqual({
+        summary: 'fake mode — no response was queued for this call',
+        sentiment: 'positive',
+        actionItems: ['fake mode — no response was queued for this call'],
+      });
+    });
+
+    it('yields a generic canned stream instead of throwing once enabled', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const events: AnthropicStreamEvent[] = [];
+      for await (const event of fake.streamMessage({
+        ...params,
+        stream: true,
+      })) {
+        events.push(event);
+      }
+
+      expect(events.map((e) => e.type)).toEqual([
+        'message_start',
+        'content_block_start',
+        'content_block_delta',
+        'content_block_stop',
+        'message_delta',
+        'message_stop',
+      ]);
+    });
+  });
 });
