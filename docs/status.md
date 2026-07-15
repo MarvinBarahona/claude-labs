@@ -32,7 +32,7 @@ This table is a summary pointer — each skill above is the authoritative defini
 | API key health check | Task | `key-health` | ✅ Done | [`key-health.md`](shared/key-health.md) |
 | API error handling | Task | `api-error-handling` | ✅ Done | [`api-error-handling.md`](shared/api-error-handling.md) |
 | Anthropic client | Task | `anthropic-client` | ✅ Done | [`anthropic-client.md`](shared/anthropic-client.md) |
-| Foundations Console | Feature | `foundations-console` | 🔵 In progress | [`feature-foundations-console.md`](planning/feature-foundations-console.md) |
+| Foundations Console | Feature | `foundations-console` | ✅ Done | [`foundations-console.md`](features/foundations-console.md) |
 | Demo deploy | Task | `demo-deploy` | 📋 Planned | [`task-demo-deploy.md`](planning/task-demo-deploy.md) |
 | GitHub data provider | Task | `github-provider` | 📝 Draft | [`task-github-provider.md`](planning/task-github-provider.md) |
 | Live Tool-Use Console | Feature | `live-tool-use-console` | 📝 Draft | [`feature-live-tool-use-console.md`](planning/feature-live-tool-use-console.md) |
