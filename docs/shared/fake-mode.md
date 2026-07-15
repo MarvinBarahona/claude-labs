@@ -25,6 +25,7 @@ Fake mode never relaxes [`testing-strategy.md`](../technical/testing-strategy.md
 ## Using it
 
 - A backend module that talks to an external client (the Claude API, GitHub, or any future data source) binds its provider through `fakeSwitchProvider()`, pointing `real` at its own real client implementation and `fake` at the corresponding fake from [`test-doubles.md`](test-doubles.md) — one call, no bespoke branching.
+- If the real implementation class has a `private` field the fake implementation doesn't, pin the call's generic explicitly — `fakeSwitchProvider<SomeClientToken>(SomeClientToken, { real, fake })` — rather than letting it infer from `real`/`fake`. A `private` field makes TypeScript treat that class as only assignable to itself/subclasses, so inference can pick the concrete real class instead of the shared token, producing a build-time "fake not assignable to real" type error even though the wiring is correct.
 - `backend/.env.example` documents `FAKE_MODE` and a commented-out `REPO_URL`, alongside the app's other placeholder values.
 - Switching `FAKE_MODE` only requires an env change and a container restart — no code change, for any client already wired through `fakeSwitchProvider()`.
 
