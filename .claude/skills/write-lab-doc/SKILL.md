@@ -24,6 +24,7 @@ Don't read the rest of the frontend/backend tree beyond what this one lab touche
 
 Produce or refresh `frontend/public/lab-docs/<slug>.md`, aimed at a developer who wants to learn the Claude API concept this lab demonstrates and walk away able to use it themselves:
 
+- No top-level heading with the lab's name — the page's own HTML already renders that as an `<h1>` above the docs panel; a duplicate in the Markdown shows up as a repeated header on the page. Start straight in with the explanation below.
 - A short, plain-language explanation of the Claude API concept/mechanic this lab demonstrates — what it is, when to reach for it.
 - A real example request, taken from the actual code — not invented — showing the relevant parameters.
 - The response shape worth knowing about (key fields, what to look for), again grounded in what the code actually handles.
