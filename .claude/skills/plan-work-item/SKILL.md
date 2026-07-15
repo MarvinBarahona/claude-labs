@@ -47,6 +47,15 @@ When the to-do list spans genuinely independent tracks — most often frontend a
 
 If the to-do list doesn't actually split into independent tracks — one track structurally depends on another's output, or there's only one track — skip this; don't force an artificial contract onto work that isn't actually separable.
 
+## Automated vs. manual test scenarios
+
+Within the `## Test scenarios` section, split scenarios into two labeled groups:
+
+- **Automated** — anything a unit or integration test can assert, per `testing-strategy.md`'s four buckets. `build-work-item` implements and runs these itself, in-container, no running app process involved.
+- **Manual** — anything that needs a person looking at the actually-running app to judge (layout, styling, an interaction only visible in a real browser, a real multi-step click-through) and can't be asserted by a test. Write each as a concrete, numbered step ("do X, expect Y") precise enough for the user to execute directly against their own `docker compose -f docker-compose.dev.yml up` instance — `build-work-item` hands this list to the user to run rather than running it itself by default; see that skill's "Manual test scenarios" section.
+
+A work item fully covered by automated scenarios can leave the manual group empty — don't invent manual steps just to have some.
+
 ## Write decisions back
 
 If detailed planning surfaces something that reaches beyond this one work item's file, write it back where future planning passes will actually see it, not only into the work item's own file:

@@ -9,7 +9,9 @@ This repo has no local Node install and no headless-browser tooling (Playwright,
 
 ## Prerequisites
 
-The dev stack must already be up and both services `(healthy)` — see README's "Development" section for the commands. A screenshot taken before the frontend dev server is actually ready just shows a blank page or connection error, not a real check.
+Only run this on the user's explicit request — asking directly, or explicitly delegating a check back to you after asking you to hold off. Never spin this up on your own initiative to verify work before reporting it; starting the live app spends the user's own usage on a check they'd otherwise run for free themselves.
+
+The dev stack must already be up and both services `(healthy)` — see README's "Development" section for the commands. A screenshot taken before the frontend dev server is actually ready just shows a blank page or connection error, not a real check. Whoever starts that stack must run it with `FAKE_MODE=true` in `backend/.env` — never a real credential, per `fake-mode.md`.
 
 ## Taking a screenshot
 

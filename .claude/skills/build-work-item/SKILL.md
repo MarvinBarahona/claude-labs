@@ -39,13 +39,23 @@ As tasks are completed, check them off in the plan file's `## To-do list` sectio
 
 ## Phase 2 — Test
 
-Test against the scenarios defined in the plan file's `## Test scenarios` section (run them manually or programmatically, per what that section specifies).
+Run the plan file's `## Test scenarios` section, split per `plan-work-item`'s "Automated vs. manual test scenarios":
+
+- **Automated scenarios** — implement and run these directly (the in-container unit/integration test commands from `testing-strategy.md`). This is the only test execution this skill performs itself.
+- **Manual scenarios** — don't start the app, take a screenshot, or otherwise render it yourself to run these. Starting the live app spends the user's own usage on something they'd rather do themselves; see "Manual test scenarios" below instead.
 
 If the plan file has no `## Test scenarios` section yet, stop and flag it — test scenarios are authored during `plan-work-item`, not invented ad hoc here.
 
+### Manual test scenarios
+
+Once automated scenarios pass, list the manual scenarios (as written in the plan file) in the report from "Stop and wait" below rather than executing them — the user runs them against their own running instance of the app and reports back either specific failures to fix or approval to continue.
+
+- On reported failures: fix them, re-run the automated scenarios, then return to "Stop and wait" listing only the affected manual scenarios for re-check, not the whole list again.
+- The user can delegate a manual scenario back at any point ("go ahead and check this one yourself") — only then run the live app yourself, using whatever mechanism this project provides for that (check for a dedicated skill covering it before improvising). Treat this as a one-off exception for the scenario named, not a standing change to how the rest of this work item gets tested.
+
 ### Full-composition preview for shared UI infrastructure
 
-If this work item builds shared frontend UI infrastructure — a layout, shell, nav, or other piece other work items will compose into their own screens — and a test scenario calls for verifying it manually but no real downstream consumer exists yet to test against, temporarily wire up a full-composition preview: the real shared component(s) assembled the way an actual downstream consumer will use them, mocking only the data/routes a real consumer isn't yet available to supply. Isolated unit tests and a thin placeholder screen can both pass while still missing integration issues (responsive/viewport states, ordering between the composed pieces, interaction between adjacent components) that only surface once something resembling a real consumer is assembled — this preview is how Phase 2 catches those without a real consumer to test against. It's scaffolding for this phase only: once manual verification is done, remove it rather than leaving it in the codebase.
+If this work item builds shared frontend UI infrastructure — a layout, shell, nav, or other piece other work items will compose into their own screens — and a manual scenario calls for verifying it against a full composition but no real downstream consumer exists yet to test against, temporarily wire up a full-composition preview: the real shared component(s) assembled the way an actual downstream consumer will use them, mocking only the data/routes a real consumer isn't yet available to supply. Isolated unit tests and a thin placeholder screen can both pass while still missing integration issues (responsive/viewport states, ordering between the composed pieces, interaction between adjacent components) that only surface once something resembling a real consumer is assembled — this preview is how Phase 2 catches those without a real consumer to test against. It's scaffolding for this phase only: hand it to the user the same way as any other manual scenario (point them at the route to click through), and remove it only once they've confirmed, per "Manual test scenarios" above — don't leave it in the codebase.
 
 ## Record development notes
 
@@ -57,4 +67,9 @@ If implementation reveals the plan itself was wrong in a way that needs re-scopi
 
 ## Stop and wait
 
-Do not mark the work item done or write its permanent doc. Report what was built and how it was tested, then wait for the user's explicit manual approval. Closing the work item out happens only after that approval, as a separate action, in `graduate-work-item`.
+Do not mark the work item done or write its permanent doc. Report what was built, which automated scenarios passed, and list the manual scenarios (or the affected subset, on a re-check) for the user to run themselves — then stop and wait. Two outcomes, and only the user's own reply distinguishes them:
+
+- **Fixes requested** — apply them, update development notes if the fix was itself an ad hoc decision, and return to this same "Stop and wait" step with the affected manual scenarios re-listed.
+- **Approved** — closing the work item out happens next, as a separate action, in `graduate-work-item`.
+
+Never treat silence, an unrelated reply, or your own read of the code as approval — only the user actually running the manual scenarios and saying so counts.
