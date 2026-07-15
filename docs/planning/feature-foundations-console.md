@@ -81,7 +81,7 @@ Non-streaming response (`stream: false`), one call so no `calls` array — the e
 
 Streaming response (`stream: true`): `text/event-stream` on the same route. Each Claude event (`message_start`, `content_block_delta`, ...) is forwarded verbatim, named by its own `type`. The stream ends with one terminal event (`event: turn_complete`) whose `data` is the same envelope shape above. No app-level tool-call events — this feature has no custom tool, only the direct Messages API call.
 
-**`POST /api/foundations-console/structured`** — the structured-output demo. No streaming toggle; `client.messages.parse()` is a blocking call.
+**`POST /api/foundations-console/structured`** — the structured-output demo. No streaming toggle; a single blocking call through the same `AnthropicClient.createMessage()` used by `/messages` above — not the SDK's `client.messages.parse()` convenience wrapper, which would require touching the raw SDK client directly and so bypass `AnthropicClient` (breaking fake mode and the "reach the Claude API only through the shared module" principle — `architecture.md`, "Communication boundaries"). `createMessage()` already accepts arbitrary `MessageCreateParams`, so this route sets `output_config: {format: {type: "json_schema", schema: FIXED_SCHEMA}}` on the params it passes in, then `JSON.parse()`s the first `text` content block of the response itself — the same mechanic `.parse()` performs SDK-side, just done in this feature's own service.
 
 Request body:
 ```ts
@@ -96,7 +96,7 @@ Fixed demo schema (hardcoded in the service, not user-editable — keeps this a 
 { summary: string; sentiment: 'positive' | 'neutral' | 'negative'; actionItems: string[] }
 ```
 
-Response: same envelope shape as above. The frontend reads the parsed structured object directly off `response` (wherever the SDK's `parse()` return places it) to render the demo's own output; the inspector panel renders the same `request`/`response` pair opaquely, same as the main transcript.
+Response: the same envelope shape as above, plus a sibling top-level `parsed` field carrying the `JSON.parse()`d object (the fixed schema shape above). The frontend reads `parsed` directly to render the demo's own output; the inspector panel renders the same `request`/`response` pair opaquely, same as the main transcript.
 
 **Frontend consumes both** by shaping whatever comes back into `InspectorCall` (`request`, `response`, `streamEvents?`, `stopReason`, `usage` — see `inspector-panel.md`) and binding it to `<app-inspector-panel [call]>`; for the streaming case, `streamEvents` is replaced wholesale with a new array reference as SSE events arrive, read via a `fetch()` body reader (never `EventSource`, which can't carry this route's POST body — per `architecture.md`'s "Streaming transport").
 
@@ -114,7 +114,7 @@ Backend unit (`foundations-console.service.spec.ts`, fake `AnthropicClient` boun
 - Non-streaming `/messages`: builds a `MessageCreateParams` with `system` omitted when `systemPrompt` is unset, present when set; resolves each of the four `modelChoice` values to the correct model ID (three via `ModelConfigService`, `'fable'` via the local constant); shapes the fake response into the envelope (`stopReason`, `usage`, no `calls` array).
 - Streaming `/messages`: forwards the fake client's canned stream events verbatim, named by `type`, followed by exactly one terminal envelope event.
 - Streaming `/messages`, fake client throws mid-stream: yields a terminal `event: error` frame (via `task-api-error-handling`'s `shapeError()`) instead of the `turn_complete` envelope event.
-- `/structured`: sends the fixed schema via `output_config`; shapes the fake parsed response into the same envelope shape.
+- `/structured`: calls the fake `AnthropicClient.createMessage()` with the fixed schema on `output_config`; `JSON.parse()`s the fake's canned text-block response and shapes it into the envelope plus `parsed`.
 
 Backend integration (`foundations-console.e2e-spec.ts`, `nock` intercepting the real SDK's outbound call):
 - `POST /messages` non-streaming end to end, real request-building/response-shaping code exercised, `nock` fixture stands in for the Messages API.
@@ -136,7 +136,7 @@ Frontend integration (against a real backend process with the fake `AnthropicCli
 
 ## To-do list
 
-- [ ] Confirm `task-anthropic-client` has reached at least `Planned` (or build it inline as part of this feature's backend track) before wiring `foundations-console.service.ts` — this feature's backend has a hard dependency on its `AnthropicClient` token existing at a build-included location.
+- [x] `anthropic-client.md` has since graduated to `Done` — its `AnthropicClient` token (`createMessage()` / `streamMessage()`) is already available at `backend/src/shared/anthropic-client/` for `foundations-console.service.ts` to inject.
 - [ ] Backend: `foundations-console.module.ts`, `foundations-console.controller.ts`, `foundations-console.service.ts`, `dto/send-message.dto.ts`, `dto/structured-demo.dto.ts` under `backend/src/foundations-console/`.
 - [ ] Backend: implement `ModelChoice` resolution (three tiers via `ModelConfigService`, `'fable'` via a local constant).
 - [ ] Backend: implement `POST /api/foundations-console/messages` (non-streaming + SSE streaming paths, terminal envelope event).
