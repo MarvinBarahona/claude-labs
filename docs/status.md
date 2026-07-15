@@ -33,6 +33,7 @@ This table is a summary pointer — each skill above is the authoritative defini
 | API error handling | Task | `api-error-handling` | 📋 Planned | [`task-api-error-handling.md`](planning/task-api-error-handling.md) |
 | Anthropic client | Task | `anthropic-client` | 📋 Planned | [`task-anthropic-client.md`](planning/task-anthropic-client.md) |
 | Foundations Console | Feature | `foundations-console` | 📋 Planned | [`feature-foundations-console.md`](planning/feature-foundations-console.md) |
+| Demo deploy | Task | `demo-deploy` | 📋 Planned | [`task-demo-deploy.md`](planning/task-demo-deploy.md) |
 | GitHub data provider | Task | `github-provider` | 📝 Draft | [`task-github-provider.md`](planning/task-github-provider.md) |
 | Live Tool-Use Console | Feature | `live-tool-use-console` | 📝 Draft | [`feature-live-tool-use-console.md`](planning/feature-live-tool-use-console.md) |
 | Caching layer | Task | `caching-layer` | 📝 Draft | [`task-caching-layer.md`](planning/task-caching-layer.md) |
@@ -45,6 +46,5 @@ This table is a summary pointer — each skill above is the authoritative defini
 | Vision Lab | Feature | `vision-lab` | 📝 Draft | [`feature-vision-lab.md`](planning/feature-vision-lab.md) |
 | Extended Thinking Bench | Feature | `extended-thinking-bench` | 📝 Draft | [`feature-extended-thinking-bench.md`](planning/feature-extended-thinking-bench.md) |
 | Agent Playground | Feature | `agent-playground` | 📝 Draft | [`feature-agent-playground.md`](planning/feature-agent-playground.md) |
-| Demo deploy | Task | `demo-deploy` | 📝 Draft | [`task-demo-deploy.md`](planning/task-demo-deploy.md) |
 
 
