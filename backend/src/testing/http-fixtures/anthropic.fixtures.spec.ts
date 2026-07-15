@@ -3,9 +3,14 @@ import { useNockFixtures } from './nock-lifecycle';
 import {
   mockAnthropicMessagesCreate,
   mockAnthropicMessagesAuthError,
+  mockAnthropicMessagesStream,
   mockAnthropicModelsList,
 } from './anthropic.fixtures';
-import { fakeTextMessage } from '../anthropic/message-builders';
+import {
+  fakeTextMessage,
+  fakeTextStreamEvents,
+} from '../anthropic/message-builders';
+import { AnthropicStreamEvent } from '../../shared/anthropic-client/anthropic-client';
 
 describe('Anthropic nock fixtures', () => {
   useNockFixtures();
@@ -37,6 +42,35 @@ describe('Anthropic nock fixtures', () => {
 
     expect(page.data).toHaveLength(1);
     expect(page.data[0].id).toBe('claude-sonnet-5');
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('intercepts a real SDK streamed messages.create() call with a canned event sequence', async () => {
+    const client = new Anthropic({ apiKey: 'test-key' });
+    const scope = mockAnthropicMessagesStream(
+      fakeTextStreamEvents('streamed from fixture'),
+    );
+
+    const stream = await client.messages.create({
+      model: 'claude-sonnet-5',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: 'hi' }],
+      stream: true,
+    });
+
+    const events: AnthropicStreamEvent[] = [];
+    for await (const event of stream) {
+      events.push(event);
+    }
+
+    expect(events.map((e) => e.type)).toEqual([
+      'message_start',
+      'content_block_start',
+      'content_block_delta',
+      'content_block_stop',
+      'message_delta',
+      'message_stop',
+    ]);
     expect(scope.isDone()).toBe(true);
   });
 

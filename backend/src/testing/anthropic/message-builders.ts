@@ -1,5 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AnthropicMessage, AnthropicStreamEvent } from './anthropic-client';
+import {
+  AnthropicMessage,
+  AnthropicStreamEvent,
+} from '../../shared/anthropic-client/anthropic-client';
 
 type ContentBlock = Anthropic.Messages.ContentBlock;
 
@@ -33,7 +36,6 @@ function baseMessage(
   };
 }
 
-/** A canned non-streaming text response — the shape most tests need. */
 export function fakeTextMessage(
   text: string,
   overrides: Partial<AnthropicMessage> = {},
@@ -48,7 +50,6 @@ export interface FakeToolCall {
   input: unknown;
 }
 
-/** A canned response where Claude asks to invoke one or more tools. */
 export function fakeToolUseMessage(
   toolCalls: FakeToolCall[],
   overrides: Partial<AnthropicMessage> = {},
@@ -67,12 +68,7 @@ export function fakeToolUseMessage(
   });
 }
 
-/**
- * The streaming event sequence a real `messages.create({ stream: true })`
- * call would emit for a single text block, in order: message_start,
- * content_block_start, one content_block_delta per chunk, content_block_stop,
- * message_delta, message_stop.
- */
+/** The event sequence a real streamed call emits for a single text block, in order. */
 export function fakeTextStreamEvents(
   text: string,
   overrides: Partial<AnthropicMessage> = {},

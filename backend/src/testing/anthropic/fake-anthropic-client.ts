@@ -3,34 +3,28 @@ import {
   AnthropicMessage,
   AnthropicMessageParams,
   AnthropicStreamEvent,
-} from './anthropic-client';
+} from '../../shared/anthropic-client/anthropic-client';
 
 /**
- * Test double for `AnthropicClient`. Queue one or more canned
- * responses/stream sequences, then bind this in place of the real client via
- * Nest DI. Each `createMessage`/`streamMessage` call consumes the next
- * queued item in FIFO order — queue several `createMessage` responses in a
- * row to fake a custom-tool loop (a tool_use response, then the follow-up
- * text response after the tool result is sent back).
+ * Test double for `AnthropicClient`. Each call consumes the next queued item
+ * in FIFO order — queue several `createMessage` responses in a row to fake a
+ * tool-use loop.
  */
 export class FakeAnthropicClient extends AnthropicClient {
   private readonly queuedMessages: AnthropicMessage[] = [];
   private readonly queuedStreams: AnthropicStreamEvent[][] = [];
   private readonly calls: AnthropicMessageParams[] = [];
 
-  /** Queue a canned response for the next `createMessage` call. */
   queueMessage(message: AnthropicMessage): this {
     this.queuedMessages.push(message);
     return this;
   }
 
-  /** Queue a canned event sequence for the next `streamMessage` call. */
   queueStream(events: AnthropicStreamEvent[]): this {
     this.queuedStreams.push(events);
     return this;
   }
 
-  /** Every params object passed to `createMessage`/`streamMessage` so far, in order. */
   get recordedCalls(): readonly AnthropicMessageParams[] {
     return this.calls;
   }

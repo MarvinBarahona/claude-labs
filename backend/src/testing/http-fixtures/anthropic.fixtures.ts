@@ -1,17 +1,30 @@
 import nock from 'nock';
 import Anthropic from '@anthropic-ai/sdk';
-import { AnthropicMessage } from '../anthropic/anthropic-client';
+import {
+  AnthropicMessage,
+  AnthropicStreamEvent,
+} from '../../shared/anthropic-client/anthropic-client';
 
 export const ANTHROPIC_API_BASE_URL = 'https://api.anthropic.com';
 
-/** Intercepts one `POST /v1/messages` call and replies with a canned message. */
 export function mockAnthropicMessagesCreate(
   response: AnthropicMessage,
 ): nock.Scope {
   return nock(ANTHROPIC_API_BASE_URL).post('/v1/messages').reply(200, response);
 }
 
-/** Intercepts one `POST /v1/messages` call and replies with an auth error, as the real API does for an invalid key. */
+export function mockAnthropicMessagesStream(
+  events: AnthropicStreamEvent[],
+): nock.Scope {
+  const body = events
+    .map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`)
+    .join('');
+
+  return nock(ANTHROPIC_API_BASE_URL)
+    .post('/v1/messages')
+    .reply(200, body, { 'Content-Type': 'text/event-stream' });
+}
+
 export function mockAnthropicMessagesAuthError(): nock.Scope {
   return nock(ANTHROPIC_API_BASE_URL)
     .post('/v1/messages')
@@ -21,7 +34,6 @@ export function mockAnthropicMessagesAuthError(): nock.Scope {
     });
 }
 
-/** Intercepts one `GET /v1/models` call and replies with a canned model list. */
 export function mockAnthropicModelsList(
   models: Array<Partial<Anthropic.Models.ModelInfo> & { id: string }>,
 ): nock.Scope {
@@ -46,7 +58,6 @@ export function mockAnthropicModelsList(
     });
 }
 
-/** Intercepts one `GET /v1/models` call and replies with an auth error, as the real API does for an invalid key. */
 export function mockAnthropicModelsAuthError(): nock.Scope {
   return nock(ANTHROPIC_API_BASE_URL)
     .get('/v1/models')

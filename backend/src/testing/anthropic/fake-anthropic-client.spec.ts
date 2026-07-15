@@ -1,5 +1,8 @@
 import { Test } from '@nestjs/testing';
-import { AnthropicClient, AnthropicStreamEvent } from './anthropic-client';
+import {
+  AnthropicClient,
+  AnthropicStreamEvent,
+} from '../../shared/anthropic-client/anthropic-client';
 import { FakeAnthropicClient } from './fake-anthropic-client';
 import {
   fakeTextMessage,
