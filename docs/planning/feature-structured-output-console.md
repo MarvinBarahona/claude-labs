@@ -16,7 +16,7 @@ This is a fresh feature (its own slug, not a follow-on) — Foundations Console'
 
 ## Depends on
 
-- `envelope-builder` (`Planned`) — [`task-envelope-builder.md`](task-envelope-builder.md), "Interface" — `EnvelopeBuilderService.build(params, response): TurnEnvelope`, called after the schema-conformant response comes back.
+- `envelope-builder` (`Done`) — [`envelope-builder.md`](../shared/envelope-builder.md), "Interface" — `EnvelopeBuilderService.build(params, response): TurnEnvelope`, called after the schema-conformant response comes back.
 - `model-picker` (`Planned`) — [`task-model-picker.md`](task-model-picker.md), "Interface" — `ModelPicker` component and its exported `ModelChoice` type, used instead of an inline `<select>`.
 - `model-config` (`Done`) — [`model-config.md`](../shared/model-config.md), "Interface" — `ModelConfigService.getModel(tier)`, resolving `modelChoice` to a real model ID.
 - `anthropic-client` (`Done`) — [`anthropic-client.md`](../shared/anthropic-client.md), "Interface" — `AnthropicClient.createMessage()`, the single blocking call this feature makes.

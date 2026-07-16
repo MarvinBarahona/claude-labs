@@ -33,7 +33,7 @@ This table is a summary pointer — each skill above is the authoritative defini
 | API error handling | Task | `api-error-handling` | ✅ Done | [`api-error-handling.md`](shared/api-error-handling.md) |
 | Anthropic client | Task | `anthropic-client` | ✅ Done | [`anthropic-client.md`](shared/anthropic-client.md) |
 | Foundations Console | Feature | `foundations-console` | ✅ Done | [`foundations-console.md`](features/foundations-console.md) |
-| Response Envelope Builder | Task | `envelope-builder` | 📋 Planned | [`task-envelope-builder.md`](planning/task-envelope-builder.md) |
+| Response Envelope Builder | Task | `envelope-builder` | ✅ Done | [`envelope-builder.md`](shared/envelope-builder.md) |
 | Model Picker | Task | `model-picker` | 📋 Planned | [`task-model-picker.md`](planning/task-model-picker.md) |
 | Messages Console | Feature | `messages-console` | 📋 Planned | [`feature-messages-console.md`](planning/feature-messages-console.md) |
 | Structured Output Console | Feature | `structured-output-console` | 📋 Planned | [`feature-structured-output-console.md`](planning/feature-structured-output-console.md) |
