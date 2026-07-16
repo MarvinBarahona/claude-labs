@@ -27,13 +27,13 @@ Always runs against a fake-mode dev-stack instance, never real mode — this is 
 - [`testing-strategy.md`](../technical/testing-strategy.md), "No container that runs tests ever holds a real credential" — this suite's global-setup guard is what makes that rule actually enforced for a *running-app* test (every other bucket enforces it structurally, by never touching a real client at all; this is the first bucket that runs against a real live process, so it needs its own explicit check).
 - [`fake-mode.md`](../shared/fake-mode.md), "Interface" (`GET /api/mode` response shape: `{ fakeMode: boolean, repoUrl?: string }`) — exactly what the global-setup guard above calls and checks.
 - [`tech-stack.md`](../technical/tech-stack.md), "Runtime" — the dev stack's Compose network name and existing `depends_on`/`condition: service_healthy` pattern (`frontend` → `backend`), reused unchanged for `e2e` → `frontend`.
-- `feature-messages-console.md`, "Contract" and nav position (`first`) — the route, component structure, and streamed/non-streamed turn behavior `messages-console.spec.ts` exercises.
+- [`messages-console.md`](../features/messages-console.md), "Backend"/"Frontend" and nav position (`first`) — the route, component structure, and streamed/non-streamed turn behavior `messages-console.spec.ts` exercises.
 - `feature-structured-output-console.md`, "Contract" and nav position (`after messages-console`) — the route and component structure `structured-output-console.spec.ts` exercises.
 - `guiding-principles.md`, "One inspector, many labs" — why `messages-console.spec.ts` asserts the inspector panel reflects whichever of a streamed/non-streamed turn most recently completed, not just that a turn's own result renders. This no longer spans two labs the way it did against the old bundled page (each lab now has its own inspector instance) — it's now a within-page assertion for Messages Console's own streamed-vs-non-streamed turns, and doesn't apply to Structured Output Console at all (only one kind of call).
 
 ## Depends on
 
-- `messages-console` (`Planned`) — [`feature-messages-console.md`](feature-messages-console.md), read in full; must be `Done` before this task's own build starts.
+- `messages-console` (`Done`) — [`messages-console.md`](../features/messages-console.md), read in full; a graduated dependency this task builds against.
 - `structured-output-console` (`Planned`) — [`feature-structured-output-console.md`](feature-structured-output-console.md), read in full; must be `Done` before this task's own build starts.
 - `fake-mode` (`Done`) — [`fake-mode.md`](../shared/fake-mode.md), read in full; see "Guiding principles" above for the exact interface used.
 - `test-doubles` (`Done`) — [`test-doubles.md`](../shared/test-doubles.md) — not consumed directly (this suite drives the real running app, not an in-process test module) but confirms nothing about `FakeAnthropicClient`'s `allowUnqueuedFallback` behavior (enabled only for a live fake-mode app, per that doc) stands in the way of an unscripted-looking real click sequence dead-ending mid-spec.
@@ -92,7 +92,7 @@ All automated — see "Decisions made during this planning pass" above for why r
 - [ ] The fake-mode banner is visible on page load (proves the running instance is actually in fake mode end-to-end, not just that the guard's own API check passed).
 
 `messages-console.spec.ts`:
-- [ ] The app's root path redirects to Messages Console (its nav-`first` position, per `feature-messages-console.md`), and it's reachable as the app's first nav entry.
+- [ ] The app's root path redirects to Messages Console (its nav-`first` position, per `messages-console.md`), and it's reachable as the app's first nav entry.
 - [ ] Its in-app docs panel renders non-empty content.
 - [ ] Selecting a model, entering a system prompt and a user message, and sending with streaming off renders the user message right-aligned and the assistant's reply left-aligned once it arrives, and the inspector panel shows that turn's request/response/usage.
 - [ ] Toggling streaming on and sending another message renders the assistant's reply incrementally as it streams in, ending in the same rendered state a non-streamed reply would; the inspector panel's stream-events log populates and its final usage/stopReason display matches the non-streaming case.

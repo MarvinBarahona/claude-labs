@@ -6,11 +6,11 @@
 
 ## Description
 
-Foundations Console bundled two independent demo interactions behind one page/route (see its own "Frontend" section: a "Transcript" section and a "Structured output demo" section, sharing one model picker). [`feature-messages-console.md`](feature-messages-console.md) and [`feature-structured-output-console.md`](feature-structured-output-console.md) carve those two sections out into two standalone, independently-graduating labs. This task is what actually retires the old bundled page once both replacements exist and work: deleting the old lab area, removing its nav entry, and updating `foundations-console.md`'s permanent doc to reflect that the feature was split rather than continuing to describe a page that no longer exists.
+Foundations Console bundled two independent demo interactions behind one page/route (see its own "Frontend" section: a "Transcript" section and a "Structured output demo" section, sharing one model picker). [`messages-console.md`](../features/messages-console.md) and [`feature-structured-output-console.md`](feature-structured-output-console.md) carve those two sections out into two standalone, independently-graduating labs. This task is what actually retires the old bundled page once both replacements exist and work: deleting the old lab area, removing its nav entry, and updating `foundations-console.md`'s permanent doc to reflect that the feature was split rather than continuing to describe a page that no longer exists.
 
 Per `graduate-work-item`'s own note ("removing shipped code is its own new task work item"), this is why the split isn't planned as a single feature work item — a plan file can only ever produce one permanent doc at its own slug, and this split produces two new ones plus a retirement of the original.
 
-**Build order:** this task cannot be built until both `feature-messages-console.md` and `feature-structured-output-console.md` are `Done` — removing the old page only makes sense once its replacements exist. It's registered right after them in `docs/status.md` for that reason, but its own implementation waits on their graduation regardless of table position.
+**Build order:** this task cannot be built until both `messages-console` (now `Done`, see `messages-console.md`) and `feature-structured-output-console.md` are `Done` — removing the old page only makes sense once its replacements exist. It's registered right after them in `docs/status.md` for that reason, but its own implementation waits on their graduation regardless of table position.
 
 ## Guiding principles / standing decisions cited
 
@@ -20,7 +20,7 @@ Per `graduate-work-item`'s own note ("removing shipped code is its own new task 
 
 ## Depends on
 
-- `messages-console` (`Planned`) — [`feature-messages-console.md`](feature-messages-console.md), read in full; must be `Done` before this task's own build starts.
+- `messages-console` (`Done`) — [`messages-console.md`](../features/messages-console.md), read in full; a graduated dependency this task builds against.
 - `structured-output-console` (`Planned`) — [`feature-structured-output-console.md`](feature-structured-output-console.md), read in full; must be `Done` before this task's own build starts.
 - `foundations-console` (`Done`) — [`foundations-console.md`](../features/foundations-console.md), read in full; this task's target doc, updated in place at graduation.
 
@@ -37,7 +37,7 @@ Per `graduate-work-item`'s own note ("removing shipped code is its own new task 
 
 ## To-do list
 
-- [ ] Confirm both `feature-messages-console.md` and `feature-structured-output-console.md` are `Done` before starting.
+- [ ] Confirm both `messages-console` (already `Done`, see `messages-console.md`) and `feature-structured-output-console.md` are `Done` before starting.
 - [ ] Delete `backend/src/foundations-console/` (controller, service, module, DTOs, specs) and remove `FoundationsConsoleModule` from `AppModule`'s imports.
 - [ ] Delete `frontend/src/app/foundations-console/` and remove its entry from `FEATURE_ROUTES`.
 - [ ] Delete `frontend/public/lab-docs/foundations-console.md`.
