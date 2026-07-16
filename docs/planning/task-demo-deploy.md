@@ -19,6 +19,7 @@ Built right after `feature-foundations-console` (see `docs/status.md`'s build or
 - **Test gate: yes.** `test` job (existing lint/unit/integration commands) must pass before the `deploy` job runs — a broken `main` never reaches the public demo.
 - **PR-only validation check: out of scope for this task.** Only the push-to-`main` deploy is built here; a separate PR-check-without-deploy workflow is a distinct, later task if wanted.
 - **Deploy failure/health-check failure: fail loudly, no auto-rollback.** The workflow run goes red and the previous revision keeps serving traffic (Cloud Run only routes to a new revision once it's healthy, so a failed deploy can't itself take the demo down) — no rollback automation is built.
+- **Test gate also runs the browser E2E suite** (`task-frontend-browser-e2e-tests.md`, build-ordered before this task), added during this task's own re-planning pass — a broken real-browser flow (page navigation, streaming, the inspector panel) should block the public demo the same way a broken unit test already does, not stay a manual-only/local-only check once an automated suite for it exists. This is why this task now has an actual dependency (see "Depends on" below) where it previously had none.
 
 ## Guiding principles / standing decisions cited
 
@@ -28,10 +29,13 @@ Built right after `feature-foundations-console` (see `docs/status.md`'s build or
 - [`env-config.md`](../shared/env-config.md), "Interface" (`anthropicApiKey` — required to be *set*, never checked for validity) — why a placeholder `ANTHROPIC_API_KEY` env var on the Cloud Run service satisfies startup validation with no real key ever involved.
 - [`testing-strategy.md`](../technical/testing-strategy.md), "No container that runs tests ever holds a real credential" — the workflow's `test` job runs the exact same placeholder-credentialed commands `CLAUDE.md`/`README.md` already document for local dev; nothing about running them in CI changes this rule. Also cited: "CI isn't in scope yet... but whatever CI is eventually added follows this same rule unchanged" — this task is that CI.
 - `backend/src/main.ts`'s existing `app.listen(process.env.PORT ?? 3000)` — already reads `PORT` from the environment, which is exactly how Cloud Run tells a container which port to listen on; no code change needed for Cloud Run compatibility.
+- `task-frontend-browser-e2e-tests.md`, "Contract" — the `e2e` Compose service (profile-gated, `depends_on: frontend: condition: service_healthy`, itself chained to `backend`'s own health) this task's `test` job now runs; `docker compose run` respects those health conditions the same as `up` does, so no separate manual wait step is needed.
+- `backend/.env.example` — the placeholder env values (`FAKE_MODE=false` by default, `ANTHROPIC_API_KEY` required-but-unchecked) this task's CI step overrides to `FAKE_MODE=true` before bringing the live stack up, since the browser E2E suite's own global-setup guard aborts otherwise.
 
 ## Depends on
 
-None still-open — `prod-docker`, `fake-mode`, and `env-config` (cited above) are all `Done`.
+- `frontend-browser-e2e-tests` (`Planned`) — [`task-frontend-browser-e2e-tests.md`](task-frontend-browser-e2e-tests.md), read in full; must be `Done` before this task's own build starts, since its `test` job now runs the `e2e` Compose service that task creates.
+- `prod-docker`, `fake-mode`, `env-config` (all `Done`, cited above) — no change from the original planning pass.
 
 ## Manual one-time setup (the user, not the coding agent)
 
@@ -64,6 +68,13 @@ jobs:
       - run: docker compose -f docker-compose.dev.yml run --rm backend npm test
       - run: docker compose -f docker-compose.dev.yml run --rm backend npm run test:e2e
       - run: docker compose -f docker-compose.dev.yml run --rm frontend npm test -- --watch=false
+      - name: Configure fake mode for the live dev stack
+        run: |
+          cp backend/.env.example backend/.env
+          sed -i 's/^FAKE_MODE=.*/FAKE_MODE=true/' backend/.env
+      - run: docker compose -f docker-compose.dev.yml run --rm e2e
+      - if: always()
+        run: docker compose -f docker-compose.dev.yml down
 
   deploy:
     needs: test
@@ -112,6 +123,8 @@ Notes on choices baked into this YAML:
 - `--min-instances=0` lets the service scale to zero when idle (free-tier-friendly for a low-traffic demo); `--max-instances=1` is a deliberate cost ceiling for a single-container demo, not a capacity need.
 - `ANTHROPIC_API_KEY=placeholder-fake-mode-key` exists only to satisfy `env-config.md`'s "must be set" startup check — never a real key, never treated as one, per `FAKE_MODE=true` never reading it for a real call.
 - No rollback step: Cloud Run only shifts traffic to a new revision once it passes its own startup check, so a bad deploy fails the workflow (per the "fail loudly" decision above) without the previous revision ever going down.
+- The `e2e` step needs a real `backend/.env` (not just placeholder env vars passed inline) because it's a live `docker compose up`/`run` process, not a Jest run — `backend/test/setup-env.ts`'s placeholder-env mechanism only applies to the Jest-driven unit/integration buckets, not a container actually booting `AppConfigModule` from its bind-mounted `.env` file.
+- `if: always()` on the teardown `down` step so a failed `e2e` run still stops the containers it started, rather than leaving them running into the next step (or, on a self-hosted runner, into the next job).
 
 ## Test scenarios
 
@@ -122,16 +135,19 @@ Manual-only (run once by the user after the workflow and its one-time GCP setup 
 - `/api/smoke-test` on the live URL returns `200`.
 - A deliberately-broken test (a throwaway failing assertion, reverted right after) on a throwaway branch/PR proves the `test` job actually blocks `deploy` from running — confirms the gate is real, not just present in the YAML.
 - A deliberately-invalid deploy flag or env var (reverted right after) proves the workflow's `deploy` job fails loudly (red run) rather than silently leaving a stale revision serving traffic without anyone noticing the workflow failed.
+- The `e2e` step actually runs (visible in the job log, not skipped) and passes against the CI-provisioned fake-mode stack; a deliberately-broken browser E2E scenario (reverted right after, same throwaway-branch approach as the unit-test check above) confirms it blocks `deploy` too, not just the pre-existing unit/integration checks.
 
 ## To-do list
 
+- [ ] Confirm `frontend-browser-e2e-tests` is `Done` before starting (its `e2e` Compose service is what the `test` job's new step runs).
 - [ ] Manual, one-time (user): GCP project setup, WIF, and repo secrets, per "Manual one-time setup" above.
-- [ ] Add `.github/workflows/deploy.yml` per Contract above.
-- [ ] Push to `main` once secrets are in place; confirm both jobs go green.
+- [ ] Add `.github/workflows/deploy.yml` per Contract above, including the `e2e`-suite step and its `backend/.env` setup step.
+- [ ] Push to `main` once secrets are in place; confirm both jobs go green, including the new `e2e` step.
 - [ ] Manually verify the live Cloud Run URL (fake-mode banner renders, `/api/smoke-test` returns `200`).
 - [ ] Add the live demo URL to `README.md` (one short line) once it's known — not before, since the URL doesn't exist until the first successful deploy.
 - [ ] Deliberately break a test once (throwaway commit/branch) to confirm the gate blocks a deploy, then revert — per Test scenarios above.
+- [ ] Deliberately break a browser E2E scenario once (throwaway commit/branch) to confirm it also blocks a deploy, then revert — per Test scenarios above.
 
 ## Open questions
 
-None — resolved during this planning pass (hosting target, auth method, test gating, PR-check scope, and failure handling, all above).
+None — resolved during this planning pass (hosting target, auth method, test gating, PR-check scope, failure handling, and — added during this task's re-planning pass — the browser E2E suite's inclusion in the deploy gate, all above).

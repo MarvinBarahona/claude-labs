@@ -20,10 +20,9 @@ Per `graduate-work-item`'s own note ("removing shipped code is its own new task 
 
 ## Depends on
 
-- `messages-console` (`Draft`) — [`feature-messages-console.md`](feature-messages-console.md), read in full; must be `Done` before this task's own build starts.
-- `structured-output-console` (`Draft`) — [`feature-structured-output-console.md`](feature-structured-output-console.md), read in full; must be `Done` before this task's own build starts.
+- `messages-console` (`Planned`) — [`feature-messages-console.md`](feature-messages-console.md), read in full; must be `Done` before this task's own build starts.
+- `structured-output-console` (`Planned`) — [`feature-structured-output-console.md`](feature-structured-output-console.md), read in full; must be `Done` before this task's own build starts.
 - `foundations-console` (`Done`) — [`foundations-console.md`](../features/foundations-console.md), read in full; this task's target doc, updated in place at graduation.
-- `frontend-browser-e2e-tests` (`Planned`) — [`task-frontend-browser-e2e-tests.md`](task-frontend-browser-e2e-tests.md), named here (not a build-order dependency the other direction — this task doesn't wait on it) because this task's own to-do list below updates it.
 
 ## Test scenarios
 
@@ -44,4 +43,3 @@ Per `graduate-work-item`'s own note ("removing shipped code is its own new task 
 - [ ] Delete `frontend/public/lab-docs/foundations-console.md`.
 - [ ] Re-run a repo-wide search for hardcoded lab-count references and fix anything found.
 - [ ] Update `docs/features/foundations-console.md` in place: replace its content with a short note that the feature was split, pointing at `docs/features/messages-console.md` and `docs/features/structured-output-console.md`, per `graduate-work-item`'s follow-on merge rule.
-- [ ] Update `task-frontend-browser-e2e-tests.md`: its "Contract" and "Test scenarios" sections currently target the old bundled page (one page, both demos, one shared inspector switching between them, reachable as the app's first nav entry) — flagged directly in that file's own text (added during this task's planning pass) since that page no longer exists once this task ships. Split `foundations-console.spec.ts` into two spec files, one per new lab, each written against `messages-console.md`/`structured-output-console.md`'s own "Frontend"/"Interface" sections instead of the retired `foundations-console.md`.
