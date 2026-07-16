@@ -1,6 +1,6 @@
 # Feature — Structured Output Console
 
-**Status:** 📋 Planned.
+**Status:** 🔵 In progress.
 
 **Nav position:** after `messages-console`.
 
@@ -72,12 +72,17 @@ Two independent tracks — backend (route/service) and frontend (component) — 
 ## To-do list
 
 **Backend:**
-- [ ] Create `backend/src/structured-output-console/` (controller, service, module, `dto/structured-demo.dto.ts`), moved from `foundations-console`'s existing structured-demo-only code (`structuredDemo`, `runStructuredDemo`, the fixed schema constant), with the local `buildEnvelope` call replaced by `EnvelopeBuilderService.build()`.
-- [ ] Wire `StructuredOutputConsoleModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`) into `AppModule`.
-- [ ] Add `structured-output-console.service.spec.ts` / `structured-output-console.e2e-spec.ts` covering the backend Test scenarios above.
+- [x] Create `backend/src/structured-output-console/` (controller, service, module, `dto/structured-demo.dto.ts`), moved from `foundations-console`'s existing structured-demo-only code (`structuredDemo`, `runStructuredDemo`, the fixed schema constant), with the local `buildEnvelope` call replaced by `EnvelopeBuilderService.build()`.
+- [x] Wire `StructuredOutputConsoleModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`) into `AppModule`.
+- [x] Add `structured-output-console.service.spec.ts` / `structured-output-console.e2e-spec.ts` covering the backend Test scenarios above.
 
 **Frontend:**
-- [ ] Create `frontend/src/app/structured-output-console/structured-output-console.ts` + `.html` per "Contract" above, using `<app-model-picker>`, `<app-docs-panel slug="structured-output-console">`, and `<app-inspector-panel>`.
-- [ ] Register `{ slug: 'structured-output-console', label: 'Structured Output Console', loadComponent: ... }` right after `messages-console` in `FEATURE_ROUTES`.
-- [ ] Add `structured-output-console.spec.ts` covering the frontend Test scenarios above.
-- [ ] Once built, run `write-lab-doc` against this lab to author `frontend/public/lab-docs/structured-output-console.md`.
+- [x] Create `frontend/src/app/structured-output-console/structured-output-console.ts` + `.html` per "Contract" above, using `<app-model-picker>`, `<app-docs-panel slug="structured-output-console">`, and `<app-inspector-panel>`.
+- [x] Register `{ slug: 'structured-output-console', label: 'Structured Output Console', loadComponent: ... }` right after `messages-console` in `FEATURE_ROUTES`.
+- [x] Add `structured-output-console.spec.ts` covering the frontend Test scenarios above.
+- [x] Once built, run `write-lab-doc` against this lab to author `frontend/public/lab-docs/structured-output-console.md`.
+
+## Development notes
+
+- [Coding-convention observation] `MODEL_CHOICES`/`ModelChoice` (the `'default' | 'classification' | 'hardest-call'` union) is now duplicated verbatim in three DTO files — `messages-console`, `foundations-console`, and this feature's `dto/structured-demo.dto.ts`. Kept local here deliberately, to avoid a cross-feature-module dependency for three constants. Worth a `docs/technical/` note (or a shared DTO/constants module) if a fourth feature ever needs it, so the duplication doesn't silently drift.
+- Backend and frontend tracks were built in parallel by two subagents against the plan's pinned contract; integration (route path, request/response field names) was verified directly against both sides' source afterward and matches exactly — no adjustment needed.
