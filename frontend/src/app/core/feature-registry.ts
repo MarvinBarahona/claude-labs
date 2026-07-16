@@ -6,6 +6,11 @@ import type { FeatureRoute } from './feature-route';
  */
 export const FEATURE_ROUTES: readonly FeatureRoute[] = [
   {
+    slug: 'home',
+    label: 'Home',
+    loadComponent: () => import('../home/home').then((m) => m.Home),
+  },
+  {
     slug: 'messages-console',
     label: 'Messages Console',
     loadComponent: () =>

@@ -39,7 +39,7 @@ This table is a summary pointer — whatever process currently carries out each 
 | Structured Output Console | Feature | `structured-output-console` | ✅ Done | [`structured-output-console.md`](features/structured-output-console.md) |
 | Retire Foundations Console | Task | `retire-foundations-console` | ✅ Done | [`foundations-console.md`](features/foundations-console.md) |
 | Frontend browser E2E tests | Task | `frontend-browser-e2e-tests` | ✅ Done | [`frontend-browser-e2e-tests.md`](shared/frontend-browser-e2e-tests.md) |
-| Home Page | Feature | `home-page` | 📋 Planned | [`feature-home-page.md`](planning/feature-home-page.md) |
+| Home Page | Feature | `home-page` | ✅ Done | [`home-page.md`](features/home-page.md) |
 | Demo deploy | Task | `demo-deploy` | 📋 Planned | [`task-demo-deploy.md`](planning/task-demo-deploy.md) |
 | GitHub data provider | Task | `github-provider` | 📝 Draft | [`task-github-provider.md`](planning/task-github-provider.md) |
 | Live Tool-Use Console | Feature | `live-tool-use-console` | 📝 Draft | [`feature-live-tool-use-console.md`](planning/feature-live-tool-use-console.md) |

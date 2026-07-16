@@ -1,0 +1,35 @@
+<div class="flex flex-col gap-6">
+  <h1 class="text-xl font-bold text-foreground">Claude Labs</h1>
+
+  <section class="flex flex-col gap-3 text-sm text-foreground">
+    <p>
+      Claude Labs is a hands-on companion to Anthropic's official Claude API docs: a place to see real requests
+      and real responses for each major Claude API feature, side by side with the code that produced them —
+      not a replacement for reading the official docs, but a way to try what they describe before writing your
+      own integration.
+    </p>
+    <p>
+      Every lab below focuses on one Claude API feature or pattern at a time, and runs against real public data
+      sources instead of canned fixtures, so what you see is what an actual integration would receive back.
+    </p>
+    <p>
+      Each lab pairs its own in-app documentation with a live demo, and every lab shares one inspector panel
+      that exposes the exact request sent and the exact response received — the underlying API mechanics are
+      never hidden behind the demo UI.
+    </p>
+  </section>
+
+  <section class="flex flex-col gap-4">
+    <ul class="flex flex-col gap-3" data-testid="lab-index">
+      @for (lab of labs; track lab.slug) {
+        <li class="rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+          <a [routerLink]="['/', lab.slug]" class="text-base font-bold text-foreground hover:underline">
+            {{ lab.label }}
+          </a>
+          <p class="mt-1">{{ lab.goal }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">{{ lab.concepts.join(' · ') }}</p>
+        </li>
+      }
+    </ul>
+  </section>
+</div>
