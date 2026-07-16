@@ -1,9 +1,8 @@
 import type { FeatureRoute } from './feature-route';
 
 /**
- * Every feature's route, keyed by slug — appended here as each feature graduates.
- * Array order is the nav render order: place a new entry per its own plan file's
- * `**Nav position:**` value (`first` / `last` / `before <slug>` / `after <slug>`) at the time it's added.
+ * Every feature's route, keyed by slug.
+ * Array order is the nav render order, by design.
  */
 export const FEATURE_ROUTES: readonly FeatureRoute[] = [
   {
