@@ -19,6 +19,10 @@ Before planning or building anything in this repo, read, in order:
 
 Then apply this work item's dependencies and the project's standing principles/decisions found above.
 
+## Clarify
+
+Most calls made while turning a Draft into a `Planned`, self-contained plan file are fine to make directly — the user reviews the finished plan file afterward regardless. Ask the user instead of deciding alone only for a genuinely hard decision: more than one reasonable approach, real cost to reversing later, or one that shapes the rest of the plan (e.g. agent vs. workflow, an endpoint/data contract another work item will build against, how to resolve a scope boundary surfaced by "Mid-plan splits" below). Routine calls — naming, which existing pattern to reuse when one already fits, exact test-scenario wording — are this skill's own call, not a question. "Feature nav position" below is one recurring instance of a hard call worth asking about; it isn't the only one.
+
 ## Status precondition
 
 Only operate on a work item whose plan file exists and whose status is `Draft` or `Planned` — never one with no plan file yet (`Not started`), and never one that's `In progress` or `Done`. When finished, set the plan file's status to `Planned` (and mirror it in `docs/status.md`).
