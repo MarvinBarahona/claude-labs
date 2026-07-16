@@ -28,13 +28,13 @@ Always runs against a fake-mode dev-stack instance, never real mode — this is 
 - [`fake-mode.md`](../shared/fake-mode.md), "Interface" (`GET /api/mode` response shape: `{ fakeMode: boolean, repoUrl?: string }`) — exactly what the global-setup guard above calls and checks.
 - [`tech-stack.md`](../technical/tech-stack.md), "Runtime" — the dev stack's Compose network name and existing `depends_on`/`condition: service_healthy` pattern (`frontend` → `backend`), reused unchanged for `e2e` → `frontend`.
 - [`messages-console.md`](../features/messages-console.md), "Backend"/"Frontend" and nav position (`first`) — the route, component structure, and streamed/non-streamed turn behavior `messages-console.spec.ts` exercises.
-- `feature-structured-output-console.md`, "Contract" and nav position (`after messages-console`) — the route and component structure `structured-output-console.spec.ts` exercises.
+- [`structured-output-console.md`](../features/structured-output-console.md), "Backend"/"Frontend" and nav position (`after messages-console`) — the route and component structure `structured-output-console.spec.ts` exercises.
 - `guiding-principles.md`, "One inspector, many labs" — why `messages-console.spec.ts` asserts the inspector panel reflects whichever of a streamed/non-streamed turn most recently completed, not just that a turn's own result renders. This no longer spans two labs the way it did against the old bundled page (each lab now has its own inspector instance) — it's now a within-page assertion for Messages Console's own streamed-vs-non-streamed turns, and doesn't apply to Structured Output Console at all (only one kind of call).
 
 ## Depends on
 
 - `messages-console` (`Done`) — [`messages-console.md`](../features/messages-console.md), read in full; a graduated dependency this task builds against.
-- `structured-output-console` (`Planned`) — [`feature-structured-output-console.md`](feature-structured-output-console.md), read in full; must be `Done` before this task's own build starts.
+- `structured-output-console` (`Done`) — [`structured-output-console.md`](../features/structured-output-console.md), read in full; a graduated dependency this task builds against.
 - `fake-mode` (`Done`) — [`fake-mode.md`](../shared/fake-mode.md), read in full; see "Guiding principles" above for the exact interface used.
 - `test-doubles` (`Done`) — [`test-doubles.md`](../shared/test-doubles.md) — not consumed directly (this suite drives the real running app, not an in-process test module) but confirms nothing about `FakeAnthropicClient`'s `allowUnqueuedFallback` behavior (enabled only for a live fake-mode app, per that doc) stands in the way of an unscripted-looking real click sequence dead-ending mid-spec.
 

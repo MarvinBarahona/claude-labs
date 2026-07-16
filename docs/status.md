@@ -36,7 +36,7 @@ This table is a summary pointer — each skill above is the authoritative defini
 | Response Envelope Builder | Task | `envelope-builder` | ✅ Done | [`envelope-builder.md`](shared/envelope-builder.md) |
 | Model Picker | Task | `model-picker` | ✅ Done | [`model-picker.md`](shared/model-picker.md) |
 | Messages Console | Feature | `messages-console` | ✅ Done | [`messages-console.md`](features/messages-console.md) |
-| Structured Output Console | Feature | `structured-output-console` | 🔵 In progress | [`feature-structured-output-console.md`](planning/feature-structured-output-console.md) |
+| Structured Output Console | Feature | `structured-output-console` | ✅ Done | [`structured-output-console.md`](features/structured-output-console.md) |
 | Retire Foundations Console | Task | `retire-foundations-console` | 📋 Planned | [`task-retire-foundations-console.md`](planning/task-retire-foundations-console.md) |
 | Frontend browser E2E tests | Task | `frontend-browser-e2e-tests` | 📋 Planned | [`task-frontend-browser-e2e-tests.md`](planning/task-frontend-browser-e2e-tests.md) |
 | Demo deploy | Task | `demo-deploy` | 📋 Planned | [`task-demo-deploy.md`](planning/task-demo-deploy.md) |
