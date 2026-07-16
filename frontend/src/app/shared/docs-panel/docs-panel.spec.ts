@@ -30,7 +30,7 @@ describe('DocsPanel', () => {
     httpMock.expectOne('/lab-docs/foundations-console.md').flush('# Foundations Console');
   });
 
-  it('keeps the skeleton visible for at least 1s even once the fetch resolves', async () => {
+  it('keeps the skeleton visible for at least 500ms even once the fetch resolves', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock } = await createFixture('foundations-console');
 
