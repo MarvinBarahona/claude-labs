@@ -41,8 +41,8 @@ This table is a summary pointer — whatever process currently carries out each 
 | Frontend browser E2E tests | Task | `frontend-browser-e2e-tests` | ✅ Done | [`frontend-browser-e2e-tests.md`](shared/frontend-browser-e2e-tests.md) |
 | Home Page | Feature | `home-page` | ✅ Done | [`home-page.md`](features/home-page.md) |
 | Demo deploy | Task | `demo-deploy` | 📋 Planned | [`task-demo-deploy.md`](planning/task-demo-deploy.md) |
-| GitHub data provider | Task | `github-provider` | 📝 Draft | [`task-github-provider.md`](planning/task-github-provider.md) |
-| Live Tool-Use Console | Feature | `live-tool-use-console` | 📝 Draft | [`feature-live-tool-use-console.md`](planning/feature-live-tool-use-console.md) |
+| GitHub data provider | Task | `github-provider` | 📋 Planned | [`task-github-provider.md`](planning/task-github-provider.md) |
+| Live Tool-Use Console | Feature | `live-tool-use-console` | 📋 Planned | [`feature-live-tool-use-console.md`](planning/feature-live-tool-use-console.md) |
 | Caching layer | Task | `caching-layer` | 📝 Draft | [`task-caching-layer.md`](planning/task-caching-layer.md) |
 | Workflow Gallery | Feature | `workflow-gallery` | 📝 Draft | [`feature-workflow-gallery.md`](planning/feature-workflow-gallery.md) |
 | Content-block builder | Task | `content-block-builder` | 📝 Draft | [`task-content-block-builder.md`](planning/task-content-block-builder.md) |
