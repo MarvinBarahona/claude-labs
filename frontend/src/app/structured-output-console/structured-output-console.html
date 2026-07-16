@@ -1,0 +1,60 @@
+<div class="flex flex-col gap-6">
+  <h1 class="text-xl font-bold text-foreground">Structured Output Console</h1>
+
+  <app-docs-panel [slug]="'structured-output-console'" />
+
+  <section class="flex flex-col gap-3 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+    <h2 class="text-base font-bold text-foreground">Structured output demo</h2>
+
+    <div>
+      <app-model-picker [value]="modelChoice()" (valueChange)="onModelChoiceChange($event)" />
+    </div>
+
+    <textarea
+      class="rounded-sm border border-border bg-background p-2 text-sm"
+      rows="3"
+      aria-label="Structured input"
+      placeholder="Free text to structure…"
+      [value]="input()"
+      (input)="onInputChange($event)"
+    ></textarea>
+
+    <div>
+      <button
+        type="button"
+        class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+        [disabled]="!input().trim()"
+        (click)="run()"
+      >
+        Run
+      </button>
+    </div>
+
+    @if (error(); as message) {
+      <p role="alert" class="text-xs text-destructive">{{ message }}</p>
+    }
+
+    @if (result(); as result) {
+      <div class="flex flex-col divide-y divide-border">
+        <div class="pb-3">
+          <span class="text-xs font-bold uppercase tracking-wide text-foreground">Summary</span>
+          <p>{{ result.summary }}</p>
+        </div>
+        <div class="py-3">
+          <span class="text-xs font-bold uppercase tracking-wide text-foreground">Sentiment</span>
+          <p>{{ result.sentiment }}</p>
+        </div>
+        <div class="pt-3">
+          <span class="text-xs font-bold uppercase tracking-wide text-foreground">Action items</span>
+          <ul class="list-disc pl-4">
+            @for (item of result.actionItems; track $index) {
+              <li>{{ item }}</li>
+            }
+          </ul>
+        </div>
+      </div>
+    }
+  </section>
+
+  <app-inspector-panel [call]="inspectorCall()" />
+</div>

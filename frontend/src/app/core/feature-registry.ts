@@ -13,6 +13,14 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
       import('../messages-console/messages-console').then((m) => m.MessagesConsole),
   },
   {
+    slug: 'structured-output-console',
+    label: 'Structured Output Console',
+    loadComponent: () =>
+      import('../structured-output-console/structured-output-console').then(
+        (m) => m.StructuredOutputConsole,
+      ),
+  },
+  {
     slug: 'foundations-console',
     label: 'Foundations Console',
     loadComponent: () =>
