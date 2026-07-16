@@ -8,7 +8,7 @@ The central place to pick a model tier per call: default Sonnet, drop to Haiku f
 
 Two methods, kept separate because they return different shapes:
 
-- `getModel(tier: ModelTier): string` — `ModelTier` is `'default' | 'classification' | 'hardest-call'` (`model-config.types.ts`). Current mapping:
+- `getModel(tier: ModelTier): string` — `ModelTier` is `'default' | 'classification' | 'hardest-call'`, derived from the `MODEL_TIERS` runtime array (`model-config.types.ts`) — the single source of truth for valid tiers. A DTO's `@IsIn()` validates against `MODEL_TIERS` directly (`import { MODEL_TIERS, ModelTier } from '.../shared/model-config/model-config.types'`) instead of redeclaring its own list, so adding/removing a tier is a one-line edit here rather than a per-DTO change. Current mapping:
   - `default` → `claude-sonnet-5` — the balanced tier every feature falls back to unless it asks for something else.
   - `classification` → `claude-haiku-4-5` — fastest/cheapest tier, for routing/extraction-style calls (e.g. Workflow Gallery's router).
   - `hardest-call` → `claude-opus-4-8` — deepest tier, for the single hardest call in a pipeline.

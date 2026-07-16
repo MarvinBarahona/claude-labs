@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ModelConfigService } from '../shared/model-config/model-config.service';
+import { ModelTier } from '../shared/model-config/model-config.types';
 import {
   AnthropicClient,
   AnthropicMessage,
@@ -9,7 +10,7 @@ import {
 import { shapeError, ShapedError } from '../shared/api-error-handling';
 import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-builder.service';
 import { TurnEnvelope } from '../shared/envelope-builder/envelope-builder.types';
-import { ModelChoice, SendMessageDto } from './dto/send-message.dto';
+import { SendMessageDto } from './dto/send-message.dto';
 
 /** No env-configurable default elsewhere in the repo to defer to. */
 const DEFAULT_MAX_TOKENS = 4096;
@@ -79,7 +80,7 @@ export class MessagesConsoleService {
     }
   }
 
-  private resolveModel(choice: ModelChoice): string {
+  private resolveModel(choice: ModelTier): string {
     return this.modelConfig.getModel(choice);
   }
 

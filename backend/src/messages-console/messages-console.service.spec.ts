@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { AnthropicClient } from '../shared/anthropic-client/anthropic-client';
 import { ModelConfigService } from '../shared/model-config/model-config.service';
+import { ModelTier } from '../shared/model-config/model-config.types';
 import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-builder.service';
 import { FakeAnthropicClient } from '../testing/anthropic/fake-anthropic-client';
 import {
@@ -11,9 +12,7 @@ import {
   MessagesConsoleService,
   MessagesConsoleStreamFrame,
 } from './messages-console.service';
-import { ModelChoice, SendMessageDto } from './dto/send-message.dto';
-
-type ModelTier = 'default' | 'classification' | 'hardest-call';
+import { SendMessageDto } from './dto/send-message.dto';
 
 const MODEL_MAP: Record<ModelTier, string> = {
   default: 'claude-sonnet-5',
@@ -73,7 +72,7 @@ describe('MessagesConsoleService', () => {
       ['default', 'claude-sonnet-5'],
       ['classification', 'claude-haiku-4-5'],
       ['hardest-call', 'claude-opus-4-8'],
-    ] as [ModelChoice, string][])(
+    ] as [ModelTier, string][])(
       'resolves modelChoice %s to %s',
       async (modelChoice, expectedModel) => {
         fakeClient.queueMessage(fakeTextMessage('hello'));
