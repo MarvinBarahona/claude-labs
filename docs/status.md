@@ -34,7 +34,7 @@ This table is a summary pointer — each skill above is the authoritative defini
 | Anthropic client | Task | `anthropic-client` | ✅ Done | [`anthropic-client.md`](shared/anthropic-client.md) |
 | Foundations Console | Feature | `foundations-console` | ✅ Done | [`foundations-console.md`](features/foundations-console.md) |
 | Response Envelope Builder | Task | `envelope-builder` | ✅ Done | [`envelope-builder.md`](shared/envelope-builder.md) |
-| Model Picker | Task | `model-picker` | 📋 Planned | [`task-model-picker.md`](planning/task-model-picker.md) |
+| Model Picker | Task | `model-picker` | ✅ Done | [`model-picker.md`](shared/model-picker.md) |
 | Messages Console | Feature | `messages-console` | 📋 Planned | [`feature-messages-console.md`](planning/feature-messages-console.md) |
 | Structured Output Console | Feature | `structured-output-console` | 📋 Planned | [`feature-structured-output-console.md`](planning/feature-structured-output-console.md) |
 | Retire Foundations Console | Task | `retire-foundations-console` | 📋 Planned | [`task-retire-foundations-console.md`](planning/task-retire-foundations-console.md) |
