@@ -7,6 +7,10 @@ description: This skill should be used when writing or editing any NestJS code i
 
 General best practices for writing modern NestJS code, independent of any one project's specifics.
 
+## Stay project-agnostic
+
+Never reference another skill by name here, project-specific or otherwise — this skill should read the same in any repo it's dropped into. A skill checked into a given project besides that project's own listed skills is generic tooling that can be renamed, replaced, or deleted independently of the project — this skill included — so a hard-coded reference to one would go stale silently.
+
 ## Module composition
 
 - Each feature module is composed of a **controller + service + DTOs** (plus providers as needed) — controllers stay thin and delegate all business logic to services.
