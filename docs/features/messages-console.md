@@ -26,7 +26,7 @@ Wired via `MessagesConsoleModule` (imports `ModelConfigModule`, `AnthropicClient
 
 ## Frontend
 
-`frontend/src/app/messages-console/` (`MessagesConsole`, registered at index `0` — first — in `FEATURE_ROUTES`). Stacks `<app-docs-panel [slug]="'messages-console'" />` → the transcript demo (model picker, system prompt, temperature, streaming toggle, message list/input) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. Uses the shared `<app-model-picker>` for model selection.
+`frontend/src/app/messages-console/` (`MessagesConsole`). Stacks `<app-docs-panel [slug]="'messages-console'" />` → the transcript demo (model picker, system prompt, temperature, streaming toggle, message list/input) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. Uses the shared `<app-model-picker>` for model selection.
 
 Calls the backend route above: non-streaming via `HttpClient`, streaming via `fetch()` with a manual `ReadableStream` reader parsing `event:`/`data:` SSE frames, accumulating `content_block_delta` text incrementally into the transcript and applying the final `TurnEnvelope` from `turn_complete` to the inspector panel. A mid-stream `error` frame surfaces its `message` as a visible error state.
 

@@ -35,7 +35,7 @@ Wired via `StructuredOutputConsoleModule` (imports `ModelConfigModule`, `Anthrop
 
 ## Frontend
 
-`frontend/src/app/structured-output-console/` (`StructuredOutputConsole`, registered right after `messages-console` in `FEATURE_ROUTES`). Stacks `<app-docs-panel [slug]="'structured-output-console'" />` → the demo (model picker, free-text input, Run button, parsed `summary`/`sentiment`/`actionItems` result) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. Uses the shared `<app-model-picker>` for model selection; a failed request surfaces a visible error state rather than failing silently.
+`frontend/src/app/structured-output-console/` (`StructuredOutputConsole`). Stacks `<app-docs-panel [slug]="'structured-output-console'" />` → the demo (model picker, free-text input, Run button, parsed `summary`/`sentiment`/`actionItems` result) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. Uses the shared `<app-model-picker>` for model selection; a failed request surfaces a visible error state rather than failing silently.
 
 ## In-app doc
 
