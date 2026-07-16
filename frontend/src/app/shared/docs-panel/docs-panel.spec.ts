@@ -18,13 +18,46 @@ describe('DocsPanel', () => {
 
   afterEach(() => {
     TestBed.inject(HttpTestingController).verify();
+    vi.useRealTimers();
+  });
+
+  it('shows a document skeleton while the fetch is in flight', async () => {
+    const { fixture, httpMock } = await createFixture('foundations-console');
+
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('app-skeleton').length).toBeGreaterThan(1);
+
+    httpMock.expectOne('/lab-docs/foundations-console.md').flush('# Foundations Console');
+  });
+
+  it('keeps the skeleton visible for at least 1s even once the fetch resolves', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock } = await createFixture('foundations-console');
+
+    httpMock.expectOne('/lab-docs/foundations-console.md').flush('# Foundations Console');
+    fixture.detectChanges();
+
+    let el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('app-skeleton').length).toBeGreaterThan(1);
+
+    await vi.advanceTimersByTimeAsync(499);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('app-skeleton').length).toBeGreaterThan(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    fixture.detectChanges();
+    el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('h1')?.textContent).toBe('Foundations Console');
   });
 
   it('fetches and renders the in-app doc for the given slug inline', async () => {
+    vi.useFakeTimers();
     const { fixture, httpMock } = await createFixture('foundations-console');
 
     const request = httpMock.expectOne('/lab-docs/foundations-console.md');
     request.flush('# Foundations Console\n\nAn intro paragraph.');
+    await vi.advanceTimersByTimeAsync(500);
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
@@ -33,6 +66,7 @@ describe('DocsPanel', () => {
   });
 
   it('renders headings, lists, code blocks and links as formatted markup, not raw text', async () => {
+    vi.useFakeTimers();
     const { fixture, httpMock } = await createFixture('foundations-console');
 
     const markdown = [
@@ -48,6 +82,7 @@ describe('DocsPanel', () => {
       '[a link](https://example.com)',
     ].join('\n');
     httpMock.expectOne('/lab-docs/foundations-console.md').flush(markdown);
+    await vi.advanceTimersByTimeAsync(500);
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
@@ -60,11 +95,13 @@ describe('DocsPanel', () => {
   });
 
   it('fails visibly rather than showing a silent blank panel when the doc file is missing', async () => {
+    vi.useFakeTimers();
     const { fixture, httpMock } = await createFixture('no-such-lab');
 
     httpMock
       .expectOne('/lab-docs/no-such-lab.md')
       .flush('Not Found', { status: 404, statusText: 'Not Found' });
+    await vi.advanceTimersByTimeAsync(500);
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;

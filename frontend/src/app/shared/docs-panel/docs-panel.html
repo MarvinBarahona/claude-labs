@@ -2,7 +2,32 @@
   class="flex flex-col gap-2 rounded-md border border-border bg-card p-4 text-sm text-card-foreground"
 >
   @if (isLoading()) {
-    <p class="text-xs text-muted-foreground">Loading docs…</p>
+    <div class="flex flex-col gap-3" aria-hidden="true">
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-2/3" />
+
+      <app-skeleton widthClass="w-1/3" [heightPx]="22" [borderRadiusPx]="4" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-5/6" />
+      <app-skeleton widthClass="w-full" [heightPx]="90" [borderRadiusPx]="6" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-3/4" />
+
+      <app-skeleton widthClass="w-1/4" [heightPx]="22" [borderRadiusPx]="4" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-5/6" />
+      <app-skeleton widthClass="w-2/3" />
+
+      <app-skeleton widthClass="w-1/4" [heightPx]="22" [borderRadiusPx]="4" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-full" />
+      <app-skeleton widthClass="w-4/5" />
+    </div>
   } @else if (isError()) {
     <p role="alert" class="text-xs text-destructive">Couldn't load the docs for this lab.</p>
   } @else {
