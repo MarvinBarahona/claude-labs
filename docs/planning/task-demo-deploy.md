@@ -19,7 +19,7 @@ Built right after `feature-foundations-console` (see `docs/status.md`'s build or
 - **Test gate: yes.** `test` job (existing lint/unit/integration commands) must pass before the `deploy` job runs — a broken `main` never reaches the public demo.
 - **PR-only validation check: out of scope for this task.** Only the push-to-`main` deploy is built here; a separate PR-check-without-deploy workflow is a distinct, later task if wanted.
 - **Deploy failure/health-check failure: fail loudly, no auto-rollback.** The workflow run goes red and the previous revision keeps serving traffic (Cloud Run only routes to a new revision once it's healthy, so a failed deploy can't itself take the demo down) — no rollback automation is built.
-- **Test gate also runs the browser E2E suite** (`task-frontend-browser-e2e-tests.md`, build-ordered before this task), added during this task's own re-planning pass — a broken real-browser flow (page navigation, streaming, the inspector panel) should block the public demo the same way a broken unit test already does, not stay a manual-only/local-only check once an automated suite for it exists. This is why this task now has an actual dependency (see "Depends on" below) where it previously had none.
+- **Test gate also runs the browser E2E suite** (`frontend-browser-e2e-tests`, `Done` — see "Depends on" below), added during this task's own re-planning pass — a broken real-browser flow (page navigation, streaming, the inspector panel) should block the public demo the same way a broken unit test already does, not stay a manual-only/local-only check once an automated suite for it exists. This is why this task now has an actual dependency where it previously had none.
 
 ## Guiding principles / standing decisions cited
 
@@ -29,12 +29,12 @@ Built right after `feature-foundations-console` (see `docs/status.md`'s build or
 - [`env-config.md`](../shared/env-config.md), "Interface" (`anthropicApiKey` — required to be *set*, never checked for validity) — why a placeholder `ANTHROPIC_API_KEY` env var on the Cloud Run service satisfies startup validation with no real key ever involved.
 - [`testing-strategy.md`](../technical/testing-strategy.md), "No container that runs tests ever holds a real credential" — the workflow's `test` job runs the exact same placeholder-credentialed commands `CLAUDE.md`/`README.md` already document for local dev; nothing about running them in CI changes this rule. Also cited: "CI isn't in scope yet... but whatever CI is eventually added follows this same rule unchanged" — this task is that CI.
 - `backend/src/main.ts`'s existing `app.listen(process.env.PORT ?? 3000)` — already reads `PORT` from the environment, which is exactly how Cloud Run tells a container which port to listen on; no code change needed for Cloud Run compatibility.
-- `task-frontend-browser-e2e-tests.md`, "Contract" — the `e2e` Compose service (profile-gated, `depends_on: frontend: condition: service_healthy`, itself chained to `backend`'s own health) this task's `test` job now runs; `docker compose run` respects those health conditions the same as `up` does, so no separate manual wait step is needed.
+- [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md), "Running it" — the `e2e` Compose service (profile-gated, `depends_on: frontend: condition: service_healthy`, itself chained to `backend`'s own health) this task's `test` job now runs; `docker compose run` respects those health conditions the same as `up` does, so no separate manual wait step is needed.
 - `backend/.env.example` — the placeholder env values (`FAKE_MODE=false` by default, `ANTHROPIC_API_KEY` required-but-unchecked) this task's CI step overrides to `FAKE_MODE=true` before bringing the live stack up, since the browser E2E suite's own global-setup guard aborts otherwise.
 
 ## Depends on
 
-- `frontend-browser-e2e-tests` (`Planned`) — [`task-frontend-browser-e2e-tests.md`](task-frontend-browser-e2e-tests.md), read in full; must be `Done` before this task's own build starts, since its `test` job now runs the `e2e` Compose service that task creates.
+- `frontend-browser-e2e-tests` (`Done`) — [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md), read in full; its `e2e` Compose service is what this task's `test` job now runs.
 - `prod-docker`, `fake-mode`, `env-config` (all `Done`, cited above) — no change from the original planning pass.
 
 ## Manual one-time setup (the user, not the coding agent)
