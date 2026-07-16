@@ -10,7 +10,7 @@ Needed because the repo currently has no `.github/` workflows and no running pub
 
 Fake mode is what makes this safe to expose publicly: per [`fake-mode.md`](../shared/fake-mode.md), the whole stack boots and behaves fully with only placeholder env values, and per `README.md`'s mode matrix, fake+prod is the only combination meant for a public deploy — no real credential is ever needed as a repository secret or present on the deployed host.
 
-Built right after `feature-foundations-console` (see `docs/status.md`'s build order) rather than at the very end of the roadmap — the point of a public demo is to have one up as soon as the first real feature exists, not only once every planned feature is done.
+Built right after the GitHub data provider and Live Tool-Use Console (see `docs/status.md`'s build order) rather than at the very end of the roadmap — the point of a public demo is to have one up early, not only once every planned feature is done. No dependency on either of those two — this task's own "Depends on" section below is unchanged — this is purely a build-order placement, next in line once they're done.
 
 ## Decisions made during this planning pass
 

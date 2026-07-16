@@ -77,7 +77,7 @@ An in-memory TTL cache per endpoint+repo (to reduce calls against the unauthenti
 
 ## Build order & dependencies
 
-Right after Demo deploy, before Live Tool-Use Console (see `status.md` for current position). Unlocks Live Tool-Use Console, Data & Code Sandbox, Workflow Gallery, Agent Playground (and, transitively, Extended Thinking Bench). Live Tool-Use Console is the provider's first consumer.
+Right after Home Page, before Live Tool-Use Console (see `status.md` for current position). Unlocks Live Tool-Use Console, Data & Code Sandbox, Workflow Gallery, Agent Playground (and, transitively, Extended Thinking Bench). Live Tool-Use Console is the provider's first consumer.
 
 ## Test scenarios
 
