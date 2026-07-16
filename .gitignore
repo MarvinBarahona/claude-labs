@@ -9,6 +9,9 @@ node_modules/
 dist/
 build/
 
+# Playwright test output
+e2e/test-results/
+
 # Editor/OS
 .vscode/
 .DS_Store

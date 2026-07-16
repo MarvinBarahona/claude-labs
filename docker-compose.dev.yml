@@ -46,6 +46,18 @@ services:
       retries: 30
       start_period: 15s
 
+  e2e:
+    image: mcr.microsoft.com/playwright:v1.48.0-noble
+    working_dir: /work
+    volumes:
+      - ./e2e:/work
+    depends_on:
+      frontend:
+        condition: service_healthy
+    profiles: ["e2e"]
+    entrypoint: ["bash", "-c"]
+    command: ["npm install >/dev/null 2>&1 && npx playwright test"]
+
 volumes:
   backend_node_modules:
   frontend_node_modules:
