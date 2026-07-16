@@ -1,7 +1,5 @@
 # Messages Console
 
-**Nav position:** first.
-
 A raw Claude Messages API explorer: model picker, system-prompt textarea, temperature slider, streaming toggle, and a chat-style running transcript. Demonstrates a plain multi-turn Messages API call, both streamed (Server-Sent Events) and non-streamed, including a system prompt and temperature control.
 
 ## Backend

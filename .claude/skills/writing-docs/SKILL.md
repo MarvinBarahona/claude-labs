@@ -46,13 +46,15 @@ A work item's slug is a short kebab-case version of its own name, chosen when it
 
 Only relevant for a project that actually has a navigation concept — e.g. a left-nav of numbered tabs — needing a stable display order independent of build order. This is a per-project fact, not something this workflow assumes: a project with no such navigation (a CLI, an API-only backend, a single-page tool) skips this entirely. When it does apply, a `**Nav position:**` line is decided during `plan-work-item`, not `draft-work-item` — drafting doesn't need to commit to display order.
 
-Don't centralize this in a single ordered file (a project-wide index that needs renumbering every time an item is inserted is exactly the maintenance hazard this convention avoids elsewhere). Instead, when nav applies, each feature's plan file (and, unlike most planning-only content, its permanent doc too — the running app needs this after the feature ships) carries a `**Nav position:**` line, set relative to whichever features already exist:
+Don't centralize this in a single ordered file (a project-wide index that needs renumbering every time an item is inserted is exactly the maintenance hazard this convention avoids elsewhere). Instead, when nav applies, each feature's plan file carries a `**Nav position:**` line, set relative to whichever features already exist:
 
 - `first` — only valid for the very first feature ever drafted.
 - `last` — the default when nothing more specific is asked for or specified.
 - `before <slug>` / `after <slug>` — for a deliberate insertion elsewhere in the nav, naming the specific feature it sits next to.
 
-Because each feature only ever states its position relative to its immediate neighbor(s), inserting a new feature anywhere in the nav never requires touching any other feature's file. Never restate a feature's absolute nav number in prose elsewhere (another file's cross-reference, `docs/status.md`, etc.) — a number goes stale the moment something is inserted before it; a relative pointer doesn't. Tasks don't get a nav position — they have no UI surface of their own. Neither does a feature in a project with no navigation concept at all.
+Because each feature only ever states its position relative to its immediate neighbor(s), inserting a new feature anywhere in the nav never requires touching any other feature's file. Never restate a feature's absolute nav number in prose elsewhere (another file's cross-reference, `docs/status.md`, etc.) — a number goes stale the moment something is inserted before it; a relative pointer doesn't.
+
+This line is planning-only, like the rest of the plan file: it does its one-time job during `build-work-item`, placing the feature's entry in the app's nav-order array (that array — not this line — is what the running app actually reads, and its own order is authoritative from then on), and does not carry forward into the permanent doc at graduation. Restating it there would freeze a relative pointer (`after <slug>`) that goes stale the instant something is later inserted between the two — exactly the hazard this section otherwise avoids. Tasks don't get a nav position — they have no UI surface of their own. Neither does a feature in a project with no navigation concept at all.
 
 ## Multiple work items on the same feature or task
 

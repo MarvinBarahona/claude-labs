@@ -1,7 +1,5 @@
 # Structured Output Console
 
-**Nav position:** after `messages-console`.
-
 A structured (JSON-schema) output demo: free-text input, a single blocking Messages API call forcing a schema-conformant reply, and the parsed result rendered. Demonstrates `output_config`, not the SDK's own `client.messages.parse()` convenience wrapper, which would bypass the shared `AnthropicClient` token.
 
 ## Backend
