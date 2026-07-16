@@ -14,9 +14,12 @@ function sseFrame(event: string, data: unknown): string {
 /** A ReadableStreamDefaultReader-like stub whose chunks are fed in by the test, one at a time. */
 function createControllableReader() {
   const encoder = new TextEncoder();
-  type Chunk = { value?: Uint8Array; done: boolean };
+  interface Chunk {
+    value?: Uint8Array;
+    done: boolean;
+  }
   const queue: Chunk[] = [];
-  const waiters: Array<(chunk: Chunk) => void> = [];
+  const waiters: ((chunk: Chunk) => void)[] = [];
 
   function deliver(chunk: Chunk): void {
     const waiter = waiters.shift();
