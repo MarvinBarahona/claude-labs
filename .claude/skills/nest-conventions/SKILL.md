@@ -18,6 +18,7 @@ General best practices for writing modern NestJS code, independent of any one pr
 - DTOs are plain classes decorated with `class-validator` decorators (`@IsString()`, `@IsInt()`, etc.), transformed with `class-transformer`.
 - Enable a global `ValidationPipe` (`whitelist: true`, `transform: true`) rather than validating manually in controllers.
 - Keep request/response shapes explicit — a DTO per request body and, where the response shape matters for consumers, a response DTO — rather than passing loosely-typed objects through.
+- When a DTO field pairs a `class-validator` decorator with a type imported from another file (e.g. `@IsIn(MODEL_TIERS) modelChoice: ModelTier;`), import that type with `import type` specifically — a plain `import { X, Y } from '...'` compiles fine for every other usage but trips TS1272 (`emitDecoratorMetadata` needs a real value to reference a cross-file string-literal-union type) on the decorated field. Neither `ts-jest` (`isolatedModules: true`) nor type-aware `eslint` catches this; only `tsc` itself does, so it can slip past `npm test` and `npm run lint` and only surface at `nest start`/build time.
 
 ## Configuration
 
