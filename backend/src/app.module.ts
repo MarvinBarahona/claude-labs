@@ -8,6 +8,7 @@ import { ModelConfigModule } from './shared/model-config/model-config.module';
 import { FakeModeModule } from './shared/fake-mode/fake-mode.module';
 import { ApiErrorHandlingModule } from './shared/api-error-handling/api-error-handling.module';
 import { FoundationsConsoleModule } from './foundations-console/foundations-console.module';
+import { MessagesConsoleModule } from './messages-console/messages-console.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { FoundationsConsoleModule } from './foundations-console/foundations-cons
     FakeModeModule,
     ApiErrorHandlingModule,
     FoundationsConsoleModule,
+    MessagesConsoleModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api{/*splat}'],
