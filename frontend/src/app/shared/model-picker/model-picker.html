@@ -1,0 +1,18 @@
+<fieldset class="flex flex-col gap-1">
+  <legend class="text-xs font-bold uppercase tracking-wide text-foreground">Model</legend>
+  <div class="flex flex-wrap gap-3">
+    @for (option of modelOptions; track option.value) {
+      <label class="flex items-center gap-1 text-xs">
+        <input
+          type="radio"
+          name="model-choice"
+          [attr.aria-label]="option.label"
+          [value]="option.value"
+          [checked]="value() === option.value"
+          (change)="onChange(option.value)"
+        />
+        {{ option.label }}
+      </label>
+    }
+  </div>
+</fieldset>
