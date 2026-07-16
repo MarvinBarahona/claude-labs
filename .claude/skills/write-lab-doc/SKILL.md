@@ -18,7 +18,7 @@ The lab's actual implementation, and only this lab's:
 - Its Angular route/component (`frontend/`) — what it demonstrates, what inputs it takes.
 - Its NestJS module (`backend/`) — the real request(s) it sends to the Claude API: model, params, tool/thinking/caching config, whatever's actually there.
 
-Don't read the rest of the frontend/backend tree beyond what this one lab touches.
+Don't read the rest of the frontend/backend tree beyond what this one lab touches — except `frontend/src/app/core/lab-catalog.ts`, below: it isn't part of any one lab's own area, but this skill is the one place a lab's entry there gets added or refreshed.
 
 ## Write
 
@@ -30,6 +30,10 @@ Produce or refresh `frontend/public/lab-docs/<slug>.md`, aimed at a developer wh
 - The response shape worth knowing about (key fields, what to look for), again grounded in what the code actually handles.
 - Any gotcha worth calling out (a limit, an incompatibility, a common mistake) — only if it's already evident from the code or its comments, not speculation.
 
+## Update the lab index
+
+Add or update this lab's entry in `frontend/src/app/core/lab-catalog.ts`'s `LAB_CATALOG` — a `goal` and a list of `concepts`, keyed by the lab's slug. Ground both in the same code just read above, not invented content, same rule as the doc itself.
+
 ## Keep current
 
-Re-run this whenever a lab's code has changed enough that its in-app doc would mislead a reader — that's a judgment call to make each time, not a scheduled step.
+Re-run this whenever a lab's code has changed enough that its in-app doc, or its `LAB_CATALOG` entry, would mislead a reader — that's a judgment call to make each time, not a scheduled step.
