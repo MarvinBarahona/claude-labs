@@ -1,6 +1,6 @@
 # Task — Response Envelope Builder
 
-**Status:** 📝 Draft.
+**Status:** 📋 Planned.
 
 ## Description
 
@@ -10,12 +10,34 @@ Splitting Foundations Console into Messages Console and Structured Output Consol
 
 Deliberately narrow: only the `{ request, response, usage, stopReason }` skeleton every lab always produces. The optional `calls` (multi-call turns) and `cache` (cache read/write status) fields `architecture.md` also defines stay assembled by whichever lab actually has a tool loop or places a cache breakpoint — Messages Console and Structured Output Console don't use either, so this task has no opinion on them yet. Model-tier resolution (`ModelConfigService.getModel(choice)`) is already a one-line delegation to an existing shared module and doesn't need its own wrapper here.
 
-## Open questions
+Streaming's own envelope reconstruction (`accumulateStreamedContent`/`buildEnvelopeFromEvents` in the current `foundations-console.service.ts`) stays lab-local to `feature-messages-console.md` rather than moving here — it's the only consumer that streams, so promoting it now would be speculative ahead of a real second streaming consumer, the same "wait for a second consumer" reasoning this task itself was just promoted under. Its final step still calls this task's `build()` (below) once the response is reconstructed, so the two pieces compose rather than duplicate.
 
-- Exact module/service name and file layout under `backend/src/shared/envelope-builder/` — routine, left to the planning pass.
-- Whether streaming's own envelope reconstruction (`accumulateStreamedContent` / `buildEnvelopeFromEvents` in the current `foundations-console.service.ts`) belongs in this shared module too, or stays local to Messages Console since it's the only consumer that streams. Leaning toward keeping it lab-local until a second streaming consumer exists — same "wait for a second consumer" rule this task itself was just promoted under — but worth confirming during planning.
+## Interface
 
-## Dependencies
+`backend/src/shared/envelope-builder/`:
 
-- [`anthropic-client.md`](../shared/anthropic-client.md) — `AnthropicMessage` / `AnthropicMessageParams` types this helper's input/output are built against.
-- [`architecture.md`](../technical/architecture.md), "Request/response contract (the inspector's data shape)" — the exact envelope shape this task implements.
+- **`envelope-builder.types.ts`** — `TurnUsage` (`{ inputTokens: number; outputTokens: number; cacheCreationInputTokens?: number; cacheReadInputTokens?: number }`) and `TurnEnvelope` (`{ request: AnthropicMessageParams; response: AnthropicMessage; usage: TurnUsage; stopReason: string | null }`), replacing `foundations-console.service.ts`'s current lab-local `MessagesEnvelope`/`TurnUsage` types.
+- **`envelope-builder.service.ts`** — `EnvelopeBuilderService.build(params: AnthropicMessageParams, response: AnthropicMessage): TurnEnvelope`, moved verbatim from `foundations-console.service.ts`'s existing private `buildEnvelope` method (same field mapping, no behavior change).
+- **`envelope-builder.module.ts`** — `EnvelopeBuilderModule` (`providers: [EnvelopeBuilderService], exports: [EnvelopeBuilderService]`).
+
+## Depends on
+
+- `anthropic-client` (`Done`) — [`anthropic-client.md`](../shared/anthropic-client.md), "Interface" — the `AnthropicMessage`/`AnthropicMessageParams` types `build()`'s signature is built against.
+- `architecture.md`, "Request/response contract (the inspector's data shape)" — the exact envelope shape this task implements.
+
+## Test scenarios
+
+**Automated:**
+- [ ] A typical response (only `input_tokens`/`output_tokens` on `usage`, no cache fields) → `build()` returns `usage.cacheCreationInputTokens`/`usage.cacheReadInputTokens` as `undefined`, not `0`.
+- [ ] A response whose `usage` includes `cache_creation_input_tokens`/`cache_read_input_tokens` → both map to their camelCase `TurnEnvelope.usage` fields.
+- [ ] `stopReason` reflects `response.stop_reason` unchanged, including when it's `null`.
+- [ ] `request`/`response` on the returned envelope are the exact same values passed in (passthrough, never reshaped or mutated).
+
+No manual scenarios — pure backend logic, no UI or running-app surface of its own.
+
+## To-do list
+
+- [ ] Create `backend/src/shared/envelope-builder/envelope-builder.types.ts` (`TurnUsage`, `TurnEnvelope`) per "Interface" above.
+- [ ] Create `backend/src/shared/envelope-builder/envelope-builder.service.ts` (`EnvelopeBuilderService.build()`), moved verbatim from `foundations-console.service.ts`'s existing `buildEnvelope` method.
+- [ ] Create `backend/src/shared/envelope-builder/envelope-builder.module.ts` (`EnvelopeBuilderModule`).
+- [ ] Add `backend/src/shared/envelope-builder/envelope-builder.service.spec.ts` covering the Test scenarios above.

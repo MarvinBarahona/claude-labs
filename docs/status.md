@@ -33,10 +33,10 @@ This table is a summary pointer — each skill above is the authoritative defini
 | API error handling | Task | `api-error-handling` | ✅ Done | [`api-error-handling.md`](shared/api-error-handling.md) |
 | Anthropic client | Task | `anthropic-client` | ✅ Done | [`anthropic-client.md`](shared/anthropic-client.md) |
 | Foundations Console | Feature | `foundations-console` | ✅ Done | [`foundations-console.md`](features/foundations-console.md) |
-| Response Envelope Builder | Task | `envelope-builder` | 📝 Draft | [`task-envelope-builder.md`](planning/task-envelope-builder.md) |
-| Model Picker | Task | `model-picker` | 📝 Draft | [`task-model-picker.md`](planning/task-model-picker.md) |
-| Messages Console | Feature | `messages-console` | 📝 Draft | [`feature-messages-console.md`](planning/feature-messages-console.md) |
-| Structured Output Console | Feature | `structured-output-console` | 📝 Draft | [`feature-structured-output-console.md`](planning/feature-structured-output-console.md) |
+| Response Envelope Builder | Task | `envelope-builder` | 📋 Planned | [`task-envelope-builder.md`](planning/task-envelope-builder.md) |
+| Model Picker | Task | `model-picker` | 📋 Planned | [`task-model-picker.md`](planning/task-model-picker.md) |
+| Messages Console | Feature | `messages-console` | 📋 Planned | [`feature-messages-console.md`](planning/feature-messages-console.md) |
+| Structured Output Console | Feature | `structured-output-console` | 📋 Planned | [`feature-structured-output-console.md`](planning/feature-structured-output-console.md) |
 | Retire Foundations Console | Task | `retire-foundations-console` | 📋 Planned | [`task-retire-foundations-console.md`](planning/task-retire-foundations-console.md) |
 | Frontend browser E2E tests | Task | `frontend-browser-e2e-tests` | 📋 Planned | [`task-frontend-browser-e2e-tests.md`](planning/task-frontend-browser-e2e-tests.md) |
 | Demo deploy | Task | `demo-deploy` | 📋 Planned | [`task-demo-deploy.md`](planning/task-demo-deploy.md) |
