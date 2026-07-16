@@ -1,0 +1,93 @@
+<div class="flex flex-col gap-6">
+  <h1 class="text-xl font-bold text-foreground">Messages Console</h1>
+
+  <app-docs-panel [slug]="'messages-console'" />
+
+  <section class="flex flex-col gap-4 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+    <h2 class="text-base font-bold text-foreground">Transcript</h2>
+
+    <div class="flex flex-col lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
+      <div class="flex flex-col gap-4 pb-4 lg:pb-0">
+        <div>
+          <app-model-picker [value]="modelChoice()" (valueChange)="onModelChoiceChange($event)" />
+        </div>
+
+        <label class="flex flex-col gap-1 lg:max-w-xs">
+          <span class="text-xs font-bold tracking-wide text-foreground">Temperature ({{ temperature() }})</span>
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            aria-label="Temperature"
+            [value]="temperature()"
+            (input)="onTemperatureChange($event)"
+          />
+        </label>
+
+        <label class="flex items-center gap-2 text-xs">
+          <input type="checkbox" aria-label="Stream response" [checked]="streamingEnabled()" (change)="onStreamingToggle($event)" />
+          <span class="text-xs font-bold tracking-wide text-foreground">Stream Response ({{ streamingEnabled() ? 'Yes' : 'No' }})</span>
+        </label>
+      </div>
+
+      <label class="flex flex-col gap-1 pb-4 lg:pb-0">
+        <span class="text-xs font-bold tracking-wide text-foreground">System Prompt</span>
+        <textarea
+          class="h-full min-h-24 rounded-sm border border-border bg-background p-2 text-sm"
+          rows="3"
+          aria-label="System prompt"
+          placeholder="Optional system prompt…"
+          [value]="systemPrompt()"
+          (input)="onSystemPromptChange($event)"
+        ></textarea>
+      </label>
+
+      <div class="mt-6 flex flex-col gap-2 border-t border-border pt-4 lg:col-span-2">
+        <ol class="flex flex-col gap-2" data-testid="transcript-list">
+          @for (message of displayMessages(); track $index) {
+            <li class="flex" [class.justify-end]="message.role === 'user'">
+              <div
+                class="flex max-w-[80%] flex-col gap-0.5 rounded-lg px-3 py-2"
+                [class.bg-primary]="message.role === 'user'"
+                [class.text-primary-foreground]="message.role === 'user'"
+                [class.items-end]="message.role === 'user'"
+                [class.bg-secondary]="message.role === 'assistant'"
+                [class.text-secondary-foreground]="message.role === 'assistant'"
+              >
+                <span class="text-[10px] font-bold uppercase tracking-wide opacity-70">{{ message.role }}</span>
+                <p class="whitespace-pre-wrap text-sm">{{ message.text }}</p>
+              </div>
+            </li>
+          }
+        </ol>
+
+        @if (transcriptError(); as error) {
+          <p role="alert" class="text-xs text-destructive">{{ error }}</p>
+        }
+
+        <div class="flex gap-2">
+          <input
+            class="flex-1 rounded-sm border border-border bg-background p-2 text-sm"
+            type="text"
+            aria-label="Message"
+            placeholder="Say something…"
+            [value]="draftMessage()"
+            (input)="onDraftMessageChange($event)"
+            (keydown.enter)="sendTranscriptMessage()"
+          />
+          <button
+            type="button"
+            class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+            [disabled]="!draftMessage().trim()"
+            (click)="sendTranscriptMessage()"
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <app-inspector-panel [call]="inspectorCall()" />
+</div>

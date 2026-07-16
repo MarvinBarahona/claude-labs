@@ -7,6 +7,12 @@ import type { FeatureRoute } from './feature-route';
  */
 export const FEATURE_ROUTES: readonly FeatureRoute[] = [
   {
+    slug: 'messages-console',
+    label: 'Messages Console',
+    loadComponent: () =>
+      import('../messages-console/messages-console').then((m) => m.MessagesConsole),
+  },
+  {
     slug: 'foundations-console',
     label: 'Foundations Console',
     loadComponent: () =>
