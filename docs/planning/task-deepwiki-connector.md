@@ -4,7 +4,7 @@
 
 ## Purpose
 
-The shared DeepWiki MCP integration (`mcp.deepwiki.com`, no auth required) — a public remote MCP server that answers questions about a public GitHub repo's codebase. Originally embedded inline in Web & Repo Research Reporter's plan, but reused as-is by Agent Playground — the same "more than one feature will need it" shape `task-github-provider.md` and `task-caching-layer.md` already cover, so it's pulled out as its own task rather than left as an implicit reference in one feature's file.
+The shared DeepWiki MCP integration (`mcp.deepwiki.com`, no auth required) — a public remote MCP server that answers questions about a public GitHub repo's codebase. Originally embedded inline in Web & Repo Research Reporter's plan, but reused as-is by Agent Playground — the same "more than one feature will need it" shape `github-provider.md` and `task-caching-layer.md` already cover, so it's pulled out as its own task rather than left as an implicit reference in one feature's file.
 
 ## Interface
 

@@ -21,13 +21,13 @@ The one deliberate agent in the app, built specifically to contrast with Workflo
 
 Last, deliberately, since agents are the exception here, not the default (see `status.md` for current position).
 
-- Requires the **GitHub data provider** ([`task-github-provider.md`](task-github-provider.md)).
+- Requires the **GitHub data provider** ([`github-provider.md`](../shared/github-provider.md)).
 - Requires the **DeepWiki MCP connector** ([`task-deepwiki-connector.md`](task-deepwiki-connector.md)), reused from Web & Repo Research Reporter.
 - Requires **Workflow Gallery** to exist, since this feature closes with a direct comparison against it.
 
 ## Shared functionality used
 
-- GitHub data provider ([`task-github-provider.md`](task-github-provider.md)).
+- GitHub data provider ([`github-provider.md`](../shared/github-provider.md)).
 - DeepWiki MCP connector ([`task-deepwiki-connector.md`](task-deepwiki-connector.md)).
 
 ## Files API / base64

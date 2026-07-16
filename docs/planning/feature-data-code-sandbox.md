@@ -22,12 +22,12 @@ Pull real activity data for the subject repo (issues/commits/stars over time, vi
 
 Right after Document Research Assistant (see `status.md` for current position).
 
-- Requires the **GitHub data provider** ([`task-github-provider.md`](task-github-provider.md)).
+- Requires the **GitHub data provider** ([`github-provider.md`](../shared/github-provider.md)).
 - Requires the **content-block builder** ([`task-content-block-builder.md`](task-content-block-builder.md), first used by Document Research Assistant) to already exist, since Files API is mandatory here — this is why this feature is built after Document Research Assistant rather than earlier.
 
 ## Shared functionality used
 
-- GitHub data provider ([`task-github-provider.md`](task-github-provider.md)).
+- GitHub data provider ([`github-provider.md`](../shared/github-provider.md)).
 - Content-block builder ([`task-content-block-builder.md`](task-content-block-builder.md)), used in **Files-API-only mode** (see below).
 
 ## Files API / base64

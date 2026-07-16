@@ -25,14 +25,14 @@ The flagship feature, built on real open issues from the subject GitHub repo: **
 
 Right after Live Tool-Use Console proves the GitHub data provider and tool loop, and after the caching layer is built (see `status.md` for current position). This is the highest-value feature, so it's built early rather than last.
 
-- Requires the **GitHub data provider** ([`task-github-provider.md`](task-github-provider.md)).
+- Requires the **GitHub data provider** ([`github-provider.md`](../shared/github-provider.md)).
 - Requires the **caching layer** ([`task-caching-layer.md`](task-caching-layer.md), built right before this feature) — the system prompt/tool definitions shared across this feature's routing/chaining/parallelization/evaluator-optimizer calls are cached, so this piece must already exist.
 - Requires Live Tool-Use Console's proven tool-use/tool-loop patterns.
 - **Feeds forward:** Extended Thinking Bench reuses this feature's real issue data for its thinking on/off comparison; Agent Playground ends with a side-by-side comparison against this feature's fixed-pipeline approach.
 
 ## Shared functionality used
 
-- GitHub data provider ([`task-github-provider.md`](task-github-provider.md)).
+- GitHub data provider ([`github-provider.md`](../shared/github-provider.md)).
 - Config/model layer ([`model-config.md`](../shared/model-config.md)) — notably, this is where routing drops to Haiku for the classification step.
 - Caching layer ([`task-caching-layer.md`](task-caching-layer.md)), shared with Document Research Assistant.
 

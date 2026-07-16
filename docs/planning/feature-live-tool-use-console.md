@@ -5,7 +5,7 @@
 **Nav position:** last (after `structured-output-console`, the current last entry in `FEATURE_ROUTES`).
 
 **Depends on:**
-- [`task-github-provider.md`](task-github-provider.md) — `GithubClient`'s "Interface" section (`getIssues`/`getCommits`/`getReleases` methods and their typed return shapes). This feature is that task's first consumer.
+- [`github-provider.md`](../shared/github-provider.md) — `GithubClient`'s "Interface" section (`getIssues`/`getCommits`/`getReleases` methods and their typed return shapes). This feature is that task's first consumer.
 - [`inspector-panel.md`](../shared/inspector-panel.md), "Interface" section — the `InspectorCall` shape and its generic per-block-type content rendering (already covers `tool_use`/`tool_result` blocks with no per-feature variant needed). See "Shared-component change needed" below — this feature is the first consumer needing the `calls` field `architecture.md` defines, which `InspectorCall` doesn't carry yet.
 - [`model-config.md`](../shared/model-config.md), "Interface" section — `ModelConfigService.getModel(tier)`.
 - [`model-picker.md`](../shared/model-picker.md) — the `ModelPicker` component and its `ModelChoice` type.
@@ -41,7 +41,7 @@ No new env vars — both sources' config already exists (`env-config.md`).
 
 ## Tool failure vs. transport failure
 
-Per `architecture.md`'s "Error contract": a tool's own logical failure is not a transport error. A location name that `get_weather`'s geocoding lookup can't resolve returns a `tool_result` with `is_error: true` and a clear message (e.g. `No location found matching "<location>"`), letting Claude see the failure and retry or explain it to the user — it never throws. By contrast, an actual `ExternalApiError` from either data source's own client (Open-Meteo unreachable/5xx, or `GithubClient` throwing per `task-github-provider.md`) is a genuine transport failure — it propagates uncaught out of the tool-loop code to the same `502`/mid-stream `event: error` path every other lab already uses, per `api-error-handling.md`. The tool-execution code only ever wraps the *first* kind (a well-formed call that legitimately finds nothing) into `is_error: true`; it never swallows the second kind into a fake success.
+Per `architecture.md`'s "Error contract": a tool's own logical failure is not a transport error. A location name that `get_weather`'s geocoding lookup can't resolve returns a `tool_result` with `is_error: true` and a clear message (e.g. `No location found matching "<location>"`), letting Claude see the failure and retry or explain it to the user — it never throws. By contrast, an actual `ExternalApiError` from either data source's own client (Open-Meteo unreachable/5xx, or `GithubClient` throwing per `github-provider.md`) is a genuine transport failure — it propagates uncaught out of the tool-loop code to the same `502`/mid-stream `event: error` path every other lab already uses, per `api-error-handling.md`. The tool-execution code only ever wraps the *first* kind (a well-formed call that legitimately finds nothing) into `is_error: true`; it never swallows the second kind into a fake success.
 
 ## Independent implementation tracks
 
@@ -80,7 +80,7 @@ Tool definitions (both custom, backend-executed, both offered on every call):
 Right after the GitHub data provider exists (see `status.md` for current position).
 
 - Requires the App Shell's shared chrome (inspector panel, docs panel, model picker, config/model layer) to already exist — Messages Console and Structured Output Console are the existing examples of this composition, not a dependency of their own.
-- Requires the **GitHub data provider** ([`task-github-provider.md`](task-github-provider.md)) to already exist — this feature is the provider's first consumer.
+- Requires the **GitHub data provider** ([`github-provider.md`](../shared/github-provider.md)) to already exist — this feature is the provider's first consumer.
 - Introduces the tool-use/tool-loop pattern that Workflow Gallery (built right after this one) and Agent Playground (last) both reuse.
 
 ## Frontend
@@ -132,7 +132,7 @@ Not applicable — no documents or images in this feature.
 
 ## To-do list
 
-- [ ] Add `github-provider`'s `GithubClient`-backed tool function for `get_repo_stats` (assumes `task-github-provider.md` is already built).
+- [ ] Add `github-provider`'s `GithubClient`-backed tool function for `get_repo_stats` (see [`github-provider.md`](../shared/github-provider.md)).
 - [ ] Add lab-local `OpenMeteoClient` abstract-class DI token + `RealOpenMeteoClient` (geocode-then-forecast, `axios`) at `backend/src/live-tool-use-console/` (lab-local per `repo-layout.md` — only this lab consumes it today), and `FakeOpenMeteoClient` at `backend/src/testing/open-meteo/`, exported from `backend/src/testing/index.ts`.
 - [ ] Add `backend/src/testing/http-fixtures/open-meteo.fixtures.ts` — `nock` fixtures for geocoding + forecast success and a not-found geocoding result.
 - [ ] Implement the tool-loop controller/service: both tool definitions, the loop (repeat on `stop_reason: "tool_use"` until it isn't), `is_error: true` tool results for a resolvable-but-not-found lookup, uncaught propagation for a genuine `ExternalApiError`.
