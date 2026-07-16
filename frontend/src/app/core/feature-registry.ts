@@ -20,10 +20,4 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
         (m) => m.StructuredOutputConsole,
       ),
   },
-  {
-    slug: 'foundations-console',
-    label: 'Foundations Console',
-    loadComponent: () =>
-      import('../foundations-console/foundations-console').then((m) => m.FoundationsConsole),
-  },
 ];
