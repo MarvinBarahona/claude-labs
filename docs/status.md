@@ -8,15 +8,15 @@ The single source of truth for what's next and what's already done. Every work i
 
 The leading emoji is the color cue for each status (plain Markdown can't set text color on GitHub) — always ⚪/📝/📋/🔵/✅ in that order, both in this table's Status column and in a plan file's own `**Status:**` line. Reused, don't invent new ones.
 
-| Transition | Triggered by |
+| Transition | Happens when |
 |---|---|
-| — → `Draft` | `draft-work-item` |
-| `Draft` → `Planned` | `plan-work-item` |
-| `Planned` → `In progress` | `build-work-item`, at the start of implementation (not on completion) |
-| `In progress` → `Done` | `graduate-work-item`, only after manual approval of the build |
-| `Draft`/`Planned` → *(row removed)* | `abandon-work-item` |
+| — → `Draft` | a plan file is drafted for the item |
+| `Draft` → `Planned` | the draft is fleshed out into a self-contained plan |
+| `Planned` → `In progress` | implementation starts (not on completion) |
+| `In progress` → `Done` | the build is manually approved |
+| `Draft`/`Planned` → *(row removed)* | the item is abandoned before being built |
 
-This table is a summary pointer — each skill above is the authoritative definition of what its transition requires; update this row only if a transition's owning skill changes.
+This table is a summary pointer — whatever process currently carries out each step is the authoritative definition of what its transition requires; update this row only if that changes.
 
 | Work item | Type | Slug | Status | Doc |
 |---|---|---|---|---|

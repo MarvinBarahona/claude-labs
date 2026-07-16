@@ -41,7 +41,7 @@ Built right after `feature-foundations-console` (see `docs/status.md`'s build or
 
 Requires the user's own GCP account access and this repo's GitHub secrets settings — neither is something the coding agent can do itself, same reasoning as `task-anthropic-client.md`'s manual real-key testing rows.
 
-**User has confirmed they'll do this via the GCP Console and GitHub web UI, not the `gcloud` CLI.** At `build-work-item` time, walk through the five steps below one at a time as console/web click-paths (translating any `gcloud`-flavored step below into its Console equivalent), confirming each step actually succeeded before moving to the next, rather than handing over the whole list at once and assuming it's done.
+**User has confirmed they'll do this via the GCP Console and GitHub web UI, not the `gcloud` CLI.** At build time, walk through the five steps below one at a time as console/web click-paths (translating any `gcloud`-flavored step below into its Console equivalent), confirming each step actually succeeded before moving to the next, rather than handing over the whole list at once and assuming it's done.
 
 1. Enable, on the GCP project: Cloud Run Admin API, Artifact Registry API, IAM Credentials API.
 2. Create an Artifact Registry Docker repo: `gcloud artifacts repositories create claude-labs --repository-format=docker --location=us-central1`.

@@ -2,7 +2,7 @@
 
 Permanent index of project-level technical decisions — tech stack, repo layout, testing strategy, and further decisions as they're made. This file holds no decision content itself, only a pointer to the one file that does: each row below links to the file where that topic actually lives.
 
-This is decisions only — not documentation for a graduated task (a shared functionality a lab depends on). Those live in `docs/shared/<slug>.md` instead; see `writing-docs`.
+This is decisions only — not documentation for a lab's own shared functionality. Those live in `docs/shared/<slug>.md` instead.
 
 The linked files never link to each other or back to this index — this table is the only place that can go stale when a topic is added, split, or retired, and it's the only entry point for finding technical detail.
 
