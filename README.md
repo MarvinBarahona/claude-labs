@@ -52,8 +52,9 @@ See "Modes" above for `FAKE_MODE` — most day-to-day development happens in fak
 - `docker compose -f docker-compose.dev.yml run --rm backend npm run test:e2e` — backend integration tests
 - `docker compose -f docker-compose.dev.yml run --rm frontend npm test -- --watch=false` — frontend unit tests
 - `docker compose -f docker-compose.dev.yml run --rm backend npm run lint` — type-aware lint; `npm test` alone (`ts-jest` with `isolatedModules: true`) doesn't type-check, so a genuine type error can slip through the test command alone
+- `docker compose -f docker-compose.dev.yml run --rm frontend npm run lint` — Angular/TypeScript style and template-accessibility rules; unlike the backend, frontend `npm test` already type-checks (the Angular compiler, not a transpile-only transform), so this lint step isn't filling a type-check gap the way the backend's is
 
-All four use only placeholder environment values — no real credential is needed to build or test either project.
+All five use only placeholder environment values — no real credential is needed to build or test either project.
 
 ## Production
 

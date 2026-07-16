@@ -67,6 +67,7 @@ jobs:
       - run: docker compose -f docker-compose.dev.yml run --rm backend npm run lint
       - run: docker compose -f docker-compose.dev.yml run --rm backend npm test
       - run: docker compose -f docker-compose.dev.yml run --rm backend npm run test:e2e
+      - run: docker compose -f docker-compose.dev.yml run --rm frontend npm run lint
       - run: docker compose -f docker-compose.dev.yml run --rm frontend npm test -- --watch=false
       - name: Configure fake mode for the live dev stack
         run: |
