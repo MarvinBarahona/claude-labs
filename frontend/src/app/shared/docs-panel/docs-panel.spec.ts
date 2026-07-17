@@ -3,6 +3,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { DocsPanel } from './docs-panel';
 
+// Mirrors DocsPanel's own MIN_LOADING_MS — the component doesn't export it, so this is the test's local copy.
+const MIN_LOADING_MS = 500;
+
 describe('DocsPanel', () => {
   async function createFixture(slug: string) {
     await TestBed.configureTestingModule({
@@ -30,7 +33,7 @@ describe('DocsPanel', () => {
     httpMock.expectOne('/lab-docs/foundations-console.md').flush('# Foundations Console');
   });
 
-  it('keeps the skeleton visible for at least 500ms even once the fetch resolves', async () => {
+  it('keeps the skeleton visible for the minimum loading duration even once the fetch resolves', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock } = await createFixture('foundations-console');
 
@@ -40,7 +43,8 @@ describe('DocsPanel', () => {
     let el = fixture.nativeElement as HTMLElement;
     expect(el.querySelectorAll('app-skeleton').length).toBeGreaterThan(1);
 
-    await vi.advanceTimersByTimeAsync(499);
+    // Still mid-flight — even once the HTTP response has landed, the skeleton holds until MIN_LOADING_MS.
+    await vi.advanceTimersByTimeAsync(MIN_LOADING_MS - 1);
     fixture.detectChanges();
     el = fixture.nativeElement as HTMLElement;
     expect(el.querySelectorAll('app-skeleton').length).toBeGreaterThan(1);
@@ -57,7 +61,7 @@ describe('DocsPanel', () => {
 
     const request = httpMock.expectOne('/lab-docs/foundations-console.md');
     request.flush('# Foundations Console\n\nAn intro paragraph.');
-    await vi.advanceTimersByTimeAsync(500);
+    await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
@@ -82,7 +86,7 @@ describe('DocsPanel', () => {
       '[a link](https://example.com)',
     ].join('\n');
     httpMock.expectOne('/lab-docs/foundations-console.md').flush(markdown);
-    await vi.advanceTimersByTimeAsync(500);
+    await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
@@ -101,7 +105,7 @@ describe('DocsPanel', () => {
     httpMock
       .expectOne('/lab-docs/no-such-lab.md')
       .flush('Not Found', { status: 404, statusText: 'Not Found' });
-    await vi.advanceTimersByTimeAsync(500);
+    await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     fixture.detectChanges();
 
     const el = fixture.nativeElement as HTMLElement;
