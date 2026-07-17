@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+test('DELIBERATE CI BREAK — throwaway, reverted immediately', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/this-route-does-not-exist$/);
+});
+
 test('loads at the root redirect and its lab index links are clickable', async ({ page }) => {
   await page.goto('/');
 
