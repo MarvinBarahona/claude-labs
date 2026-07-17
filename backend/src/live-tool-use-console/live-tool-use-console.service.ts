@@ -316,7 +316,6 @@ export class LiveToolUseConsoleService {
     };
   }
 
-  /** Reconstructs a `Message`-shaped response from one underlying call's raw stream events. */
   private buildMessageFromEvents(
     events: AnthropicStreamEvent[],
   ): AnthropicMessage {

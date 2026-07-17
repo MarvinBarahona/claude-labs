@@ -33,7 +33,6 @@ interface ParsedSseEvent {
   readonly data: unknown;
 }
 
-/** Pulls the concatenated text of every `text` content block out of a Messages API response body. */
 function extractResponseText(response: unknown): string {
   if (typeof response !== 'object' || response === null) {
     return '';

@@ -104,7 +104,6 @@ export class MessagesConsoleService {
     return params;
   }
 
-  /** Reconstructs a `Message`-shaped envelope from the raw stream events. */
   private buildEnvelopeFromEvents(
     params: AnthropicMessageParams,
     events: AnthropicStreamEvent[],

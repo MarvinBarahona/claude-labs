@@ -57,7 +57,6 @@ type TurnOutcome = { ok: true; envelope: TurnEnvelope } | { ok: false };
 // skeletons flash by too fast to read as a loading state — hold isAsking for at least this long.
 const MIN_ASKING_MS = 500;
 
-/** Pulls the concatenated text of every `text` content block out of a Messages API response body. */
 function extractResponseText(response: unknown): string {
   if (typeof response !== 'object' || response === null) {
     return '';
@@ -79,7 +78,6 @@ function extractResponseText(response: unknown): string {
   return text;
 }
 
-/** Pulls every `tool_use` content block out of a Messages API response body. */
 function extractToolUses(response: unknown): readonly ToolUseBlock[] {
   if (typeof response !== 'object' || response === null) {
     return [];
@@ -101,7 +99,6 @@ function extractToolUses(response: unknown): readonly ToolUseBlock[] {
   return uses;
 }
 
-/** Pulls every `tool_result` content block out of a request body's messages, keyed by `tool_use_id`. */
 function extractToolResults(request: unknown): Map<string, { result: unknown; isError: boolean }> {
   const results = new Map<string, { result: unknown; isError: boolean }>();
   if (typeof request !== 'object' || request === null) {
@@ -414,7 +411,6 @@ export class LiveToolUseConsole {
   }
 }
 
-/** Finds the most recent still-`running` activity entry for a given tool name. */
 function findLastRunningIndex(activity: readonly ToolActivityEntry[], name: string): number {
   for (let i = activity.length - 1; i >= 0; i--) {
     if (activity[i].name === name && activity[i].status === 'running') {
