@@ -48,4 +48,4 @@ Never reference another skill by name here, project-specific or otherwise — th
 
 - Strict TypeScript throughout (`strict: true`); avoid `any` at module boundaries.
 - Use a structured logger (Nest's built-in `Logger` at minimum) instead of `console.log`.
-- Keep a comment to one short line — a longer WHY (a design rationale, a workaround, a decision worth preserving) belongs in the relevant doc, not a multi-line comment block in the source.
+- Comments are the exception, not the rule — if the code is clear enough on its own, add none. When one is genuinely warranted, keep it to one short line; a longer WHY (a design rationale, a workaround, a decision worth preserving) belongs in the relevant doc, not a multi-line comment block in the source.

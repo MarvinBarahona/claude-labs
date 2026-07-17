@@ -47,7 +47,7 @@ Never reference another skill by name here, project-specific or otherwise — th
 
 - Follow the Angular CLI conventions and generated project structure for the installed Angular version — file naming, folder layout, and schematic defaults change across major versions, so match whatever `ng generate` produces for the version actually in use rather than an older convention from memory.
 - Keep components focused: a component that's accumulating unrelated responsibilities should be split, not grown.
-- Keep a comment to one short line — a longer WHY (a design rationale, a workaround, a decision worth preserving) belongs in the relevant doc, not a multi-line comment block in the source.
+- Comments are the exception, not the rule — if the code is clear enough on its own, add none. When one is genuinely warranted, keep it to one short line; a longer WHY (a design rationale, a workaround, a decision worth preserving) belongs in the relevant doc, not a multi-line comment block in the source.
 
 ## Testing
 
