@@ -197,5 +197,101 @@ describe('FakeAnthropicClient', () => {
         'message_stop',
       ]);
     });
+
+    const weatherRepoTools = [
+      {
+        name: 'get_weather',
+        description: 'Get the current weather conditions for a named location.',
+        input_schema: {
+          type: 'object' as const,
+          properties: { location: { type: 'string' } },
+          required: ['location'],
+        },
+      },
+      {
+        name: 'get_repo_stats',
+        description: "Get stats for the app's configured GitHub repository.",
+        input_schema: { type: 'object' as const, properties: {} },
+      },
+    ];
+
+    it('returns a fabricated tool_use call as the fallback when tools are offered and no tool_result exists yet', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const message = await fake.createMessage({
+        ...params,
+        tools: weatherRepoTools,
+        messages: [{ role: 'user', content: 'How is the repo doing?' }],
+      });
+
+      expect(message.stop_reason).toBe('tool_use');
+      expect(message.content[0]).toMatchObject({
+        type: 'tool_use',
+        name: 'get_repo_stats',
+        input: {},
+      });
+    });
+
+    it('returns the plain-text fallback once the latest message already carries a tool_result', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const message = await fake.createMessage({
+        ...params,
+        tools: weatherRepoTools,
+        messages: [
+          { role: 'user', content: 'How is the repo doing?' },
+          {
+            role: 'assistant',
+            content: [
+              {
+                type: 'tool_use',
+                id: 'fake_tool_call_1',
+                name: 'get_repo_stats',
+                input: {},
+              },
+            ],
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: 'fake_tool_call_1',
+                content: '{}',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(message.stop_reason).toBe('end_turn');
+      expect(message.content[0]).toMatchObject({ type: 'text' });
+    });
+
+    it('yields a fabricated tool_use stream as the fallback when tools are offered and no tool_result exists yet', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const events: AnthropicStreamEvent[] = [];
+      for await (const event of fake.streamMessage({
+        ...params,
+        tools: weatherRepoTools,
+        messages: [{ role: 'user', content: 'What is the weather like?' }],
+        stream: true,
+      })) {
+        events.push(event);
+      }
+
+      const startEvent = events.find(
+        (event) => event.type === 'content_block_start',
+      );
+      expect(startEvent).toMatchObject({
+        content_block: { type: 'tool_use', name: 'get_weather' },
+      });
+      const deltaEvent = events.find((event) => event.type === 'message_delta');
+      expect(deltaEvent).toMatchObject({ delta: { stop_reason: 'tool_use' } });
+    });
   });
 });
