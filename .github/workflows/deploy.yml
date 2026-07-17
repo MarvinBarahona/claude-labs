@@ -7,16 +7,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - name: Configure fake mode for the live dev stack
+        run: |
+          cp backend/.env.example backend/.env
+          sed -i 's/^FAKE_MODE=.*/FAKE_MODE=true/' backend/.env
       - run: docker compose -f docker-compose.dev.yml run --rm backend npm run lint
       - run: docker compose -f docker-compose.dev.yml run --rm backend npm test
       - run: docker compose -f docker-compose.dev.yml run --rm backend npm run test:e2e
       - run: docker compose -f docker-compose.dev.yml run --rm frontend npm run lint
       - run: docker compose -f docker-compose.dev.yml run --rm frontend npm test -- --watch=false
-      - name: Configure fake mode for the live dev stack
-        run: |
-          cp backend/.env.example backend/.env
-          sed -i 's/^FAKE_MODE=.*/FAKE_MODE=true/' backend/.env
       - run: docker compose -f docker-compose.dev.yml run --rm e2e
       - if: always()
         run: docker compose -f docker-compose.dev.yml down
@@ -28,7 +28,7 @@ jobs:
       contents: read
       id-token: write # required for Workload Identity Federation
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: auth
         uses: google-github-actions/auth@v2
         with:
