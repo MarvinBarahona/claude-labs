@@ -6,9 +6,9 @@
 
 ## Claude API features
 
-- **Code execution tool** — server tool (no implementation to write); runs Python in an isolated Docker sandbox with no network access; can execute multiple times per conversation, iterating on results; response mixes `text`, `server_tool_use` (the code that ran), and `code_execution_tool_result` (stdout/errors/output file refs) blocks.
-- **Files API (mandatory here)** — upload a file once, get a file ID, reference it in a message instead of inline base64; the only way to move data into/out of the sandbox since it has no network access — data goes in via file ID, results come out via file ID.
-- **Agent Skills** — a packaged `SKILL.md` (frontmatter `name`/`description`) plus scripts/resources, loaded via `container.skills` alongside the code execution tool (needs both the `code-execution` and `skills` beta headers); progressive disclosure keeps an unused skill's full instructions out of context until Claude judges it relevant; up to 8 skills per request; skill output files land in the Files API. The exact registration mechanism (whether a skill package needs a one-time upload to obtain a skill ID, or is referenced a different way) is confirmed against current Claude API docs at build time — what's fixed here is the `SKILL.md` frontmatter contract and the two beta headers.
+- **Code execution tool** — server tool (no implementation to write), generally available as of tool version `code_execution_20250825` (the version this feature uses — no beta header needed for the tool itself); runs Python in an isolated Docker sandbox with no network access, via a `bash_code_execution` sub-tool (runs shell commands, e.g. `python script.py`) and a `text_editor_code_execution` sub-tool (writes/edits files, including the Python source itself) that Claude gets automatically once the tool is enabled; can execute multiple times per conversation, iterating on results. A bash command's result comes back as a `server_tool_use` (`name: 'bash_code_execution'`) / `bash_code_execution_tool_result` pair, the latter's `content` carrying `stdout`, `stderr`, `return_code`, and `content: [{ file_id, ... }]` — the last is where any file the command created shows up, one entry per created file (there is no separate `code_execution_tool_result` block type).
+- **Files API (mandatory here, needs beta header `files-api-2025-04-14`)** — upload a file once, get a file ID, reference it in a message instead of inline base64; the only way to move data into/out of the sandbox since it has no network access — data goes in via a `container_upload` content block naming the file ID, results come out via the `file_id`s inside a `bash_code_execution_tool_result`'s `content.content`.
+- **Agent Skills (needs beta header `skills-2025-10-02`)** — a packaged `SKILL.md` (frontmatter `name`/`description`) plus scripts/resources, loaded via `container.skills: [{ type: 'custom', skill_id, version: 'latest' }]` alongside the code execution tool; progressive disclosure keeps an unused skill's full instructions out of context until Claude judges it relevant; up to 8 skills per request; skill output files land in the Files API the same way any other sandbox-created file does. A **custom** skill (unlike Anthropic's own pre-built ones, e.g. `xlsx`) needs a one-time registration call before it has a `skill_id` to reference — `POST /v1/skills`, multipart `files[]` carrying the `SKILL.md` plus any helper files, returning a generated `id` — there's no way to point a Messages API request at a `SKILL.md` file path directly.
 
 ## Main idea
 
@@ -41,7 +41,7 @@ The code-execution sandbox has no network access, so the **Files API is the only
 ## Guiding principles
 
 - [`guiding-principles.md`](../technical/guiding-principles.md), "Minimize integrations" — reuses the GitHub data provider; see "Main idea" above for the stars-over-time scope trim this principle motivated.
-- [`guiding-principles.md`](../technical/guiding-principles.md), "One inspector, many labs" — the single call's raw request/response (including the `server_tool_use`/`code_execution_tool_result` blocks) renders through the shared inspector unmodified.
+- [`guiding-principles.md`](../technical/guiding-principles.md), "One inspector, many labs" — the single call's raw request/response (including the `server_tool_use`/`bash_code_execution_tool_result` blocks) renders through the shared inspector unmodified.
 
 ## Architecture
 
@@ -56,13 +56,13 @@ This feature is **non-streaming**, for the same reason Structured Output Console
 - **`POST /api/data-code-sandbox/run`**:
   - Request: `{ prompt: string; useSkill: boolean }` (`prompt` non-empty — plain `400` otherwise).
   - A GitHub data fetch failure → `ExternalApiError('github', ...)` → `502`. An upload or Messages API failure → `ExternalApiError('anthropic', ...)` → `502`.
-  - Flow: fetch the target repo's issues and commits via `GithubClient`, serialize to JSON, upload via `AnthropicClient.uploadFile(jsonBytes, 'application/json')`, then make one Messages API call with the code-execution tool enabled and a user message containing `{ type: 'container_upload', file_id }` alongside `prompt`'s text. When `useSkill` is `true`, the spreadsheet-export skill (see "Agent Skill" below) is loaded via `container.skills`, with the `skills` beta header added alongside `code-execution`.
-  - Any `file_id` appearing in a `code_execution_tool_result` block (an output file the sandbox produced) is downloaded via a new `AnthropicClient.downloadFile(fileId: string): Promise<{ bytes: Buffer; mediaType: string; filename: string }>` method (this feature's own extension of the `AnthropicClient` token — a download-back capability no earlier task needed, distinct from `task-content-block-builder.md`'s upload-focused `uploadFile()`; same pattern otherwise: real implementation calls the SDK's Files API beta download surface and rethrows any failure as `ExternalApiError('anthropic', ...)`, fake implementation returns a canned buffer via the same queue-or-throw idiom as `AnthropicClient`'s other methods).
+  - Flow: fetch the target repo's issues and commits via `GithubClient`, serialize to JSON, upload via `AnthropicClient.uploadFile(jsonBytes, 'application/json')`, then make one Messages API call with the code execution tool (`{ type: 'code_execution_20250825', name: 'code_execution' }`, no beta header of its own) enabled and a user message containing `{ type: 'container_upload', file_id }` alongside `prompt`'s text. Every call sends `betas: ['files-api-2025-04-14']` (Files API is mandatory here regardless of `useSkill`). When `useSkill` is `true`, the spreadsheet-export skill is registered once — lazily, on this service's first `useSkill: true` request per process lifetime, never at module init — via a new `AnthropicClient.registerSkill()` call (see "Agent Skill" below); its returned `skill_id` is cached in memory on the service and reused on every later `useSkill: true` request without registering again. That call's own request adds `container: { skills: [{ type: 'custom', skill_id, version: 'latest' }] }` and `'skills-2025-10-02'` in `betas`, alongside the always-present `files-api-2025-04-14`.
+  - Any `file_id` inside a `bash_code_execution_tool_result` block's `content.content[]` (an output file the sandbox produced) is downloaded via a new `AnthropicClient.downloadFile(fileId: string): Promise<{ bytes: Buffer; mediaType: string; filename: string }>` method (this feature's own extension of the `AnthropicClient` token — a download-back capability no earlier task needed, distinct from `task-content-block-builder.md`'s upload-focused `uploadFile()`; real implementation calls `client.beta.files.retrieveMetadata(fileId)` for `filename`/media type and `client.beta.files.download(fileId)` for the bytes, rethrowing either call's failure as `ExternalApiError('anthropic', ...)`; fake implementation returns a canned buffer/filename via the same queue-or-throw idiom as `AnthropicClient`'s other methods).
   - Success → `200`:
     ```ts
     TurnEnvelope & {
-      executedCode: { code: string; stdout: string; stderr: string }[];  // one entry per server_tool_use / code_execution_tool_result pair, in order; empty if Claude answered without running code
-      outputFiles: { fileId: string; filename: string; mediaType: string; dataBase64: string }[];
+      executedCode: { command: string; stdout: string; stderr: string; returnCode: number }[];  // one entry per server_tool_use (name: 'bash_code_execution') / bash_code_execution_tool_result pair, in order; empty if Claude answered without running a bash command
+      outputFiles: { fileId: string; filename: string; mediaType: string; dataBase64: string }[];  // every file_id inside any bash_code_execution_tool_result's content.content[], downloaded via AnthropicClient.downloadFile()
       skillUsed: boolean;  // whether a server_tool_use block actually invoked the spreadsheet-export skill this turn — not merely whether useSkill was requested
     }
     ```
@@ -71,6 +71,8 @@ This feature is **non-streaming**, for the same reason Structured Output Console
 ## Agent Skill: spreadsheet export
 
 `backend/src/data-code-sandbox/skills/spreadsheet-export/SKILL.md` — frontmatter `name: spreadsheet-export`, `description` telling Claude this skill formats tabular analysis results into a styled `.xlsx` file (headers, auto-sized columns) instead of a plain CSV, plus a helper Python script (e.g. wrapping `openpyxl`) the skill's instructions point Claude at. This is the only skill this feature loads (well under the 8-per-request cap).
+
+**Registration:** `AnthropicClient.registerSkill(files: { filename: string; content: Buffer }[]): Promise<{ id: string }>` (this feature's own extension of the `AnthropicClient` token) reads `SKILL.md` plus the helper script from `backend/src/data-code-sandbox/skills/spreadsheet-export/` and registers them; real implementation calls `client.beta.skills.create({ files, betas: ['skills-2025-10-02'] })`, rethrowing any failure as `ExternalApiError('anthropic', ...)`; fake implementation returns a canned `{ id: 'skill_fake_...' }` via the same queue-or-throw idiom as the client's other methods. `DataCodeSandboxService` calls this once, lazily, on its first `useSkill: true` request, and caches the returned `id` in memory for the rest of the process's lifetime (consistent with `architecture.md`'s "Server-owned session state" — no persistence; a process restart re-registers once, on the next `useSkill: true` request).
 
 ## Frontend
 
@@ -82,14 +84,15 @@ This feature is **non-streaming**, for the same reason Structured Output Console
 
 Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit" buckets:
 
-- [ ] **Unit** — assembles the target repo's issues+commits into JSON, uploads it via `AnthropicClient.uploadFile()`, and includes a `{ type: 'container_upload', file_id }` block in the request.
-- [ ] **Unit** — `useSkill: true` adds the spreadsheet-export skill to `container.skills` and the `skills` beta header; `useSkill: false` omits both, sending only the `code-execution` beta header.
-- [ ] **Unit** — `executedCode` is correctly extracted from paired `server_tool_use`/`code_execution_tool_result` blocks, in order; empty when the response has none.
-- [ ] **Unit** — an output `file_id` in a `code_execution_tool_result` is downloaded via `AnthropicClient.downloadFile()` and included in `outputFiles` with the correct `mediaType`/`filename`/`dataBase64`.
+- [ ] **Unit** — assembles the target repo's issues+commits into JSON, uploads it via `AnthropicClient.uploadFile()`, and includes a `{ type: 'container_upload', file_id }` block in the request, with `betas: ['files-api-2025-04-14']` always present.
+- [ ] **Unit** — `useSkill: true` adds `container: { skills: [{ type: 'custom', skill_id, version: 'latest' }] }` and `'skills-2025-10-02'` to `betas`; `useSkill: false` omits both, sending only `files-api-2025-04-14`.
+- [ ] **Unit** — the skill is registered (`AnthropicClient.registerSkill()`) on the first `useSkill: true` request and not on a second one in the same process — the cached `skill_id` is reused instead.
+- [ ] **Unit** — `executedCode` is correctly extracted from paired `server_tool_use` (`name: 'bash_code_execution'`)/`bash_code_execution_tool_result` blocks — `command` from the tool-use `input`, `stdout`/`stderr`/`returnCode` from the result's `content` — in order; empty when the response has none.
+- [ ] **Unit** — an output `file_id` inside a `bash_code_execution_tool_result`'s `content.content[]` is downloaded via `AnthropicClient.downloadFile()` and included in `outputFiles` with the correct `mediaType`/`filename`/`dataBase64`.
 - [ ] **Unit** — `skillUsed` is `true` only when a `server_tool_use` block actually invokes the skill, `false` when `useSkill` was requested but Claude never used it.
-- [ ] **Unit** — a GitHub fetch failure surfaces as `ExternalApiError('github', ...)` (502); an upload or Messages API failure surfaces as `ExternalApiError('anthropic', ...)` (502).
-- [ ] **Unit** — `FakeAnthropicClient.downloadFile()` throws when nothing's queued, returns the queued/canned buffer otherwise.
-- [ ] **Integration** — a `nock`-intercepted end-to-end run (fixture GitHub + Anthropic responses, including a fixture `code_execution_tool_result` with an output file) proves the full `200` response shape, for both `useSkill` states.
+- [ ] **Unit** — a GitHub fetch failure surfaces as `ExternalApiError('github', ...)` (502); an upload, skill-registration, or Messages API failure surfaces as `ExternalApiError('anthropic', ...)` (502).
+- [ ] **Unit** — `FakeAnthropicClient.downloadFile()` and `.registerSkill()` each throw when nothing's queued, and return the queued/canned result otherwise.
+- [ ] **Integration** — a `nock`-intercepted end-to-end run (fixture GitHub + Anthropic responses, including a fixture `bash_code_execution_tool_result` with an output file) proves the full `200` response shape, for both `useSkill` states.
 - [ ] **Frontend unit** — the prompt form and `useSkill` checkbox; Run disabled on an empty prompt; executed-code/stdout/stderr rendering from a mocked response; an image output file renders inline while a non-image one renders a download link; the `skillUsed` badge reflects the mocked response's value; the results-view skeleton holds for the minimum duration per `loading-states.md`.
 
 ### Manual
@@ -100,9 +103,10 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 ## To-do list
 
 - [ ] Implement the GitHub issues+commits fetch and JSON serialization for the sandbox input file.
-- [ ] Extend `AnthropicClient`/`RealAnthropicClient`/`FakeAnthropicClient` with `downloadFile()`.
-- [ ] Update `anthropic-client.md` in place to document the new method.
-- [ ] Implement the upload + `container_upload` block assembly and the code-execution tool request (betas, `container.skills` toggle).
+- [ ] Extend `AnthropicClient`/`RealAnthropicClient`/`FakeAnthropicClient` with `downloadFile()` and `registerSkill()`.
+- [ ] Update `anthropic-client.md` in place to document both new methods.
+- [ ] Implement the upload + `container_upload` block assembly and the code execution tool request (`files-api-2025-04-14` always, `skills-2025-10-02` + `container.skills` only when `useSkill`).
+- [ ] Implement the lazy skill-registration-and-cache flow on `DataCodeSandboxService` (register on first `useSkill: true` request, reuse the cached `skill_id` afterward).
 - [ ] Author the `spreadsheet-export` `SKILL.md` and its helper script.
 - [ ] Implement `executedCode`/`outputFiles`/`skillUsed` extraction from the response.
 - [ ] Build the frontend: prompt form, `useSkill` checkbox, results view (code/stdout/stderr, file previews, `skillUsed` badge).
