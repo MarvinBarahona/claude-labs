@@ -146,8 +146,9 @@ Manual-only (run once by the user after the workflow and its one-time GCP setup 
 - [x] Push to `main` once secrets are in place; confirm both jobs go green, including the new `e2e` step.
 - [x] Manually verify the live Cloud Run URL (fake-mode banner renders, `/api/smoke-test` returns `200`).
 - [x] Add the live demo URL to `README.md` (one short line) once it's known — not before, since the URL doesn't exist until the first successful deploy.
-- [ ] Deliberately break a test once (throwaway commit/branch) to confirm the gate blocks a deploy, then revert — per Test scenarios above.
-- [ ] Deliberately break a browser E2E scenario once (throwaway commit/branch) to confirm it also blocks a deploy, then revert — per Test scenarios above.
+- [x] Deliberately break a test once (throwaway commit/branch) to confirm the gate blocks a deploy, then revert — per Test scenarios above.
+- [x] Deliberately break a browser E2E scenario once (throwaway commit/branch) to confirm it also blocks a deploy, then revert — per Test scenarios above.
+- [x] Deliberately break the deploy job itself (invalid gcloud flag) to confirm it fails loudly without the previous revision losing traffic, then revert — per Test scenarios above.
 
 ## Open questions
 
