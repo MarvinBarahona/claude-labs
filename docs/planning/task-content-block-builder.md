@@ -19,7 +19,7 @@ This piece is pulled out as its own standalone task rather than being built insi
   - **`base64` mode** — no upload call. Returns `{ type, source: { type: 'base64', media_type: mediaType, data: bytes.toString('base64') } }`.
 - **`ContentBlockBuilderModule`** (`content-block-builder.module.ts`) — imports `AnthropicClientModule`, `providers: [ContentBlockBuilderService], exports: [ContentBlockBuilderService]`.
 
-The exact SDK method name backing `AnthropicClient.uploadFile()` (e.g. `client.beta.files.upload(...)`) is confirmed against the installed `@anthropic-ai/sdk` version at build time — the beta header/flag (`files-api-2025-04-14`) and the two content-block shapes above are what's fixed and don't change regardless of the exact SDK call surface.
+`AnthropicClient.uploadFile()`'s real implementation calls `client.beta.files.upload({ file: Readable.from(bytes), betas: ['files-api-2025-04-14'] })` (confirmed against the installed `@anthropic-ai/sdk` `^0.111.0`'s `client.beta.files` resource), returning `{ id: uploadResult.id }`.
 
 ## Depends on
 
