@@ -141,11 +141,11 @@ Manual-only (run once by the user after the workflow and its one-time GCP setup 
 ## To-do list
 
 - [x] Confirm `frontend-browser-e2e-tests` is `Done` before starting (its `e2e` Compose service is what the `test` job's new step runs).
-- [ ] Manual, one-time (user): GCP project setup, WIF, and repo secrets, per "Manual one-time setup" above.
+- [x] Manual, one-time (user): GCP project setup, WIF, and repo secrets, per "Manual one-time setup" above.
 - [x] Add `.github/workflows/deploy.yml` per Contract above, including the `e2e`-suite step and its `backend/.env` setup step.
-- [ ] Push to `main` once secrets are in place; confirm both jobs go green, including the new `e2e` step.
-- [ ] Manually verify the live Cloud Run URL (fake-mode banner renders, `/api/smoke-test` returns `200`).
-- [ ] Add the live demo URL to `README.md` (one short line) once it's known — not before, since the URL doesn't exist until the first successful deploy.
+- [x] Push to `main` once secrets are in place; confirm both jobs go green, including the new `e2e` step.
+- [x] Manually verify the live Cloud Run URL (fake-mode banner renders, `/api/smoke-test` returns `200`).
+- [x] Add the live demo URL to `README.md` (one short line) once it's known — not before, since the URL doesn't exist until the first successful deploy.
 - [ ] Deliberately break a test once (throwaway commit/branch) to confirm the gate blocks a deploy, then revert — per Test scenarios above.
 - [ ] Deliberately break a browser E2E scenario once (throwaway commit/branch) to confirm it also blocks a deploy, then revert — per Test scenarios above.
 

@@ -2,6 +2,8 @@
 
 A full-stack reference app exercising every major Claude API feature — tool use, server-side tools, MCP connector, extended thinking, multimodal input, prompt caching, the four workflow patterns (evaluator-optimizer, parallelization, chaining, routing), and one deliberate agent example — against real public data sources. Each lab's doc renders inline next to its live demo: a working demo and self-contained documentation in one. A hands-on companion to Anthropic's official Claude API docs — real requests/responses to try yourself — not a replacement for reading them.
 
+**Live demo:** https://claude-labs-demo-325114792854.us-central1.run.app — always fake mode, so it's safe to click around freely; no real credential is ever involved.
+
 **Status:** see [`status.md`](docs/status.md).
 
 **Stack:** Angular (frontend) + NestJS (backend), run exclusively via Docker Compose. See [`technical.md`](docs/technical/technical.md) for details.
