@@ -55,7 +55,7 @@ If the to-do list doesn't actually split into independent tracks — one track s
 
 Within the `## Test scenarios` section, split scenarios into two labeled groups:
 
-- **Automated** — anything a unit or integration test can assert, per `testing-strategy.md`'s four buckets. `build-work-item` implements and runs these itself, in-container, no running app process involved.
+- **Automated** — anything a unit, integration, or Playwright browser test can assert, per `testing-strategy.md`'s five buckets. `build-work-item` implements and runs these itself, in-container. Any work item that adds or changes a lab's own route needs a Playwright scenario in this group — `testing-strategy.md`'s "Frontend browser E2E" bucket is one spec file per lab, not opt-in.
 - **Manual** — anything that needs a person looking at the actually-running app to judge (layout, styling, an interaction only visible in a real browser, a real multi-step click-through) and can't be asserted by a test. Write each as a concrete, numbered step ("do X, expect Y") precise enough for the user to execute directly against their own `docker compose -f docker-compose.dev.yml up` instance — `build-work-item` hands this list to the user to run rather than running it itself by default; see that skill's "Manual test scenarios" section.
 
 A work item fully covered by automated scenarios can leave the manual group empty — don't invent manual steps just to have some.

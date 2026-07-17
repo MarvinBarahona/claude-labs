@@ -41,7 +41,7 @@ As tasks are completed, check them off in the plan file's `## To-do list` sectio
 
 Run the plan file's `## Test scenarios` section, split per `plan-work-item`'s "Automated vs. manual test scenarios":
 
-- **Automated scenarios** — implement and run these directly (the in-container unit/integration test commands from `testing-strategy.md`). This is the only test execution this skill performs itself.
+- **Automated scenarios** — implement and run these directly (the in-container unit/integration/Playwright test commands from `testing-strategy.md`, including `docker compose -f docker-compose.dev.yml run --rm e2e`). This is the only test execution this skill performs itself.
 - **Manual scenarios** — don't start the app, take a screenshot, or otherwise render it yourself to run these. Starting the live app spends the user's own usage on something they'd rather do themselves; see "Manual test scenarios" below instead.
 
 If the plan file has no `## Test scenarios` section yet, stop and flag it — test scenarios are authored during `plan-work-item`, not invented ad hoc here.
