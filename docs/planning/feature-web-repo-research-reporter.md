@@ -1,6 +1,6 @@
 # Feature — Web & Repo Research Reporter
 
-**Status:** 📝 Draft.
+**Status:** 📋 Planned.
 
 **Nav position:** after `feature-document-research-assistant`.
 
@@ -32,10 +32,91 @@ First (and only) MCP integration, built once tool-use patterns from Live Tool-Us
 
 - Inspector panel ([`inspector-panel.md`](../shared/inspector-panel.md)), config/model layer ([`model-config.md`](../shared/model-config.md)).
 - DeepWiki MCP connector ([`task-deepwiki-connector.md`](task-deepwiki-connector.md)).
+- Response Envelope Builder ([`envelope-builder.md`](../shared/envelope-builder.md)).
 
 ## Files API / base64
 
 Not applicable — no documents or images in this feature.
+
+## Guiding principles
+
+- [`guiding-principles.md`](../technical/guiding-principles.md), "Real data, not fixtures" — a live web search and a live DeepWiki call, never canned research content.
+- [`guiding-principles.md`](../technical/guiding-principles.md), "Minimize integrations" — both tools used here (web search, DeepWiki) are either built into the Claude API or already a shared connector; this feature adds no new integration of its own.
+
+## Architecture
+
+- [`architecture.md`](../technical/architecture.md), "Custom tools vs. server-executed tools" — both the web search tool and the MCP connector are server-executed, resolving inside a single Messages API call each; a single turn mixing both (as this feature always does) still resolves in one call, per that section's "a single turn can mix both kinds" note. This is why this feature never produces a `calls` array and needs no app-level tool-loop streaming events.
+
+## Endpoint contract
+
+Non-streaming, single call — the final answer must be schema-conformant JSON (per "Structured output" above), which, per Structured Output Console's own precedent, isn't something worth streaming token-by-token.
+
+`backend/src/web-repo-research-reporter/`:
+
+- **`POST /api/web-repo-research-reporter/run`**:
+  - Request: `{ question: string }` (non-empty — plain `400` otherwise).
+  - Every call includes the web search tool (`web_search_20260209`, `max_uses: 5`) and `DeepwikiConnectorService.buildRequestFragment()`'s `mcp_servers`/`tools`/beta fragment merged into the request, plus the fixed structured-brief schema (not user-editable, same "fixed demo schema" precedent as Structured Output Console):
+    ```ts
+    {
+      type: 'object',
+      properties: {
+        summary: { type: 'string' },
+        findings: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { claim: { type: 'string' }, source: { type: 'string' } },
+            required: ['claim', 'source'],
+            additionalProperties: false,
+          },
+        },
+      },
+      required: ['summary', 'findings'],
+      additionalProperties: false,
+    }
+    ```
+  - If the response has no text block to parse against that schema → `ExternalApiError('anthropic', 'Structured response did not include a text block to parse')` → `502`, same pattern as Structured Output Console.
+  - Success → `200`:
+    ```ts
+    TurnEnvelope & {
+      brief: { summary: string; findings: { claim: string; source: string }[] };
+      searchesPerformed: number;   // count of web_search server_tool_use blocks in the response
+      mcpCallsPerformed: number;   // count of mcp_tool_use blocks in the response
+    }
+    ```
+    No `calls` field (always exactly one call, per the architecture citation above) and no `cache` field (no breakpoint placed — a single call has no repeated prefix to cache).
+
+## Frontend
+
+`frontend/src/app/web-repo-research-reporter/` (`WebRepoResearchReporter`). Stacks `<app-docs-panel [slug]="'web-repo-research-reporter'" />` → the demo (free-text research question per [`forms.md`](../technical/forms.md), Run button, the rendered brief — summary plus a findings list, each with its claim and a clickable source link — and small `searchesPerformed`/`mcpCallsPerformed` counters) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. No streaming toggle (see "Endpoint contract" above). Per [`loading-states.md`](../technical/loading-states.md), the brief view stays mounted with skeleton placeholders while a run is in flight, since a run combining a live search and an MCP call can take noticeably longer than a plain text call.
+
+## Test scenarios
+
+### Automated
+
+Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit" buckets:
+
+- [ ] **Unit** — the request includes the web search tool config and `DeepwikiConnectorService.buildRequestFragment()`'s fragment (`mcp_servers`, `tools`, `mcp-client-2025-11-20` beta).
+- [ ] **Unit** — `searchesPerformed`/`mcpCallsPerformed` are correctly counted from a fake response's `server_tool_use`/`mcp_tool_use` blocks.
+- [ ] **Unit** — `brief` is parsed from the final text block per the fixed schema.
+- [ ] **Unit** — a response with no text block throws `ExternalApiError('anthropic', ...)`.
+- [ ] **Integration** — a `nock`-intercepted end-to-end run against a fixture Anthropic response (including fixture `web_search_tool_result`/`mcp_tool_result` blocks) proves the full `200` shape and the `502` no-text-block path.
+- [ ] **Frontend unit** — the question form and Run button; the brief renders summary/findings/source links and the two counters from a mocked response; the visible error state on a failed request; the results-view skeleton holds for the minimum duration per `loading-states.md`.
+
+### Manual
+
+1. With a real `ANTHROPIC_API_KEY`, ask a real research question about the target repo or its ecosystem — confirm the brief includes at least one claim citing a live web source and at least one claim that reads as DeepWiki-sourced (repo-code-aware), and that `searchesPerformed`/`mcpCallsPerformed` are both nonzero.
+2. Confirm the inspector panel's raw response shows both `web_search_tool_result` and `mcp_tool_result` blocks.
+
+## To-do list
+
+- [ ] Wire the web search tool config (`web_search_20260209`, `max_uses: 5`) into the request.
+- [ ] Import `DeepwikiConnectorModule` and merge its request fragment in.
+- [ ] Implement the fixed structured-brief schema and `output_config` wiring.
+- [ ] Implement `searchesPerformed`/`mcpCallsPerformed` extraction.
+- [ ] Implement the no-text-block `502` path.
+- [ ] Build the frontend: question form, brief rendering, counters.
+- [ ] Wire `WebRepoResearchReporterModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`, `DeepwikiConnectorModule`).
 
 ## Open questions
 

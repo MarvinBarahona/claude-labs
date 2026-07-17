@@ -48,10 +48,10 @@ This table is a summary pointer — whatever process currently carries out each 
 | Content-block builder | Task | `content-block-builder` | 📋 Planned | [`task-content-block-builder.md`](planning/task-content-block-builder.md) |
 | Document Research Assistant | Feature | `document-research-assistant` | 📋 Planned | [`feature-document-research-assistant.md`](planning/feature-document-research-assistant.md) |
 | Data & Code Sandbox | Feature | `data-code-sandbox` | 📋 Planned | [`feature-data-code-sandbox.md`](planning/feature-data-code-sandbox.md) |
-| DeepWiki MCP connector | Task | `deepwiki-connector` | 📝 Draft | [`task-deepwiki-connector.md`](planning/task-deepwiki-connector.md) |
-| Web & Repo Research Reporter | Feature | `web-repo-research-reporter` | 📝 Draft | [`feature-web-repo-research-reporter.md`](planning/feature-web-repo-research-reporter.md) |
-| Vision Lab | Feature | `vision-lab` | 📝 Draft | [`feature-vision-lab.md`](planning/feature-vision-lab.md) |
-| Extended Thinking Bench | Feature | `extended-thinking-bench` | 📝 Draft | [`feature-extended-thinking-bench.md`](planning/feature-extended-thinking-bench.md) |
-| Agent Playground | Feature | `agent-playground` | 📝 Draft | [`feature-agent-playground.md`](planning/feature-agent-playground.md) |
+| DeepWiki MCP connector | Task | `deepwiki-connector` | 📋 Planned | [`task-deepwiki-connector.md`](planning/task-deepwiki-connector.md) |
+| Web & Repo Research Reporter | Feature | `web-repo-research-reporter` | 📋 Planned | [`feature-web-repo-research-reporter.md`](planning/feature-web-repo-research-reporter.md) |
+| Vision Lab | Feature | `vision-lab` | 📋 Planned | [`feature-vision-lab.md`](planning/feature-vision-lab.md) |
+| Extended Thinking Bench | Feature | `extended-thinking-bench` | 📋 Planned | [`feature-extended-thinking-bench.md`](planning/feature-extended-thinking-bench.md) |
+| Agent Playground | Feature | `agent-playground` | 📋 Planned | [`feature-agent-playground.md`](planning/feature-agent-playground.md) |
 
 
