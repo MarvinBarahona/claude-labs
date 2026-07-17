@@ -6,7 +6,7 @@
 
 ## Claude API features
 
-- **Web search tool** — server-executed (Claude runs the search itself, not the app); tool type `web_search_20260209`; key params `max_uses`, `allowed_domains`/`blocked_domains` (mutually exclusive), `user_location`; response has a `server_tool_use` block (the query) plus a `web_search_tool_result` block (`url`, `title`, `page_age`, `encrypted_content`) plus a final `text` block with always-on `citations`; errors come back as a normal 200 with an error object inside the result block, not an HTTP error; billed at $10 per 1,000 searches.
+- **Web search tool** — server-executed (Claude runs the search itself, not the app); tool type `web_search_20260209`; key params `max_uses`, `allowed_domains`/`blocked_domains` (mutually exclusive), `user_location`; response has a `server_tool_use` block (the query) plus a `web_search_tool_result` block (`url`, `title`, `page_age`, `encrypted_content`) plus a final `text` block with always-on `citations`; errors come back as a normal 200 with an error object inside the result block, not an HTTP error; billed at $10 per 1,000 searches. `max_uses` is exposed as a UI control here (see "Endpoint contract") rather than a fixed constant, since it's the one search-tool param whose right value genuinely depends on how deep a given research question needs to go, not something a single planning-time default can get right for every question.
 - **MCP connector** — calls tools on a remote MCP server directly from the Messages API; requires beta header `mcp-client-2025-11-20`; request needs `mcp_servers` (HTTPS URL + optional OAuth `authorization_token`) and a `tools` entry of `type: "mcp_toolset"` per server (allowlist/denylist which of the server's tools are enabled); response carries `mcp_tool_use`/`mcp_tool_result` blocks; only tool calls are supported (no MCP resources/prompts); not eligible for Zero Data Retention.
 - **Structured output** — same `output_config`/JSON-schema mechanism as Foundations Console, used here to shape the final research brief.
 - **Citations carried over from search** — the web search tool's citations (above) flow into the structured brief so each claim can point back to its source.
@@ -54,8 +54,8 @@ Non-streaming, single call — the final answer must be schema-conformant JSON (
 `backend/src/web-repo-research-reporter/`:
 
 - **`POST /api/web-repo-research-reporter/run`**:
-  - Request: `{ question: string }` (non-empty — plain `400` otherwise).
-  - Every call includes the web search tool (`web_search_20260209`, `max_uses: 5`) and `DeepwikiConnectorService.buildRequestFragment()`'s `mcp_servers`/`tools`/beta fragment merged into the request, plus the fixed structured-brief schema (not user-editable, same "fixed demo schema" precedent as Structured Output Console):
+  - Request: `{ question: string; maxSearches?: number }` (`question` non-empty — plain `400` otherwise; `maxSearches` an integer from `1` to `10` when given, defaulting to `5` when omitted — validated via the request DTO, out-of-range or non-integer → plain `400`).
+  - Every call includes the web search tool (`{ type: 'web_search_20260209', name: 'web_search', max_uses: maxSearches }`) and `DeepwikiConnectorService.buildRequestFragment()`'s `mcp_servers`/`tools`/beta fragment merged into the request, plus the fixed structured-brief schema (not user-editable, same "fixed demo schema" precedent as Structured Output Console):
     ```ts
     {
       type: 'object',
@@ -88,7 +88,7 @@ Non-streaming, single call — the final answer must be schema-conformant JSON (
 
 ## Frontend
 
-`frontend/src/app/web-repo-research-reporter/` (`WebRepoResearchReporter`). Stacks `<app-docs-panel [slug]="'web-repo-research-reporter'" />` → the demo (free-text research question per [`forms.md`](../technical/forms.md), Run button, the rendered brief — summary plus a findings list, each with its claim and a clickable source link — and small `searchesPerformed`/`mcpCallsPerformed` counters) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. No streaming toggle (see "Endpoint contract" above). Per [`loading-states.md`](../technical/loading-states.md), the brief view stays mounted with skeleton placeholders while a run is in flight, since a run combining a live search and an MCP call can take noticeably longer than a plain text call.
+`frontend/src/app/web-repo-research-reporter/` (`WebRepoResearchReporter`). Stacks `<app-docs-panel [slug]="'web-repo-research-reporter'" />` → the demo (free-text research question per [`forms.md`](../technical/forms.md), a `maxSearches` control (1–10, defaulting to 5, labeled with the recommended default), Run button, the rendered brief — summary plus a findings list, each with its claim and a clickable source link — and small `searchesPerformed`/`mcpCallsPerformed` counters) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. No streaming toggle (see "Endpoint contract" above). Per [`loading-states.md`](../technical/loading-states.md), the brief view stays mounted with skeleton placeholders while a run is in flight, since a run combining a live search and an MCP call can take noticeably longer than a plain text call. The in-app lab doc (written via `write-lab-doc` once this lab's code exists) covers what raising or lowering `maxSearches` actually changes — more searches can surface more/better-sourced findings at higher latency and cost ($10/1,000 searches), fewer searches trade thoroughness for a faster, cheaper run — so a visitor changing the control understands the tradeoff, not just the number.
 
 ## Test scenarios
 
@@ -96,26 +96,29 @@ Non-streaming, single call — the final answer must be schema-conformant JSON (
 
 Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit" buckets:
 
-- [ ] **Unit** — the request includes the web search tool config and `DeepwikiConnectorService.buildRequestFragment()`'s fragment (`mcp_servers`, `tools`, `mcp-client-2025-11-20` beta).
+- [ ] **Unit** — the request includes the web search tool config with `max_uses` set from `maxSearches` (default `5` when omitted) and `DeepwikiConnectorService.buildRequestFragment()`'s fragment (`mcp_servers`, `tools`, `mcp-client-2025-11-20` beta).
+- [ ] **Unit** — a `maxSearches` outside `1`–`10`, or non-integer, is rejected with a plain `400` by the validation pipe.
 - [ ] **Unit** — `searchesPerformed`/`mcpCallsPerformed` are correctly counted from a fake response's `server_tool_use`/`mcp_tool_use` blocks.
 - [ ] **Unit** — `brief` is parsed from the final text block per the fixed schema.
 - [ ] **Unit** — a response with no text block throws `ExternalApiError('anthropic', ...)`.
 - [ ] **Integration** — a `nock`-intercepted end-to-end run against a fixture Anthropic response (including fixture `web_search_tool_result`/`mcp_tool_result` blocks) proves the full `200` shape and the `502` no-text-block path.
-- [ ] **Frontend unit** — the question form and Run button; the brief renders summary/findings/source links and the two counters from a mocked response; the visible error state on a failed request; the results-view skeleton holds for the minimum duration per `loading-states.md`.
+- [ ] **Frontend unit** — the question form, `maxSearches` control (defaulting to 5), and Run button; the brief renders summary/findings/source links and the two counters from a mocked response; the visible error state on a failed request; the results-view skeleton holds for the minimum duration per `loading-states.md`.
 
 ### Manual
 
-1. With a real `ANTHROPIC_API_KEY`, ask a real research question about the target repo or its ecosystem — confirm the brief includes at least one claim citing a live web source and at least one claim that reads as DeepWiki-sourced (repo-code-aware), and that `searchesPerformed`/`mcpCallsPerformed` are both nonzero.
+1. With a real `ANTHROPIC_API_KEY`, ask a real research question about the target repo or its ecosystem at the default `maxSearches` — confirm the brief includes at least one claim citing a live web source and at least one claim that reads as DeepWiki-sourced (repo-code-aware), and that `searchesPerformed`/`mcpCallsPerformed` are both nonzero.
 2. Confirm the inspector panel's raw response shows both `web_search_tool_result` and `mcp_tool_result` blocks.
+3. Re-run the same question at `maxSearches: 1` and then near `10` — confirm `searchesPerformed` never exceeds the requested cap, and that the lab doc's framing of the tradeoff (fewer/cheaper vs. more/thorough) reads true against what actually changes in the brief.
 
 ## To-do list
 
-- [ ] Wire the web search tool config (`web_search_20260209`, `max_uses: 5`) into the request.
+- [ ] Wire the web search tool config (`web_search_20260209`, `max_uses` from the validated `maxSearches` request field, default `5`) into the request.
 - [ ] Import `DeepwikiConnectorModule` and merge its request fragment in.
 - [ ] Implement the fixed structured-brief schema and `output_config` wiring.
 - [ ] Implement `searchesPerformed`/`mcpCallsPerformed` extraction.
 - [ ] Implement the no-text-block `502` path.
-- [ ] Build the frontend: question form, brief rendering, counters.
+- [ ] Build the frontend: question form, `maxSearches` control, brief rendering, counters.
+- [ ] When writing this lab's in-app doc (`write-lab-doc`), explain what raising/lowering `maxSearches` changes (thoroughness/cost/latency tradeoff), per "Frontend" above.
 - [ ] Wire `WebRepoResearchReporterModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`, `DeepwikiConnectorModule`).
 
 ## Open questions
