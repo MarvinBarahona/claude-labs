@@ -1,6 +1,6 @@
 # Task — Demo deploy
 
-**Status:** 📋 Planned.
+**Status:** 🔵 In progress.
 
 ## Description
 
@@ -140,9 +140,9 @@ Manual-only (run once by the user after the workflow and its one-time GCP setup 
 
 ## To-do list
 
-- [ ] Confirm `frontend-browser-e2e-tests` is `Done` before starting (its `e2e` Compose service is what the `test` job's new step runs).
+- [x] Confirm `frontend-browser-e2e-tests` is `Done` before starting (its `e2e` Compose service is what the `test` job's new step runs).
 - [ ] Manual, one-time (user): GCP project setup, WIF, and repo secrets, per "Manual one-time setup" above.
-- [ ] Add `.github/workflows/deploy.yml` per Contract above, including the `e2e`-suite step and its `backend/.env` setup step.
+- [x] Add `.github/workflows/deploy.yml` per Contract above, including the `e2e`-suite step and its `backend/.env` setup step.
 - [ ] Push to `main` once secrets are in place; confirm both jobs go green, including the new `e2e` step.
 - [ ] Manually verify the live Cloud Run URL (fake-mode banner renders, `/api/smoke-test` returns `200`).
 - [ ] Add the live demo URL to `README.md` (one short line) once it's known — not before, since the URL doesn't exist until the first successful deploy.
@@ -152,3 +152,9 @@ Manual-only (run once by the user after the workflow and its one-time GCP setup 
 ## Open questions
 
 None — resolved during this planning pass (hosting target, auth method, test gating, PR-check scope, failure handling, and — added during this task's re-planning pass — the browser E2E suite's inclusion in the deploy gate, all above).
+
+## Development notes
+
+- Tagged for `docs/technical/` review: the `deploy` job's `env_vars` line was built with a third entry beyond the original Contract, `REPO_URL=${{ github.server_url }}/${{ github.repository }}` — derived entirely from the GitHub Actions execution context (not a repo secret, not hand-maintained), so the deployed fake-mode banner's repo link always matches whatever remote actually ran the deploy. This is additive to the plan's original `env_vars: FAKE_MODE=true,ANTHROPIC_API_KEY=placeholder-fake-mode-key` — no other line in the Contract changed. Cited alongside [`fake-mode.md`](../shared/fake-mode.md)'s existing `AppConfigService.repoUrl`/`REPO_URL` interface, which this only supplies a value for; no code change to that interface was needed.
+- `.github/workflows/deploy.yml` created at the repo root exactly per the Contract above (plus the `REPO_URL` addition noted above) — no other files touched.
+- Remaining to-do items are all manual/user-only per the plan's own "Manual one-time setup" and "Test scenarios" sections (GCP/WIF setup, first push-to-`main`, live URL verification, README demo-URL line, and the two deliberate-break checks) — none of them can be done by the coding agent.

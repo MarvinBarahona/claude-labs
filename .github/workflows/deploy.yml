@@ -1,0 +1,61 @@
+name: Deploy demo
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f docker-compose.dev.yml run --rm backend npm run lint
+      - run: docker compose -f docker-compose.dev.yml run --rm backend npm test
+      - run: docker compose -f docker-compose.dev.yml run --rm backend npm run test:e2e
+      - run: docker compose -f docker-compose.dev.yml run --rm frontend npm run lint
+      - run: docker compose -f docker-compose.dev.yml run --rm frontend npm test -- --watch=false
+      - name: Configure fake mode for the live dev stack
+        run: |
+          cp backend/.env.example backend/.env
+          sed -i 's/^FAKE_MODE=.*/FAKE_MODE=true/' backend/.env
+      - run: docker compose -f docker-compose.dev.yml run --rm e2e
+      - if: always()
+        run: docker compose -f docker-compose.dev.yml down
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for Workload Identity Federation
+    steps:
+      - uses: actions/checkout@v4
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+      - name: Build and push image
+        run: |
+          IMAGE=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/claude-labs/app:${{ github.sha }}
+          docker build -f Dockerfile.prod -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: claude-labs-demo
+          region: us-central1
+          image: ${{ env.IMAGE }}
+          flags: --allow-unauthenticated --min-instances=0 --max-instances=1
+          env_vars: FAKE_MODE=true,ANTHROPIC_API_KEY=placeholder-fake-mode-key,REPO_URL=${{ github.server_url }}/${{ github.repository }}
+      - name: Post-deploy health check
+        run: |
+          URL=$(gcloud run services describe claude-labs-demo --region us-central1 --format='value(status.url)')
+          for i in $(seq 1 10); do
+            if curl -fsS "$URL/api/smoke-test" > /dev/null; then echo "healthy"; exit 0; fi
+            sleep 5
+          done
+          echo "Deploy health check failed" >&2
+          exit 1
