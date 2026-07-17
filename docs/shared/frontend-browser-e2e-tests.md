@@ -11,7 +11,8 @@ New top-level `e2e/` directory (sibling to `frontend/`, `backend/` — see `repo
 - **`e2e/package.json`** — pins `@playwright/test` to `1.48.0`, matching the `mcr.microsoft.com/playwright:v1.48.0-noble` image tag it runs under (a mismatch can pull browser binaries the image doesn't already have baked in).
 - **`e2e/playwright.config.ts`** — `testDir: './tests'`, `globalSetup: './global-setup.ts'`, `use.baseURL: 'http://frontend:4200'` (the dev stack's own Compose service name/port).
 - **`e2e/global-setup.ts`** — the fake-mode guard, see below.
-- **`e2e/tests/messages-console.spec.ts`** / **`e2e/tests/structured-output-console.spec.ts`** — one spec file per lab, see "Specs" below.
+- **`e2e/tests/`** — one spec file per lab, plus `home.spec.ts` for the landing route; see "Specs" below for the naming/coverage convention.
+- **`e2e/tests/support/`** — shared pure-function helpers reused across spec files (e.g. `nav-link-after.ts`, which looks up "the nav link right after label X" by content instead of a hard-coded index — see "Specs" below for why). Filenames here deliberately avoid `test`/`spec` so Playwright's own file discovery never picks them up as specs.
 
 ## Running it
 
@@ -29,17 +30,12 @@ Always runs against a fake-mode dev-stack instance, never real mode — verifyin
 
 ## Specs
 
-`messages-console.spec.ts`:
-- Root path (`/`) redirects to Messages Console, reachable as the app's first nav entry; fake-mode banner visible; docs panel renders non-empty content.
-- A non-streamed send (model selection, system prompt, user message) renders the user message right-aligned and the assistant reply left-aligned, with the inspector panel showing that turn's request/response/usage.
-- Toggling streaming on and sending again renders the reply incrementally, ending in the same state a non-streamed reply would, with the inspector's stream-events log populated and its final usage/stopReason matching the non-streaming case.
-- The inspector — one shared instance on this page — reflects whichever of the two sends most recently completed.
+One file per lab under `e2e/tests/`, named `<slug>.spec.ts` (`home.spec.ts` for the landing route). Each spec asserts its page's own nav reachability (relative to whichever entry precedes it — a change to nav order is exactly the kind of thing a spec should catch, so assert the real adjacent entry rather than a hard-coded index believed stable), its docs panel where the page has one, and its own happy-path flow end to end, non-streamed and streamed for a lab that supports both.
 
-`structured-output-console.spec.ts`:
-- Reachable as the nav entry right after Messages Console; docs panel renders non-empty content.
-- Selecting a model and submitting free text renders the parsed `summary`/`sentiment`/`actionItems` fields, with the inspector panel showing that call's request/response/usage.
+This doc doesn't enumerate what each spec currently asserts — that lives in the spec file itself, which is the only place it can't silently go stale. Adding a new lab's spec, or changing an existing one, never requires an edit here.
 
 ## Notes for writing future specs
 
 - `FakeAnthropicClient`'s unqueued-call fallback (see `test-doubles.md`) returns identical canned `usage` (`input_tokens: 10`, `output_tokens: 10`) and `stop_reason: 'end_turn'` for both its non-streaming and streaming paths — a spec can assert those exact values rather than just their shape, and can assert they match between a non-streamed and a streamed turn in the same page.
 - When a lab's own rendered result could contain the same text as what the shared inspector panel also renders (e.g. a fallback value duplicated in the inspector's request/response/content-block JSON dump), scope a page-wide text assertion with a `data-testid` on that lab's own result container rather than matching page-wide — see `structured-output-console.html`'s `data-testid="structured-result"`, mirroring `messages-console.html`'s existing `data-testid="transcript-list"`.
+- For a tool-use lab whose offered tools aren't queued a response, `FakeAnthropicClient`'s unqueued-call fallback picks whichever offered tool has a name-word (split on `_`, longer than 3 characters) present in the latest user-turn text, falling back to the first offered tool if none match — write the question text to deliberately include (or omit) a given tool's own name word so a spec can assert exactly which tool ran, rather than leaving it to chance.
