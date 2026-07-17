@@ -1,16 +1,17 @@
 import { test, expect } from '@playwright/test';
+import { navLinkAfter } from './support/nav-link-after';
 
-test('root redirects to Messages Console, nav/docs/banner render, and a non-streamed then streamed turn complete', async ({
+test('is reachable right after Home, nav/docs/banner render, and a non-streamed then streamed turn complete', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/home');
 
-  await test.step('root path redirects to Messages Console as the first nav entry', async () => {
+  await test.step('Messages Console is the nav entry right after Home', async () => {
+    const link = await navLinkAfter(page, 'Home');
+    await expect(link).toHaveText('Messages Console');
+    await link.click();
     await expect(page).toHaveURL(/\/messages-console$/);
-
-    const firstNavLink = page.locator('nav a').first();
-    await expect(firstNavLink).toHaveText('Messages Console');
-    await expect(firstNavLink).toHaveClass(/nav-link-active/);
+    await expect(link).toHaveClass(/nav-link-active/);
   });
 
   await test.step('fake-mode banner is visible on page load', async () => {
