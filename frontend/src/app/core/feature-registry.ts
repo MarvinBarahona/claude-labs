@@ -24,4 +24,12 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
         (m) => m.StructuredOutputConsole,
       ),
   },
+  {
+    slug: 'live-tool-use-console',
+    label: 'Live Tool-Use Console',
+    loadComponent: () =>
+      import('../live-tool-use-console/live-tool-use-console').then(
+        (m) => m.LiveToolUseConsole,
+      ),
+  },
 ];
