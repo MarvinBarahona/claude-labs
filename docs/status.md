@@ -43,7 +43,7 @@ This table is a summary pointer — whatever process currently carries out each 
 | GitHub data provider | Task | `github-provider` | ✅ Done | [`github-provider.md`](shared/github-provider.md) |
 | Live Tool-Use Console | Feature | `live-tool-use-console` | ✅ Done | [`live-tool-use-console.md`](features/live-tool-use-console.md) |
 | Demo deploy | Task | `demo-deploy` | ✅ Done | [`demo-deploy.md`](shared/demo-deploy.md) |
-| Caching layer | Task | `caching-layer` | 📋 Planned | [`task-caching-layer.md`](planning/task-caching-layer.md) |
+| Caching layer | Task | `caching-layer` | ✅ Done | [`caching-layer.md`](shared/caching-layer.md) |
 | Workflow Gallery | Feature | `workflow-gallery` | 📋 Planned | [`feature-workflow-gallery.md`](planning/feature-workflow-gallery.md) |
 | Content-block builder | Task | `content-block-builder` | 📋 Planned | [`task-content-block-builder.md`](planning/task-content-block-builder.md) |
 | Document Research Assistant | Feature | `document-research-assistant` | 📋 Planned | [`feature-document-research-assistant.md`](planning/feature-document-research-assistant.md) |

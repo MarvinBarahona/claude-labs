@@ -26,7 +26,7 @@ The flagship feature, built on real open issues from the subject GitHub repo: **
 Right after Live Tool-Use Console proves the GitHub data provider and tool loop, and after the caching layer is built (see `status.md` for current position). This is the highest-value feature, so it's built early rather than last.
 
 - Requires the **GitHub data provider** ([`github-provider.md`](../shared/github-provider.md)).
-- Requires the **caching layer** ([`task-caching-layer.md`](task-caching-layer.md), built right before this feature) — the system prompt/tool definitions shared across this feature's routing/chaining/parallelization/evaluator-optimizer calls are cached, so this piece must already exist.
+- Requires the **caching layer** ([`caching-layer.md`](../shared/caching-layer.md), built right before this feature) — the system prompt/tool definitions shared across this feature's routing/chaining/parallelization/evaluator-optimizer calls are cached, so this piece must already exist.
 - Requires Live Tool-Use Console's proven tool-use/tool-loop patterns.
 - **Feeds forward:** Extended Thinking Bench reuses this feature's real issue data for its thinking on/off comparison; Agent Playground ends with a side-by-side comparison against this feature's fixed-pipeline approach.
 
@@ -34,7 +34,7 @@ Right after Live Tool-Use Console proves the GitHub data provider and tool loop,
 
 - GitHub data provider ([`github-provider.md`](../shared/github-provider.md)) — `GithubClient.getIssues({ state: 'open', perPage: 100 })` is the only method this feature calls; there's no per-number "get one issue" method on the shared client (its interface only exposes list endpoints, see `github-provider.md`'s "Interface"), so both the issue-picker route and the run route fetch the open-issues list and find the target by number client-side rather than extending the shared provider for a single-feature need.
 - Config/model layer ([`model-config.md`](../shared/model-config.md)) — notably, this is where routing drops to Haiku for the classification step.
-- Caching layer ([`task-caching-layer.md`](task-caching-layer.md)), shared with Document Research Assistant.
+- Caching layer ([`caching-layer.md`](../shared/caching-layer.md)), shared with Document Research Assistant.
 - Response Envelope Builder ([`envelope-builder.md`](../shared/envelope-builder.md)) — builds each individual call's own envelope fragment; this feature assembles those into the extended response below.
 
 ## Files API / base64
@@ -80,7 +80,7 @@ This feature is deliberately **non-streaming** — the pipeline can run up to 16
 
 One evaluator-optimizer **attempt** = 1 routing call (first attempt only) + 1 draft call + 1 refine call + 3 concurrent grading calls (tone / technical accuracy / policy compliance). Routing runs once per turn, not once per attempt — the category doesn't change across retries. If any of the 3 grading calls fails, that failing criterion's feedback is appended to the next attempt's draft-stage prompt and the draft→refine→grade sequence repeats; the loop stops at the first all-pass grading result or after 3 attempts, whichever comes first. Every call in every attempt is recorded in `calls`, in order.
 
-The shared system prompt (repo/issue context common to every stage after routing) is marked as a cache boundary (`CachingLayerService.markBreakpoints(params, [{ region: 'system' }])`, see `task-caching-layer.md`) on every call after the first, so a run's later calls — and a same-issue re-run within the ~1-hour TTL — hit the cache instead of reprocessing the shared context at full price.
+The shared system prompt (repo/issue context common to every stage after routing) is marked as a cache boundary (`CachingLayerService.markBreakpoints(params, [{ region: 'system' }])`, see [`caching-layer.md`](../shared/caching-layer.md)) on every call after the first, so a run's later calls — and a same-issue re-run within the ~1-hour TTL — hit the cache instead of reprocessing the shared context at full price.
 
 Model tiers: routing uses `ModelConfigService.getModel('classification')` (Haiku); every other call (draft, refine, all 3 grading calls) uses `getModel('default')`.
 

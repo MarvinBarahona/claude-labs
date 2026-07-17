@@ -1,0 +1,28 @@
+# Caching Layer
+
+A shared backend helper for placing and tracking prompt-caching breakpoints (system prompts, tool defs, long documents) so no feature hand-rolls its own cache-breakpoint logic. Encodes the mechanics once: processing always runs tools → system → messages, so a breakpoint caches everything before it too; minimum 1024 tokens to cache, up to 4 breakpoints per request, ~1-hour TTL; changing an earlier region invalidates every region after it, forcing a full-price reprocess. Any feature that repeats a system prompt, tool set, or long content block across multiple calls in a session can opt in — the helper isn't tied to any one feature's content, only to where in the block order a cache boundary sits. Read/write status is reported in the shape [`architecture.md`](../technical/architecture.md)'s envelope `cache` field expects, per [`guiding-principles.md`](../technical/guiding-principles.md)'s "One inspector, many labs" — every consumer reports cache status the same way rather than computing it ad hoc.
+
+## Interface
+
+`backend/src/shared/caching-layer/`:
+
+- **`caching-layer.types.ts`** — `CacheBoundary`, a discriminated union naming one point to attach a breakpoint:
+  ```ts
+  type CacheBoundary =
+    | { region: 'tools' }
+    | { region: 'system' }
+    | { region: 'messages'; messageIndex: number };  // cache up through (and including) messages[messageIndex]'s last content block
+  ```
+  The `messages` variant (rather than a single flat `'messages'` region) is what lets a consumer place more than one breakpoint inside a growing conversation — e.g. one on a fetched document early in the history, a later one on the most recent prior turn — which is what "up to 4 breakpoints per request" actually means in practice, not 4 breakpoints spread one-per-top-level-region (there are only 3 of those).
+- **`CachingLayerService`** (`caching-layer.service.ts`):
+  - `markBreakpoints(params: AnthropicMessageParams, boundaries: CacheBoundary[]): AnthropicMessageParams` — returns a new params object (no mutation of the input) with `cache_control: { type: 'ephemeral' }` attached to the target content block of each named boundary. A `system` boundary or a `messages[i]` boundary whose current content is a bare string is first normalized into a single-element content-block array (a plain string can't itself carry `cache_control`) before the property is attached — this is the same string→block-array normalization [`envelope-builder.md`](envelope-builder.md)'s `TurnEnvelope.request` already expects callers of the Messages API to produce, so the returned params stay compatible with it. Throws a plain `Error` with a clear message (`"markBreakpoints: at most 4 cache boundaries allowed, got <n>"`) when `boundaries.length > 4` — a real 400 from the Messages API otherwise, worth catching before the network call. Does **not** validate the 1024-token minimum pre-call: unlike the 4-breakpoint cap, going under the minimum isn't an API error, it's a silent no-op (the region just isn't cached), so there's nothing to validate against — see `readCacheStatus` below for how a consumer actually learns whether a breakpoint "took." Likewise doesn't validate that a named region actually exists (an empty `tools` array for a `{ region: 'tools' }` boundary, or a `messageIndex` out of range) — a boundary naming a region the request doesn't have is a caller error, not this helper's to guard against.
+  - `readCacheStatus(usage: TurnUsage): { read: boolean; write: boolean }` — `read: (usage.cacheReadInputTokens ?? 0) > 0`, `write: (usage.cacheCreationInputTokens ?? 0) > 0`. Takes the already-mapped `TurnUsage` shape from [`envelope-builder.md`](envelope-builder.md)'s `EnvelopeBuilderService.build()` output (not the raw SDK response), so a consumer composes it directly: `build()` then `readCacheStatus(envelope.usage)` to fill `architecture.md`'s `cache: { read, write }` envelope field. This is also the mechanism that makes the 1024-token-minimum case observable at all — a boundary placed under the minimum simply comes back with `write: false`, indistinguishable at this layer from "no boundary was marked," which is the correct behavior (the helper reports what actually happened, not what was requested).
+- **`CachingLayerModule`** (`caching-layer.module.ts`) — `providers: [CachingLayerService], exports: [CachingLayerService]`.
+
+## Using it
+
+Import `CachingLayerModule` into a feature module and inject `CachingLayerService`. Call `markBreakpoints(params, boundaries)` while building a request's `params`, before the `createMessage()`/`streamMessage()` call; call `readCacheStatus(envelope.usage)` after [`envelope-builder.md`](envelope-builder.md)'s `EnvelopeBuilderService.build()` to fill the inspector's `cache` field.
+
+## Testing
+
+- `backend/src/shared/caching-layer/caching-layer.service.spec.ts` — covers `markBreakpoints` attaching `cache_control` to the last element of `tools`, to the system block (including bare-string-system normalization), and to the last content block of a named `messages[messageIndex]` (including bare-string-content normalization); multiple mixed boundaries applied independently in one call without mutating the input `params`; the >4-boundary error; and all three `readCacheStatus` combinations (write-only, read-only, neither present).

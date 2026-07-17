@@ -2,4 +2,5 @@
 
 Append-only log of suggestions the drafting/build process can't apply itself: coding-convention/process changes, and changes to files it doesn't own (`README.md`, `CLAUDE.md`, other skills). Written during planning or graduation, never applied automatically. Reviewed and cleared manually, on your own schedule.
 
-Empty — every note logged so far has been reviewed and its decision written into the corresponding plan or doc file.
+- `caching-layer` — `markBreakpoints`'s per-region mark helpers attach `cache_control` via one generic `withCacheControl<T extends { cache_control?: CacheControlEphemeral | null }>` helper rather than three near-duplicate inline assignments, since the SDK's `ToolUnion`/`ContentBlockParam`/`TextBlockParam` types all carry `cache_control` as an optional field and type-check against a single generic without a cast — worth confirming as a standing convention for any future helper that touches more than one SDK param-block union.
+- `caching-layer` — no validation was added for an empty `tools` array or an out-of-range `messageIndex` when a boundary names that region, since both are caller errors (asking to cache a region that doesn't exist) rather than a case the module itself needs to guard against; worth confirming this "don't validate caller errors the type system already prevents at the call site" stance as a standing convention.

@@ -26,12 +26,12 @@ Fetch a real paper from arXiv, ask multi-turn questions over it with citations e
 After Foundations Console's shell, the GitHub data provider, Live Tool-Use Console, and Workflow Gallery (see `status.md` for current position).
 
 - Requires Foundations Console's shell (inspector panel, config/model layer).
-- Reuses the **caching layer** ([`task-caching-layer.md`](task-caching-layer.md)), shared with Workflow Gallery.
+- Reuses the **caching layer** ([`caching-layer.md`](../shared/caching-layer.md)), shared with Workflow Gallery.
 - Requires the **content-block builder** ([`task-content-block-builder.md`](task-content-block-builder.md), built right before this feature) to already exist — this is its first real consumer. Data & Code Sandbox and Vision Lab depend on it too and are built after this feature.
 
 ## Shared functionality used
 
-- Caching layer ([`task-caching-layer.md`](task-caching-layer.md)).
+- Caching layer ([`caching-layer.md`](../shared/caching-layer.md)).
 - Content-block builder ([`task-content-block-builder.md`](task-content-block-builder.md)) — first real consumer here; later reused by Data & Code Sandbox in Files-API-only mode, and by Vision Lab.
 
 ## Files API / base64
@@ -53,7 +53,7 @@ Concretely: `DocumentResearchAssistantService` keeps an in-memory `Map<sessionId
 ## Depends on
 
 - [`task-content-block-builder.md`](task-content-block-builder.md)'s `ContentBlockBuilderService.buildBlock()` — builds the document content block in whichever mode the current `ask` requests.
-- [`task-caching-layer.md`](task-caching-layer.md)'s `CachingLayerService.markBreakpoints()`/`readCacheStatus()` — the document (first user message) is the cached region.
+- [`caching-layer.md`](../shared/caching-layer.md)'s `CachingLayerService.markBreakpoints()`/`readCacheStatus()` — the document (first user message) is the cached region.
 - [`architecture.md`](../technical/architecture.md), "Custom tools vs. server-executed tools" — the text-editor tool loop follows exactly this convention (backend executes real file I/O, replies with `tool_result`, repeats until `stop_reason` isn't `tool_use`), the same shape [`live-tool-use-console.md`](../features/live-tool-use-console.md) already established for `get_weather`/`get_repo_stats`.
 - [`architecture.md`](../technical/architecture.md), "Streaming transport" — this feature's tool loop is structurally the same shape as Live Tool-Use Console's, so it reuses that lab's own streaming convention (raw events forwarded verbatim, plus `tool_call_start`/`tool_call_result` app-level events, plus a terminal `turn_complete`) rather than inventing a new one.
 - **arXiv client** — a new data-source client, but built **lab-local** (`backend/src/document-research-assistant/arxiv-client.ts`), not under `backend/src/shared/`, per [`repo-layout.md`](../technical/repo-layout.md)'s "Lab-specific, or shared functionality?" rule: no other planned feature consumes arXiv, which is exactly the same situation Live Tool-Use Console's `OpenMeteoClient` is already in (see [`live-tool-use-console.md`](../features/live-tool-use-console.md)'s "Backend" section) — it's promoted to `backend/src/shared/` only if and when a second feature needs it, not preemptively. Still follows the same DI-token-plus-fake pattern as every other external client ([`test-doubles.md`](../shared/test-doubles.md)): an abstract-class `ArxivClient` token (`getPaper(arxivId: string): Promise<{ arxivId, title, authors: string[], summary, pdfUrl, pdfBytes: Buffer }>`), a `RealArxivClient` (fetches the Atom XML metadata via `export.arxiv.org/api/query?id_list=<id>`, then the PDF bytes from the returned PDF link, rethrowing any failure as `ExternalApiError('arxiv', ...)` per [`api-error-handling.md`](../shared/api-error-handling.md)), a `FakeArxivClient` under `backend/src/testing/arxiv/` returning canned metadata and a small canned (not-necessarily-valid-PDF) buffer by default, and wired through [`fake-mode.md`](../shared/fake-mode.md)'s `fakeSwitchProvider()`.
