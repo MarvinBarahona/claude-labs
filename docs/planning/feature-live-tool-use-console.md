@@ -1,6 +1,6 @@
 # Feature — Live Tool-Use Console
 
-**Status:** 📋 Planned.
+**Status:** 🔵 In progress.
 
 **Nav position:** last (after `structured-output-console`, the current last entry in `FEATURE_ROUTES`).
 
@@ -132,18 +132,24 @@ Not applicable — no documents or images in this feature.
 
 ## To-do list
 
-- [ ] Add `github-provider`'s `GithubClient`-backed tool function for `get_repo_stats` (see [`github-provider.md`](../shared/github-provider.md)).
-- [ ] Add lab-local `OpenMeteoClient` abstract-class DI token + `RealOpenMeteoClient` (geocode-then-forecast, `axios`) at `backend/src/live-tool-use-console/` (lab-local per `repo-layout.md` — only this lab consumes it today), and `FakeOpenMeteoClient` at `backend/src/testing/open-meteo/`, exported from `backend/src/testing/index.ts`.
-- [ ] Add `backend/src/testing/http-fixtures/open-meteo.fixtures.ts` — `nock` fixtures for geocoding + forecast success and a not-found geocoding result.
-- [ ] Implement the tool-loop controller/service: both tool definitions, the loop (repeat on `stop_reason: "tool_use"` until it isn't), `is_error: true` tool results for a resolvable-but-not-found lookup, uncaught propagation for a genuine `ExternalApiError`.
-- [ ] Implement streaming: forward raw Claude events, emit `tool_call_start`/`tool_call_result` around each executed tool call, end with `turn_complete`; `shapeError()` into a mid-stream `error` frame on a transport failure.
-- [ ] Extend `InspectorPanel`'s `InspectorCall` with the optional `calls` field and its rendering; update `inspector-panel.md` and its spec once built.
-- [ ] Build `LiveToolUseConsole` frontend component per the composition above, both streaming and non-streaming paths.
-- [ ] Register `live-tool-use-console` in `FEATURE_ROUTES` (`feature-registry.ts`) as the last entry.
-- [ ] Add `LAB_CATALOG['live-tool-use-console']` entry (`lab-catalog.ts`) so it appears in the Home Page lab index.
-- [ ] Write the automated test scenarios above.
-- [ ] Hand the manual test scenarios above to the user to run once implementation is complete.
+- [x] Add `github-provider`'s `GithubClient`-backed tool function for `get_repo_stats` (see [`github-provider.md`](../shared/github-provider.md)).
+- [x] Add lab-local `OpenMeteoClient` abstract-class DI token + `RealOpenMeteoClient` (geocode-then-forecast, `axios`) at `backend/src/live-tool-use-console/` (lab-local per `repo-layout.md` — only this lab consumes it today), and `FakeOpenMeteoClient` at `backend/src/testing/open-meteo/`, exported from `backend/src/testing/index.ts`.
+- [x] Add `backend/src/testing/http-fixtures/open-meteo.fixtures.ts` — `nock` fixtures for geocoding + forecast success and a not-found geocoding result.
+- [x] Implement the tool-loop controller/service: both tool definitions, the loop (repeat on `stop_reason: "tool_use"` until it isn't), `is_error: true` tool results for a resolvable-but-not-found lookup, uncaught propagation for a genuine `ExternalApiError`.
+- [x] Implement streaming: forward raw Claude events, emit `tool_call_start`/`tool_call_result` around each executed tool call, end with `turn_complete`; `shapeError()` into a mid-stream `error` frame on a transport failure.
+- [x] Extend `InspectorPanel`'s `InspectorCall` with the optional `calls` field and its rendering; update `inspector-panel.md` and its spec once built.
+- [x] Build `LiveToolUseConsole` frontend component per the composition above, both streaming and non-streaming paths.
+- [x] Register `live-tool-use-console` in `FEATURE_ROUTES` (`feature-registry.ts`) as the last entry.
+- [x] Add `LAB_CATALOG['live-tool-use-console']` entry (`lab-catalog.ts`) so it appears in the Home Page lab index.
+- [x] Write the automated test scenarios above.
+- [x] Hand the manual test scenarios above to the user to run once implementation is complete.
 
 ## Open questions
 
 None.
+
+## Development notes
+
+- **`LAB_CATALOG` is not deferrable to a later `write-lab-doc` pass — it's load-bearing now.** `Home`'s component (`frontend/src/app/home/home.ts`) directly spreads `LAB_CATALOG[feature.slug]` for every non-`home` `FEATURE_ROUTES` entry, and `home.spec.ts` reads `entry.goal`/`entry.concepts` unguarded — a missing entry throws, not renders-blank. I initially instructed the frontend track to skip this to-do item on the theory that `write-lab-doc`'s ownership of `LAB_CATALOG` (per its skill file and `lab-catalog.ts`'s own header comment) meant it was populated later; that's true for the *quality/accuracy* of the entry's wording, but the entry's mere existence is required the moment a route is registered, because Home Page (already graduated) was built assuming full coverage. Added a code-grounded entry directly during this build to keep `home.spec.ts` green; `write-lab-doc` can still refine the wording later once the in-app doc itself is written. Tag: non-owned-file/process observation — worth a line in `docs/process-notes.md` at graduation flagging that `lab-catalog.ts`'s "populated by write-lab-doc" comment is only accurate for wording quality, not for whether an entry must exist.
+- **Tool-loop `params` must be reassigned, not mutated, between iterations.** Each `calls` entry's `request` is a snapshot of the exact request sent for that call; if `params.messages` were mutated in place after pushing `{request: params, ...}` onto `calls`, every earlier entry's `request` would retroactively reflect the *final* mutated state instead of what was actually sent. `LiveToolUseConsoleService.appendToolResults()` returns a new `{...params, messages: [...]}` object each iteration specifically to avoid this. Tag: coding-convention observation for any future multi-call-loop lab (Workflow Gallery's chaining, Agent Playground) — worth a line in `docs/process-notes.md`.
+- No `docs/technical/` decision came up — the tool-loop/streaming mechanics followed `architecture.md` and `messages-console.service.ts`'s existing pattern exactly, extended (not changed) for multi-call accumulation.

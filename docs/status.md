@@ -41,7 +41,7 @@ This table is a summary pointer — whatever process currently carries out each 
 | Frontend browser E2E tests | Task | `frontend-browser-e2e-tests` | ✅ Done | [`frontend-browser-e2e-tests.md`](shared/frontend-browser-e2e-tests.md) |
 | Home Page | Feature | `home-page` | ✅ Done | [`home-page.md`](features/home-page.md) |
 | GitHub data provider | Task | `github-provider` | ✅ Done | [`github-provider.md`](shared/github-provider.md) |
-| Live Tool-Use Console | Feature | `live-tool-use-console` | 📋 Planned | [`feature-live-tool-use-console.md`](planning/feature-live-tool-use-console.md) |
+| Live Tool-Use Console | Feature | `live-tool-use-console` | 🔵 In progress | [`feature-live-tool-use-console.md`](planning/feature-live-tool-use-console.md) |
 | Demo deploy | Task | `demo-deploy` | 📋 Planned | [`task-demo-deploy.md`](planning/task-demo-deploy.md) |
 | Caching layer | Task | `caching-layer` | 📝 Draft | [`task-caching-layer.md`](planning/task-caching-layer.md) |
 | Workflow Gallery | Feature | `workflow-gallery` | 📝 Draft | [`feature-workflow-gallery.md`](planning/feature-workflow-gallery.md) |
