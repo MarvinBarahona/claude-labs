@@ -9,6 +9,7 @@ import { FakeModeModule } from './shared/fake-mode/fake-mode.module';
 import { ApiErrorHandlingModule } from './shared/api-error-handling/api-error-handling.module';
 import { MessagesConsoleModule } from './messages-console/messages-console.module';
 import { StructuredOutputConsoleModule } from './structured-output-console/structured-output-console.module';
+import { LiveToolUseConsoleModule } from './live-tool-use-console/live-tool-use-console.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { StructuredOutputConsoleModule } from './structured-output-console/struc
     ApiErrorHandlingModule,
     MessagesConsoleModule,
     StructuredOutputConsoleModule,
+    LiveToolUseConsoleModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api{/*splat}'],

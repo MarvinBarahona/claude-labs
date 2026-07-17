@@ -113,3 +113,59 @@ export function fakeTextStreamEvents(
     { type: 'message_stop' },
   ];
 }
+
+/** The event sequence a real streamed call emits for one or more tool_use blocks, in order — each block's `input_json_delta` arrives as a single chunk here since callers only need the accumulation contract exercised, not fine-grained chunking. */
+export function fakeToolUseStreamEvents(
+  toolCalls: FakeToolCall[],
+): AnthropicStreamEvent[] {
+  const finalMessage = fakeToolUseMessage(toolCalls);
+  const startMessage = baseMessage({ content: [], stop_reason: null });
+
+  const events: AnthropicStreamEvent[] = [
+    { type: 'message_start', message: startMessage },
+  ];
+
+  toolCalls.forEach((call, index) => {
+    events.push({
+      type: 'content_block_start',
+      index,
+      content_block: {
+        type: 'tool_use',
+        id: call.id,
+        name: call.name,
+        input: {},
+        caller: { type: 'direct' },
+      },
+    });
+    events.push({
+      type: 'content_block_delta',
+      index,
+      delta: {
+        type: 'input_json_delta',
+        partial_json: JSON.stringify(call.input),
+      },
+    });
+    events.push({ type: 'content_block_stop', index });
+  });
+
+  events.push({
+    type: 'message_delta',
+    delta: {
+      container: null,
+      stop_details: null,
+      stop_reason: finalMessage.stop_reason,
+      stop_sequence: null,
+    },
+    usage: {
+      cache_creation_input_tokens: null,
+      cache_read_input_tokens: null,
+      input_tokens: finalMessage.usage.input_tokens,
+      output_tokens: finalMessage.usage.output_tokens,
+      output_tokens_details: null,
+      server_tool_use: null,
+    },
+  });
+  events.push({ type: 'message_stop' });
+
+  return events;
+}
