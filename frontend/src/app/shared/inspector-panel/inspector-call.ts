@@ -10,6 +10,8 @@ export interface InspectorCall {
   readonly response?: unknown;
   /** Raw streaming events, in arrival order, appended incrementally as they come in. */
   readonly streamEvents?: readonly unknown[];
+  /** Earlier request/response pairs in a multi-call turn, in chronological order, before the final call above. */
+  readonly calls?: readonly { request: unknown; response: unknown }[];
   readonly stopReason?: string | null;
   readonly usage?: InspectorUsage;
 }

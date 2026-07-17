@@ -43,6 +43,14 @@ export class InspectorPanel {
     (this.call().streamEvents ?? []).map((event) => ({ type: eventType(event), json: prettyJson(event) })),
   );
 
+  protected readonly priorCalls = computed(() =>
+    (this.call().calls ?? []).map((c, i) => ({
+      index: i,
+      requestJson: prettyJson(c.request),
+      responseJson: prettyJson(c.response),
+    })),
+  );
+
   protected readonly contentBlocks = computed<ContentBlockView[]>(() => {
     const response = this.call().response;
     if (typeof response !== 'object' || response === null) {

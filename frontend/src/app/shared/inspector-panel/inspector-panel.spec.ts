@@ -83,4 +83,48 @@ describe('InspectorPanel', () => {
     expect(items[2].textContent).toContain('tool_result');
     expect(items[2].textContent).toContain('18°C, cloudy');
   });
+
+  it('renders each prior call\'s request/response pair, in order, above the final call', async () => {
+    const fixture = await createFixture({
+      request: { model: 'claude-sonnet-5', messages: [{ role: 'user', content: 'final' }] },
+      response: { content: [{ type: 'text', text: 'final answer' }] },
+      calls: [
+        { request: { marker: 'call-0-request' }, response: { marker: 'call-0-response' } },
+        { request: { marker: 'call-1-request' }, response: { marker: 'call-1-response' } },
+      ],
+      stopReason: 'end_turn',
+    });
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    const idx0Request = text.indexOf('call-0-request');
+    const idx0Response = text.indexOf('call-0-response');
+    const idx1Request = text.indexOf('call-1-request');
+    const idx1Response = text.indexOf('call-1-response');
+    const idxFinal = text.indexOf('final answer');
+
+    expect(idx0Request).toBeGreaterThan(-1);
+    expect(idx0Response).toBeGreaterThan(-1);
+    expect(idx1Request).toBeGreaterThan(-1);
+    expect(idx1Response).toBeGreaterThan(-1);
+    expect(idxFinal).toBeGreaterThan(-1);
+    // Chronological reading order: call 0, then call 1, then the final call.
+    expect(idx0Request).toBeLessThan(idx1Request);
+    expect(idx1Response).toBeLessThan(idxFinal);
+  });
+
+  it('renders exactly as before when calls is omitted or empty (regression check)', async () => {
+    const fixture = await createFixture({
+      request: { model: 'claude-sonnet-5', messages: [{ role: 'user', content: 'hi' }] },
+      response: { content: [{ type: 'text', text: 'hello' }] },
+      stopReason: 'end_turn',
+      usage: { inputTokens: 12, outputTokens: 4 },
+      calls: [],
+    });
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('claude-sonnet-5');
+    expect(text).toContain('"text": "hello"');
+    expect(text).toContain('stop_reason: end_turn');
+    expect(text).toContain('in 12 / out 4');
+  });
 });

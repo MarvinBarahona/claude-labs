@@ -11,6 +11,7 @@ interface InspectorCall {
   request: unknown;
   response?: unknown;
   streamEvents?: readonly unknown[];
+  calls?: readonly { request: unknown; response: unknown }[];
   stopReason?: string | null;
   usage?: InspectorUsage;
 }
@@ -26,6 +27,7 @@ interface InspectorUsage {
 - `request`/`response` are passed through opaque and rendered as pretty-printed JSON only — never field-accessed, so any Claude API request/response shape works without a per-feature inspector variant.
 - `stopReason` and `usage` are camelCase fields a backend module maps from the Claude API's snake_case response before shaping its payload for the frontend.
 - `streamEvents` renders incrementally: a caller replaces it wholesale with a new array reference as events arrive (e.g. appending to a signal-held array) — `OnPush` change detection picks up the new input each time, with no internal event buffer of the component's own.
+- `calls` holds the earlier request/response pairs of a multi-call turn (e.g. a tool-use round trip), in chronological order, ahead of the final `request`/`response` pair — each pair is rendered opaque as pretty-printed JSON with no field access, the same as the final call, and appears above the final call's Request/Response grid so reading order matches turn chronology.
 - Content blocks are read from `response.content` (an array, when present) and rendered generically — one loop keyed on each block's own `type` field, no per-block-type template branching. This already covers `text`, `tool_use`, and `tool_result` blocks without special-casing.
 - Cache status: a cache write is shown when `usage.cacheCreationInputTokens > 0`, a cache read when `usage.cacheReadInputTokens > 0` — both can render at once, labeled distinctly.
 
@@ -39,4 +41,4 @@ Because it already captures one call's full request/response, it's a natural pla
 
 ## Testing
 
-`frontend/src/app/shared/inspector-panel/inspector-panel.spec.ts` covers: static rendering of a non-streaming request/response pair (request/response JSON, `stop_reason`, `usage`); the no-response-yet placeholder; incremental streaming-event rendering in order; distinct cache read/write display; and generic content-block rendering across `text`/`tool_use`/`tool_result` blocks.
+`frontend/src/app/shared/inspector-panel/inspector-panel.spec.ts` covers: static rendering of a non-streaming request/response pair (request/response JSON, `stop_reason`, `usage`); the no-response-yet placeholder; incremental streaming-event rendering in order; distinct cache read/write display; generic content-block rendering across `text`/`tool_use`/`tool_result` blocks; rendering each prior call in `calls` in order above the final call; and a regression check that an omitted/empty `calls` renders exactly as before.
