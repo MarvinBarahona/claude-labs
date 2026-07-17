@@ -14,7 +14,7 @@ The shared Angular routing, top-level layout, and navigation chrome every lab pl
 
 ## Using it
 
-To add a graduated feature to the app: insert `{ slug, label, loadComponent: () => import('<feature-path>').then((m) => m.<FeatureComponent>) }` into `FEATURE_ROUTES`, at the array index its own plan file's `**Nav position:**` line calls for. Nothing else needs to change — routing, nav rendering, and the root redirect all derive from that one array. The feature's own route component then follows the docs → demo → inspector stacking convention above.
+To add a graduated feature to the app: insert `{ slug, label, loadComponent: () => import('<feature-path>').then((m) => m.<FeatureComponent>) }` into `FEATURE_ROUTES`, at the array index its own plan file's `**Nav position:**` line calls for, **and** add a matching entry to `LAB_CATALOG` (`home-page.md`) for the same slug — `Home` looks up every non-`home` entry unguarded, so the route throws on render the moment it's registered without one. Routing, nav rendering, and the root redirect all derive from `FEATURE_ROUTES` alone; the `LAB_CATALOG` entry is the one other piece that has to land in the same step, even in placeholder form — its wording is refined later, by the `write-lab-doc` skill run against the lab's finished code. The feature's own route component then follows the docs → demo → inspector stacking convention above.
 
 ## Testing
 
