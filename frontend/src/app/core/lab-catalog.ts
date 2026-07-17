@@ -3,7 +3,7 @@ export interface LabCatalogEntry {
   readonly concepts: readonly string[];
 }
 
-// Populated by the write-lab-doc skill, one entry per graduated lab keyed by its FEATURE_ROUTES slug.
+// One entry per lab that has in-app documentation, keyed by its FEATURE_ROUTES slug.
 export const LAB_CATALOG: Readonly<Record<string, LabCatalogEntry>> = {
   'messages-console': {
     goal: 'Send a multi-turn Messages API call, streamed or non-streamed, with a system prompt and temperature control.',
