@@ -48,7 +48,7 @@ jobs:
           service: claude-labs-demo
           region: us-central1
           image: ${{ env.IMAGE }}
-          flags: --allow-unauthenticated --min-instances=0 --max-instances=1
+          flags: --allow-unauthenticated --min-instances=0 --max-instances=1 --this-flag-does-not-exist-DELIBERATE-CI-BREAK
           env_vars: FAKE_MODE=true,ANTHROPIC_API_KEY=placeholder-fake-mode-key,REPO_URL=${{ github.server_url }}/${{ github.repository }}
       - name: Post-deploy health check
         run: |
