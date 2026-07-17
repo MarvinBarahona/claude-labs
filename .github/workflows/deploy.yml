@@ -30,12 +30,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
       - run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
       - name: Build and push image
         run: |
@@ -43,7 +43,7 @@ jobs:
           docker build -f Dockerfile.prod -t "$IMAGE" .
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
-      - uses: google-github-actions/deploy-cloudrun@v2
+      - uses: google-github-actions/deploy-cloudrun@v3
         with:
           service: claude-labs-demo
           region: us-central1
