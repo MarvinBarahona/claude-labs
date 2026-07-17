@@ -43,11 +43,11 @@ This table is a summary pointer — whatever process currently carries out each 
 | GitHub data provider | Task | `github-provider` | ✅ Done | [`github-provider.md`](shared/github-provider.md) |
 | Live Tool-Use Console | Feature | `live-tool-use-console` | ✅ Done | [`live-tool-use-console.md`](features/live-tool-use-console.md) |
 | Demo deploy | Task | `demo-deploy` | ✅ Done | [`demo-deploy.md`](shared/demo-deploy.md) |
-| Caching layer | Task | `caching-layer` | 📝 Draft | [`task-caching-layer.md`](planning/task-caching-layer.md) |
-| Workflow Gallery | Feature | `workflow-gallery` | 📝 Draft | [`feature-workflow-gallery.md`](planning/feature-workflow-gallery.md) |
-| Content-block builder | Task | `content-block-builder` | 📝 Draft | [`task-content-block-builder.md`](planning/task-content-block-builder.md) |
-| Document Research Assistant | Feature | `document-research-assistant` | 📝 Draft | [`feature-document-research-assistant.md`](planning/feature-document-research-assistant.md) |
-| Data & Code Sandbox | Feature | `data-code-sandbox` | 📝 Draft | [`feature-data-code-sandbox.md`](planning/feature-data-code-sandbox.md) |
+| Caching layer | Task | `caching-layer` | 📋 Planned | [`task-caching-layer.md`](planning/task-caching-layer.md) |
+| Workflow Gallery | Feature | `workflow-gallery` | 📋 Planned | [`feature-workflow-gallery.md`](planning/feature-workflow-gallery.md) |
+| Content-block builder | Task | `content-block-builder` | 📋 Planned | [`task-content-block-builder.md`](planning/task-content-block-builder.md) |
+| Document Research Assistant | Feature | `document-research-assistant` | 📋 Planned | [`feature-document-research-assistant.md`](planning/feature-document-research-assistant.md) |
+| Data & Code Sandbox | Feature | `data-code-sandbox` | 📋 Planned | [`feature-data-code-sandbox.md`](planning/feature-data-code-sandbox.md) |
 | DeepWiki MCP connector | Task | `deepwiki-connector` | 📝 Draft | [`task-deepwiki-connector.md`](planning/task-deepwiki-connector.md) |
 | Web & Repo Research Reporter | Feature | `web-repo-research-reporter` | 📝 Draft | [`feature-web-repo-research-reporter.md`](planning/feature-web-repo-research-reporter.md) |
 | Vision Lab | Feature | `vision-lab` | 📝 Draft | [`feature-vision-lab.md`](planning/feature-vision-lab.md) |
