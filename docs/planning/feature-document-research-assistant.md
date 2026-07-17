@@ -46,13 +46,9 @@ Both mechanisms are technically valid for attaching the PDF, so this feature exp
 
 ## A new pattern: server-owned conversation session
 
-Every feature built so far is stateless per request — a caller sends its full input, gets back one turn's answer, nothing is remembered server-side between calls (Messages Console's own multi-turn support works by having the *frontend* resend the entire `messages` array on every call). This feature deliberately departs from that and introduces the app's first server-owned session, for three concrete reasons rather than as a general pattern shift:
+This feature is the first to need server-side state, for the three reasons `architecture.md`'s "Server-owned session state" now documents as the standing rule for when a feature may depart from the app's stateless-per-request default: the text-editor tool's file I/O has to live server-side regardless, re-sending the PDF on every follow-up would be wasteful once a Files-API reference exists, and a cache breakpoint needs an exact byte-identical prefix across calls. Confirmed as the template any later feature in the same situation should reuse rather than reinvent, not a one-off.
 
-1. **The text-editor tool's file I/O has to live server-side regardless** (`architecture.md`'s custom-tool convention already puts real tool execution in the backend) — the running-notes file's current content is state that only the backend can own.
-2. **Re-sending a base64-encoded PDF on every follow-up question would be wasteful** — the whole point of the Files API mode is upload-once/reference-by-id, which only pays off if the backend keeps the reference instead of asking the frontend to keep resending the source bytes.
-3. **A cache breakpoint's value depends on an exact byte-identical prefix across calls** (`task-caching-layer.md`) — the backend building the same request prefix from its own stored state on every ask guarantees this; relying on the frontend to reconstruct byte-identical history invites subtle cache-invalidating drift.
-
-Concretely: `DocumentResearchAssistantService` keeps an in-memory `Map<sessionId, DocumentSession>`, `DocumentSession = { paper: ArxivPaper; pdfBytes: Buffer; fileId?: string; notesFileContent: string | null; messages: AnthropicMessageParam[] }`. No database, no persistence across a process restart — consistent with every other piece of app state (e.g. `FakeGithubClient`'s canned data) being in-memory only; this app has no persistence layer anywhere. A page refresh starts a new session rather than resuming a stale one — deliberately out of scope, not an oversight, since there's no resume affordance anywhere else in the app either.
+Concretely: `DocumentResearchAssistantService` keeps an in-memory `Map<sessionId, DocumentSession>`, `DocumentSession = { paper: ArxivPaper; pdfBytes: Buffer; fileId?: string; notesFileContent: string | null; messages: AnthropicMessageParam[] }` — the general in-memory-`Map`/no-persistence/fresh-session-on-refresh shape `architecture.md` describes, applied to this feature's own session fields.
 
 ## Depends on
 
