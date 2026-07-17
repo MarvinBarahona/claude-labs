@@ -20,9 +20,5 @@ describe('AppController', () => {
         message: 'Hello from the claude-labs backend',
       });
     });
-
-    it('DELIBERATE CI BREAK — throwaway, reverted immediately', () => {
-      expect(true).toBe(false);
-    });
   });
 });
