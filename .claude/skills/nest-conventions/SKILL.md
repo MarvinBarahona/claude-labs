@@ -39,6 +39,11 @@ Never reference another skill by name here, project-specific or otherwise — th
 - Prefer `async`/`await` for request-handling code; reach for RxJS only where Nest's API surface is itself Observable-based (e.g. microservice message streams) or genuine multi-value streams are involved.
 - Keep providers stateless where possible; anything that must hold state across requests should be deliberate (and scoped correctly — singleton vs. request-scoped) rather than accidental.
 
+## Type-level patterns
+
+- **Favor one generic helper over per-type duplication.** When several related types need the same optional field touched (set, read, copied) rather than duplicating that as one inline assignment per type, write a single function generic over the shape those types share, constrained to just that field — one call site the compiler checks, instead of several near-identical assignments or casts.
+- **Don't validate caller errors the type system already prevents.** Skip validation for an internal call site whose only possible failure is a caller's own bug (an out-of-range index, an empty collection the type already guarantees is non-empty) — validate only at actual system boundaries: request bodies, external API responses, anything genuinely outside this codebase's control.
+
 ## Testing
 
 - Unit-test services in isolation using `Test.createTestingModule` with mocked providers — don't spin up the full Nest application for logic tests.

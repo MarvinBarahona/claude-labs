@@ -40,3 +40,7 @@ Never reference another skill by name here, project-specific or otherwise — th
 - Use the trace viewer (`trace: 'on-first-retry'` or similar) and codegen/`--debug` during authoring instead of sprinkling console logging through a spec.
 - CI `retries` absorb genuine environment flakiness (slow cold starts, network jitter) — they aren't a substitute for fixing a spec whose own assertion is racy against the app's real behavior.
 - A spec that can't find a stable role/label locator is often surfacing a real accessibility gap in the page, not just a testing inconvenience — treat that as a signal to improve the markup before falling back to a test-only hook.
+
+## General
+
+- Comments are the exception, not the rule — reach for one only in a genuinely special case (a hidden constraint, a non-obvious workaround, a subtlety the code can't express on its own), never as routine narration. When one is warranted, keep it to one short line; a longer explanation belongs in the project's own documentation, not a multi-line comment block in the source.
