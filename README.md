@@ -56,8 +56,9 @@ See "Modes" above for `FAKE_MODE` — most day-to-day development happens in fak
 - `docker compose -f docker-compose.dev.yml run --rm e2e` — Playwright browser E2E suite, driving a real browser against the running dev stack; only ever runs against a fake-mode instance (checks `GET /api/mode` before any spec runs)
 - `docker compose -f docker-compose.dev.yml run --rm backend npm run lint` — type-aware lint; `npm test` alone (`ts-jest` with `isolatedModules: true`) doesn't type-check, so a genuine type error can slip through the test command alone
 - `docker compose -f docker-compose.dev.yml run --rm frontend npm run lint` — Angular/TypeScript style and template-accessibility rules; unlike the backend, frontend `npm test` already type-checks (the Angular compiler, not a transpile-only transform), so this lint step isn't filling a type-check gap the way the backend's is
+- `docker compose -f docker-compose.dev.yml run --rm backend npm run build` — a real `nest build` compile; a small class of `tsc` diagnostics passes both the backend's `npm test` and `npm run lint` with zero errors and only surfaces here
 
-All six use only placeholder environment values — no real credential is needed to build or test either project.
+Treat all of these as required before calling a change verified, not just `npm test` — lint and (for the backend) build each catch a real class of error `npm test` alone doesn't. All commands use only placeholder environment values — no real credential is needed to build or test either project.
 
 ## Production
 
