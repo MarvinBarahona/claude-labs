@@ -97,7 +97,12 @@ export class CachingLayerService {
     const marked = [...messages];
     const target = marked[messageIndex];
     const content = asContentBlocks(target.content);
-    content[content.length - 1] = withCacheControl(content[content.length - 1]);
+    const lastBlock = content[content.length - 1];
+    // `withCacheControl`'s constraint is too weak for `ContentBlockParam` — cast directly instead.
+    content[content.length - 1] = {
+      ...lastBlock,
+      cache_control: EPHEMERAL,
+    } as ContentBlockParam;
     marked[messageIndex] = { ...target, content };
     return marked;
   }
