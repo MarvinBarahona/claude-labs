@@ -1,8 +1,12 @@
+import nock from 'nock';
 import { useNockFixtures } from '../../testing/http-fixtures/nock-lifecycle';
 import {
+  ANTHROPIC_API_BASE_URL,
   mockAnthropicMessagesCreate,
   mockAnthropicMessagesAuthError,
   mockAnthropicMessagesStream,
+  mockAnthropicFilesUpload,
+  mockAnthropicFilesUploadAuthError,
 } from '../../testing/http-fixtures/anthropic.fixtures';
 import {
   fakeTextMessage,
@@ -91,6 +95,46 @@ describe('RealAnthropicClient', () => {
     };
 
     const error = await drain().catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ExternalApiError);
+    expect(error).toMatchObject({ source: 'anthropic' });
+  });
+
+  it('returns the uploaded file id on a successful uploadFile() call', async () => {
+    mockAnthropicFilesUpload('file_abc123');
+    const client = buildClient();
+
+    const result = await client.uploadFile(
+      Buffer.from('fake pdf bytes'),
+      'application/pdf',
+    );
+
+    expect(result).toEqual({ id: 'file_abc123' });
+  });
+
+  it('sends the files-api-2025-04-14 beta flag on uploadFile()', async () => {
+    let sentBetaHeader: string | undefined;
+    nock(ANTHROPIC_API_BASE_URL)
+      .post('/v1/files')
+      .query({ beta: 'true' })
+      .reply(function replyToUpload() {
+        sentBetaHeader = this.req.headers['anthropic-beta'];
+        return [200, { id: 'file_abc123' }];
+      });
+    const client = buildClient();
+
+    await client.uploadFile(Buffer.from('fake pdf bytes'), 'application/pdf');
+
+    expect(sentBetaHeader).toContain('files-api-2025-04-14');
+  });
+
+  it('rethrows an uploadFile() auth failure as a normalized ExternalApiError', async () => {
+    mockAnthropicFilesUploadAuthError();
+    const client = buildClient('bad-key');
+
+    const error = await client
+      .uploadFile(Buffer.from('fake pdf bytes'), 'application/pdf')
+      .catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(ExternalApiError);
     expect(error).toMatchObject({ source: 'anthropic' });

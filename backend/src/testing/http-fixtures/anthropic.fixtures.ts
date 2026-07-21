@@ -67,3 +67,28 @@ export function mockAnthropicModelsAuthError(): nock.Scope {
       error: { type: 'authentication_error', message: 'invalid x-api-key' },
     });
 }
+
+export function mockAnthropicFilesUpload(fileId: string): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .post('/v1/files')
+    .query({ beta: 'true' })
+    .reply(200, {
+      id: fileId,
+      type: 'file',
+      created_at: '2026-01-01T00:00:00Z',
+      filename: 'upload',
+      mime_type: 'application/octet-stream',
+      size_bytes: 0,
+      downloadable: false,
+    });
+}
+
+export function mockAnthropicFilesUploadAuthError(): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .post('/v1/files')
+    .query({ beta: 'true' })
+    .reply(401, {
+      type: 'error',
+      error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    });
+}

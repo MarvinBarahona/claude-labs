@@ -46,6 +46,21 @@ export class RealAnthropicClient extends AnthropicClient {
       throw toExternalApiError(error);
     }
   }
+
+  async uploadFile(bytes: Buffer, mediaType: string): Promise<{ id: string }> {
+    try {
+      const file = await Anthropic.toFile(bytes, undefined, {
+        type: mediaType,
+      });
+      const uploadResult = await this.client.beta.files.upload({
+        file,
+        betas: ['files-api-2025-04-14'],
+      });
+      return { id: uploadResult.id };
+    } catch (error) {
+      throw toExternalApiError(error);
+    }
+  }
 }
 
 function toExternalApiError(error: unknown): ExternalApiError {

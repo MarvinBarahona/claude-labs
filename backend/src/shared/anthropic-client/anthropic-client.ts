@@ -12,4 +12,8 @@ export abstract class AnthropicClient {
   abstract streamMessage(
     params: AnthropicMessageParams,
   ): AsyncIterable<AnthropicStreamEvent>;
+  abstract uploadFile(
+    bytes: Buffer,
+    mediaType: string,
+  ): Promise<{ id: string }>;
 }

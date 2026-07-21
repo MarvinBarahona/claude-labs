@@ -161,6 +161,7 @@ export class FakeAnthropicClient extends AnthropicClient {
 
   private readonly queuedMessages: AnthropicMessage[] = [];
   private readonly queuedStreams: AnthropicStreamEvent[][] = [];
+  private readonly queuedFileUploads: Array<{ id: string }> = [];
   private readonly calls: AnthropicMessageParams[] = [];
 
   queueMessage(message: AnthropicMessage): this {
@@ -170,6 +171,11 @@ export class FakeAnthropicClient extends AnthropicClient {
 
   queueStream(events: AnthropicStreamEvent[]): this {
     this.queuedStreams.push(events);
+    return this;
+  }
+
+  queueFileUpload(result: { id: string }): this {
+    this.queuedFileUploads.push(result);
     return this;
   }
 
@@ -210,5 +216,22 @@ export class FakeAnthropicClient extends AnthropicClient {
       await Promise.resolve();
       yield event;
     }
+  }
+
+  uploadFile(bytes: Buffer, mediaType: string): Promise<{ id: string }> {
+    void bytes;
+    void mediaType;
+    const next = this.queuedFileUploads.shift();
+    if (next) {
+      return Promise.resolve(next);
+    }
+    if (this.allowUnqueuedFallback) {
+      return Promise.resolve({ id: 'file_fake_unqueued' });
+    }
+    return Promise.reject(
+      new Error(
+        'FakeAnthropicClient.uploadFile() called with no queued result left — call queueFileUpload() first.',
+      ),
+    );
   }
 }

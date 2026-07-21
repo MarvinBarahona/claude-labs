@@ -105,6 +105,24 @@ describe('FakeAnthropicClient', () => {
     await expect(iterator.next()).rejects.toThrow(/no queued stream left/);
   });
 
+  it('throws a clear error from uploadFile() when called with nothing queued', async () => {
+    const fake = new FakeAnthropicClient();
+
+    await expect(
+      fake.uploadFile(Buffer.from('bytes'), 'application/pdf'),
+    ).rejects.toThrow(/no queued result left/);
+  });
+
+  it('returns the queued result from uploadFile() once queued', async () => {
+    const fake = new FakeAnthropicClient().queueFileUpload({
+      id: 'file_queued_1',
+    });
+
+    const result = await fake.uploadFile(Buffer.from('bytes'), 'image/png');
+
+    expect(result).toEqual({ id: 'file_queued_1' });
+  });
+
   describe('allowUnqueuedFallback', () => {
     it('still throws with nothing queued when left at its default (false)', async () => {
       const fake = new FakeAnthropicClient();
@@ -268,6 +286,26 @@ describe('FakeAnthropicClient', () => {
 
       expect(message.stop_reason).toBe('end_turn');
       expect(message.content[0]).toMatchObject({ type: 'text' });
+    });
+
+    it('returns a canned file id from uploadFile() instead of throwing once enabled', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const result = await fake.uploadFile(Buffer.from('bytes'), 'image/png');
+
+      expect(result).toEqual({ id: 'file_fake_unqueued' });
+    });
+
+    it('still prefers a queued uploadFile() result over the fallback once enabled', async () => {
+      const fake = new FakeAnthropicClient().queueFileUpload({
+        id: 'file_queued_2',
+      });
+      fake.allowUnqueuedFallback = true;
+
+      const result = await fake.uploadFile(Buffer.from('bytes'), 'image/png');
+
+      expect(result).toEqual({ id: 'file_queued_2' });
     });
 
     it('yields a fabricated tool_use stream as the fallback when tools are offered and no tool_result exists yet', async () => {
