@@ -10,6 +10,7 @@ import { ApiErrorHandlingModule } from './shared/api-error-handling/api-error-ha
 import { MessagesConsoleModule } from './messages-console/messages-console.module';
 import { StructuredOutputConsoleModule } from './structured-output-console/structured-output-console.module';
 import { LiveToolUseConsoleModule } from './live-tool-use-console/live-tool-use-console.module';
+import { WorkflowGalleryModule } from './workflow-gallery/workflow-gallery.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { LiveToolUseConsoleModule } from './live-tool-use-console/live-tool-use-
     MessagesConsoleModule,
     StructuredOutputConsoleModule,
     LiveToolUseConsoleModule,
+    WorkflowGalleryModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api{/*splat}'],
