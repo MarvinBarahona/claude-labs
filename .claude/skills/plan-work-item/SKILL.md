@@ -43,7 +43,7 @@ Whoever implements this work item later reads only its own plan file, plus exact
 - Each dependency stated as "depends on: X" with the exact file and section needed from it — X's permanent doc if `Done`, or X's own plan file otherwise; either way, already read in full per "Read first" step 5 above. A dependency doesn't need to be finished to be planned against, only to be built against. Same rule as above: cite precisely, don't copy X's content in — that way, if X's permanent doc changes later (e.g. via a follow-on against X), this plan file's citation still resolves to the current version instead of a stale copy.
 - For a follow-on work item: the same treatment — cite the exact section(s) of its `**Target doc:**` this work item is going to change, not a copy of their content.
 - A `## Test scenarios` section — concrete, testable scenarios covering the work item's functionality, written now, not invented later during `build-work-item`.
-- A `## To-do list` section — a checklist (`- [ ]` items) of concrete implementation tasks, to be checked off as `build-work-item` completes them.
+- A `## To-do list` section — a checklist (`- [ ]` items) of concrete implementation tasks, to be checked off as `build-work-item` completes them. Derive this checklist against the full current set of deliverables a work item of this kind is expected to produce in this project — including any documentation or test-suite artifacts the project's own standing docs define as required, not just code — rather than free-writing tasks from what a similar past item happened to include. Where one deliverable's task depends on another deliverable already existing, order the checklist so the dependency's task comes first.
 
 ## Independent implementation tracks
 
