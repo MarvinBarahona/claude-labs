@@ -251,6 +251,58 @@ describe('FakeAnthropicClient', () => {
       });
     });
 
+    it('returns a fabricated create call on /notes.md when a schema-less text-editor tool is offered (no custom tools)', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const message = await fake.createMessage({
+        ...params,
+        tools: [
+          { type: 'text_editor_20250728', name: 'str_replace_based_edit_tool' },
+        ],
+        messages: [{ role: 'user', content: 'What is this paper about?' }],
+      });
+
+      expect(message.stop_reason).toBe('tool_use');
+      expect(message.content[0]).toMatchObject({
+        type: 'tool_use',
+        name: 'str_replace_based_edit_tool',
+        input: { command: 'create', path: '/notes.md' },
+      });
+    });
+
+    it('fabricates a page_location citation on the plain-text fallback when a document with citations enabled was attached', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const message = await fake.createMessage({
+        ...params,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'document',
+                source: {
+                  type: 'base64',
+                  media_type: 'application/pdf',
+                  data: 'ZmFrZQ==',
+                },
+                title: 'A Test Paper',
+                citations: { enabled: true },
+              },
+              { type: 'text', text: 'What is this about?' },
+            ],
+          },
+        ],
+      });
+
+      expect(message.content[0]).toMatchObject({
+        type: 'text',
+        citations: [{ type: 'page_location', document_title: 'A Test Paper' }],
+      });
+    });
+
     it('returns the plain-text fallback once the latest message already carries a tool_result', async () => {
       const fake = new FakeAnthropicClient();
       fake.allowUnqueuedFallback = true;

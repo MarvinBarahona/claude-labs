@@ -66,6 +66,63 @@ function isCustomTool(tool: AnthropicOfferedTool): tool is AnthropicCustomTool {
   return 'input_schema' in tool;
 }
 
+/** The text-editor tool (e.g. `text_editor_20250728`) is schema-less — the backend implements its own real file I/O, so it never has `input_schema` and `isCustomTool()` above never matches it. */
+function textEditorToolName(tool: AnthropicOfferedTool): string | null {
+  const type: unknown = 'type' in tool ? tool.type : undefined;
+  return typeof type === 'string' && type.startsWith('text_editor_')
+    ? tool.name
+    : null;
+}
+
+/** Synthesizes a `create` call on a fixed `/notes.md` file — a plausible fabricated edit for any lab offering this tool, so an unscripted click still exercises the tool loop instead of getting an immediate plain-text answer. */
+function fallbackTextEditorToolCall(toolName: string): FakeToolCall {
+  return {
+    id: 'fake_tool_call_1',
+    name: toolName,
+    input: {
+      command: 'create',
+      path: '/notes.md',
+      file_text:
+        'Fake-mode notes — no real Claude API call was made, and no response was queued for this call.',
+    },
+  };
+}
+
+interface DocumentCitationsRequest {
+  documentTitle: string;
+}
+
+/** Detects a request that attached a `document` content block with `citations: { enabled: true }` — the signal this fallback uses to also fabricate a citation on its final answer, so a citations-enabled lab has something to render without a real Claude API call. */
+function requestedDocumentCitations(
+  params: AnthropicMessageParams,
+): DocumentCitationsRequest | null {
+  for (const message of params.messages) {
+    const content: unknown = message.content;
+    if (!Array.isArray(content)) {
+      continue;
+    }
+    for (const block of content as unknown[]) {
+      if (typeof block !== 'object' || block === null) {
+        continue;
+      }
+      const record = block as Record<string, unknown>;
+      const citationsConfig = record['citations'] as
+        Record<string, unknown> | undefined;
+      if (
+        record['type'] === 'document' &&
+        citationsConfig?.['enabled'] === true
+      ) {
+        const title =
+          typeof record['title'] === 'string'
+            ? record['title']
+            : 'the attached document';
+        return { documentTitle: title };
+      }
+    }
+  }
+  return null;
+}
+
 /** True once the loop's latest message already carries a `tool_result` — an unqueued fallback then answers in plain text instead of issuing another tool call, so a fake-mode turn always terminates after one tool round trip. */
 function latestMessageHasToolResult(params: AnthropicMessageParams): boolean {
   const messages = params.messages;
@@ -117,17 +174,33 @@ function pickFallbackTool(
   return matched ?? tools[0];
 }
 
-/** One synthesized `tool_use` call for an unqueued fallback, or `null` when this request isn't offering (custom) tools / is already past one tool round trip. */
+/** One synthesized `tool_use` call for an unqueued fallback, or `null` when this request isn't offering a (custom or text-editor) tool / is already past one tool round trip. */
 function fallbackToolCall(params: AnthropicMessageParams): FakeToolCall | null {
-  const tools = params.tools?.filter(isCustomTool);
-  if (!tools || tools.length === 0 || latestMessageHasToolResult(params)) {
+  if (
+    !params.tools ||
+    params.tools.length === 0 ||
+    latestMessageHasToolResult(params)
+  ) {
     return null;
   }
-  const tool = pickFallbackTool(tools, params);
-  const input = fallbackValueForSchema(
-    tool.input_schema as unknown as JsonSchemaLike,
-  );
-  return { id: 'fake_tool_call_1', name: tool.name, input };
+
+  const customTools = params.tools.filter(isCustomTool);
+  if (customTools.length > 0) {
+    const tool = pickFallbackTool(customTools, params);
+    const input = fallbackValueForSchema(
+      tool.input_schema as unknown as JsonSchemaLike,
+    );
+    return { id: 'fake_tool_call_1', name: tool.name, input };
+  }
+
+  for (const tool of params.tools) {
+    const toolName = textEditorToolName(tool);
+    if (toolName) {
+      return fallbackTextEditorToolCall(toolName);
+    }
+  }
+
+  return null;
 }
 
 /** Honors a requested `output_config.format` so a structured-output caller gets parseable JSON, not fallback prose; honors offered `tools` so a tool-use loop gets one fabricated tool call round trip instead of an immediate plain-text answer. */
@@ -141,6 +214,30 @@ function fallbackMessage(params: AnthropicMessageParams): AnthropicMessage {
   if (toolCall) {
     return fakeToolUseMessage([toolCall]);
   }
+
+  const documentCitations = requestedDocumentCitations(params);
+  if (documentCitations) {
+    return fakeTextMessage(FALLBACK_TEXT, {
+      content: [
+        {
+          type: 'text',
+          text: FALLBACK_TEXT,
+          citations: [
+            {
+              type: 'page_location',
+              cited_text: 'no real Claude API call was made',
+              document_index: 0,
+              document_title: documentCitations.documentTitle,
+              start_page_number: 1,
+              end_page_number: 1,
+              file_id: null,
+            },
+          ],
+        },
+      ],
+    });
+  }
+
   return fakeTextMessage(FALLBACK_TEXT);
 }
 
@@ -183,7 +280,11 @@ export class FakeAnthropicClient extends AnthropicClient {
     return this.calls;
   }
 
-  createMessage(params: AnthropicMessageParams): Promise<AnthropicMessage> {
+  createMessage(
+    params: AnthropicMessageParams,
+    betas?: string[],
+  ): Promise<AnthropicMessage> {
+    void betas;
     this.calls.push(params);
     const next = this.queuedMessages.shift();
     if (next) {
@@ -201,7 +302,9 @@ export class FakeAnthropicClient extends AnthropicClient {
 
   async *streamMessage(
     params: AnthropicMessageParams,
+    betas?: string[],
   ): AsyncIterable<AnthropicStreamEvent> {
+    void betas;
     this.calls.push(params);
     const next = this.queuedStreams.shift();
     const events =
