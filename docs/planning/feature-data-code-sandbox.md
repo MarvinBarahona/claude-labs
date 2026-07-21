@@ -82,7 +82,7 @@ This feature is **non-streaming**, for the same reason Structured Output Console
 
 ### Automated
 
-Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit" buckets:
+Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit"/"Frontend browser E2E" buckets:
 
 - [ ] **Unit** — assembles the target repo's issues+commits into JSON, uploads it via `AnthropicClient.uploadFile()`, and includes a `{ type: 'container_upload', file_id }` block in the request, with `betas: ['files-api-2025-04-14']` always present.
 - [ ] **Unit** — `useSkill: true` adds `container: { skills: [{ type: 'custom', skill_id, version: 'latest' }] }` and `'skills-2025-10-02'` to `betas`; `useSkill: false` omits both, sending only `files-api-2025-04-14`.
@@ -94,6 +94,7 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] **Unit** — `FakeAnthropicClient.downloadFile()` and `.registerSkill()` each throw when nothing's queued, and return the queued/canned result otherwise.
 - [ ] **Integration** — a `nock`-intercepted end-to-end run (fixture GitHub + Anthropic responses, including a fixture `bash_code_execution_tool_result` with an output file) proves the full `200` response shape, for both `useSkill` states.
 - [ ] **Frontend unit** — the prompt form and `useSkill` checkbox; Run disabled on an empty prompt; executed-code/stdout/stderr rendering from a mocked response; an image output file renders inline while a non-image one renders a download link; the `skillUsed` badge reflects the mocked response's value; the results-view skeleton holds for the minimum duration per `loading-states.md`.
+- [ ] **E2E (Playwright)** — `data-code-sandbox.spec.ts`, per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs": nav reachable right after Web & Repo Research Reporter; docs panel renders non-empty content; the happy path submits a prompt (with `useSkill` off), runs, and confirms the executed-code/stdout/stderr view and an output file preview render.
 
 ### Manual
 
@@ -110,6 +111,8 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] Author the `spreadsheet-export` `SKILL.md` and its helper script.
 - [ ] Implement `executedCode`/`outputFiles`/`skillUsed` extraction from the response.
 - [ ] Build the frontend: prompt form, `useSkill` checkbox, results view (code/stdout/stderr, file previews, `skillUsed` badge).
+- [ ] Write this lab's in-app doc (`write-lab-doc`).
+- [ ] Add the browser E2E spec (`e2e/tests/data-code-sandbox.spec.ts`) — per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs", only once the in-app doc above already exists, since the spec's docs-panel assertion needs real rendered content to check.
 - [ ] Wire `DataCodeSandboxModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`, `GithubProviderModule`).
 
 ## Open questions

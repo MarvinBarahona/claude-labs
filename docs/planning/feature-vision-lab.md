@@ -72,7 +72,7 @@ Both mechanisms are technically valid for attaching images here, so this feature
 
 ### Automated
 
-Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit" buckets:
+Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit"/"Frontend browser E2E" buckets:
 
 - [ ] **Unit** — `WikimediaClient` (fake) returns canned image metadata + bytes for a query; `run` builds one `image` content block per fetched image via `ContentBlockBuilderService`, in the requested `deliveryMode`.
 - [ ] **Unit** — `dimensionCapApplied` is `true` when `imageCount > 1` and at least one fetched image exceeds 2000px in either dimension; `false` when `imageCount === 1` regardless of size; `false` when `imageCount > 1` and every image is ≤2000px in both dimensions.
@@ -80,6 +80,7 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] **Unit** — non-streaming and streaming (Messages-Console-style) response shapes, both including `images`/`dimensionCapApplied`.
 - [ ] **Integration** — a `nock`-intercepted end-to-end run against fixture Wikimedia/Anthropic responses proves the full `200` shape and the `502` paths, for both `deliveryMode`s.
 - [ ] **Frontend unit** — the query/instruction form, `imageCount` selector, delivery-mode and streaming toggles; the thumbnail gallery and dimension-cap banner render from a mocked response (banner absent when `dimensionCapApplied` is `false`); the Ask flow for both streaming and non-streaming; the gallery/answer skeleton holds for the minimum duration per `loading-states.md`.
+- [ ] **E2E (Playwright)** — `vision-lab.spec.ts`, per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs": nav reachable right after Data & Code Sandbox; docs panel renders non-empty content; the happy path submits a query/instruction, runs, and confirms the thumbnail gallery and answer render, for both `stream: false` and `stream: true`.
 
 ### Manual
 
@@ -94,6 +95,8 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] Implement `dimensionCapApplied` computation and the fewer-than-requested-images `502` path.
 - [ ] Implement non-streaming and streaming responses, reusing Messages Console's SSE plumbing.
 - [ ] Build the frontend: query/instruction form, `imageCount` selector, delivery-mode/streaming toggles, thumbnail gallery, dimension-cap callout.
+- [ ] Write this lab's in-app doc (`write-lab-doc`).
+- [ ] Add the browser E2E spec (`e2e/tests/vision-lab.spec.ts`) — per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs", only once the in-app doc above already exists, since the spec's docs-panel assertion needs real rendered content to check.
 - [ ] Wire `VisionLabModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`, `ContentBlockBuilderModule`).
 
 ## Open questions

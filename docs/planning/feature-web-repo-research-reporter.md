@@ -94,7 +94,7 @@ Non-streaming, single call — the final answer must be schema-conformant JSON (
 
 ### Automated
 
-Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit" buckets:
+Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit"/"Frontend browser E2E" buckets:
 
 - [ ] **Unit** — the request includes the web search tool config with `max_uses` set from `maxSearches` (default `5` when omitted) and `DeepwikiConnectorService.buildRequestFragment()`'s fragment (`mcp_servers`, `tools`, `mcp-client-2025-11-20` beta).
 - [ ] **Unit** — a `maxSearches` outside `1`–`10`, or non-integer, is rejected with a plain `400` by the validation pipe.
@@ -103,6 +103,7 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] **Unit** — a response with no text block throws `ExternalApiError('anthropic', ...)`.
 - [ ] **Integration** — a `nock`-intercepted end-to-end run against a fixture Anthropic response (including fixture `web_search_tool_result`/`mcp_tool_result` blocks) proves the full `200` shape and the `502` no-text-block path.
 - [ ] **Frontend unit** — the question form, `maxSearches` control (defaulting to 5), and Run button; the brief renders summary/findings/source links and the two counters from a mocked response; the visible error state on a failed request; the results-view skeleton holds for the minimum duration per `loading-states.md`.
+- [ ] **E2E (Playwright)** — `web-repo-research-reporter.spec.ts`, per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs": nav reachable right after Document Research Assistant; docs panel renders non-empty content; the happy path submits a question at the default `maxSearches`, runs, and confirms the brief (summary, findings, counters) renders.
 
 ### Manual
 
@@ -118,7 +119,8 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] Implement `searchesPerformed`/`mcpCallsPerformed` extraction.
 - [ ] Implement the no-text-block `502` path.
 - [ ] Build the frontend: question form, `maxSearches` control, brief rendering, counters.
-- [ ] When writing this lab's in-app doc (`write-lab-doc`), explain what raising/lowering `maxSearches` changes (thoroughness/cost/latency tradeoff), per "Frontend" above.
+- [ ] Write this lab's in-app doc (`write-lab-doc`), explaining what raising/lowering `maxSearches` changes (thoroughness/cost/latency tradeoff), per "Frontend" above.
+- [ ] Add the browser E2E spec (`e2e/tests/web-repo-research-reporter.spec.ts`) — per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs", only once the in-app doc above already exists, since the spec's docs-panel assertion needs real rendered content to check.
 - [ ] Wire `WebRepoResearchReporterModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`, `DeepwikiConnectorModule`).
 
 ## Open questions

@@ -79,7 +79,7 @@ Non-streaming — 3 independent runs finish and are shown side by side as a fini
 
 ### Automated
 
-Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit" buckets:
+Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit"/"Frontend browser E2E" buckets:
 
 - [ ] **Unit** — `POST /run` with an `issueNumber` absent from the currently-open issues list throws `NotFoundException` (404).
 - [ ] **Unit** — exactly 3 concurrent calls are issued, with the correct `thinking`/`output_config` shape per label (`thinking-off` has no `thinking` field; `thinking-medium`/`thinking-high` have `thinking: { type: 'adaptive', display: 'summarized' }` and the matching `output_config.effort`), and all 3 use `getModel('default')`.
@@ -87,6 +87,7 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] **Unit** — `latencyMs` is measured per run.
 - [ ] **Integration** — a `nock`-intercepted end-to-end run against 3 fixture Anthropic responses proves the full `200` shape (`issue`, all 3 `runs` entries) and the `GET /issues`/`404` paths.
 - [ ] **Frontend unit** — the issue picker populates from `GET /issues`; the Run button is disabled with no issue selected; the 3-column comparison renders answer/reasoning-trace/latency/usage per run from a mocked response, with 3 separate inspector-panel instances receiving the right `envelope` each; the comparison-view skeleton holds for the minimum duration per `loading-states.md`.
+- [ ] **E2E (Playwright)** — `extended-thinking-bench.spec.ts`, per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs": nav reachable right after Workflow Gallery; docs panel renders non-empty content; the happy path picks the one fake-mode issue, runs, and confirms all 3 comparison columns render.
 
 ### Manual
 
@@ -101,6 +102,8 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] Implement `reasoningTrace` extraction and `latencyMs` measurement.
 - [ ] Implement `POST /run`'s `404` handling for an unknown/no-longer-open `issueNumber`.
 - [ ] Build the frontend: issue picker, Run flow, 3-column comparison view with 3 inspector-panel instances.
+- [ ] Write this lab's in-app doc (`write-lab-doc`).
+- [ ] Add the browser E2E spec (`e2e/tests/extended-thinking-bench.spec.ts`) — per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs", only once the in-app doc above already exists, since the spec's docs-panel assertion needs real rendered content to check.
 - [ ] Wire `ExtendedThinkingBenchModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`, `GithubProviderModule`).
 
 ## Open questions

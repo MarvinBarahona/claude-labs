@@ -91,7 +91,7 @@ Concretely: `DocumentResearchAssistantService` keeps an in-memory `Map<sessionId
 
 ### Automated
 
-Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit" buckets:
+Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit"/"Frontend browser E2E" buckets:
 
 - [ ] **Unit** — `POST /session` fetches metadata+PDF bytes via a fake `ArxivClient` and creates a session with empty notes and empty history.
 - [ ] **Unit** — the first `ask` in a session builds the document content block via `ContentBlockBuilderService` in the requested mode, adds `title`/`citations: { enabled: true }`, and marks the `messages[0]` cache boundary.
@@ -102,6 +102,7 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] **Unit** — `calls` is present (and holds every intermediate tool-loop call) only when the text-editor tool loop actually ran more than once this turn; omitted for a turn that answered without a tool call.
 - [ ] **Integration** — `nock`-intercepted end-to-end: session creation, a first ask (document attached, cache boundary marked), and a follow-up ask (cached document, tool loop exercised), covering both `stream: false` and `stream: true`, and the `404`/`502` error paths.
 - [ ] **Frontend unit** — the arXiv-ID form starts a session and renders the fetched paper; the transcript renders question/answer turns and citation markers from a mocked response; toggling delivery mode re-issues the current question and the inspector shows both content-block shapes side by side; the notes panel renders `notes` after each ask; the transcript/notes panel skeletons hold for the minimum duration per `loading-states.md` and never blank on a second-onward ask.
+- [ ] **E2E (Playwright)** — `document-research-assistant.spec.ts`, per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs": nav reachable right after Live Tool-Use Console; docs panel renders non-empty content; the happy path starts a session against the one fake-mode arXiv paper, asks a question, and confirms a rendered answer with citation markers and an updated notes panel, for both `stream: false` and `stream: true`.
 
 ### Manual
 
@@ -121,6 +122,8 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] Implement streaming (`tool_call_start`/`tool_call_result`/`turn_complete`), reusing Live Tool-Use Console's SSE plumbing.
 - [ ] Implement `404` handling for an unknown `sessionId`.
 - [ ] Build the frontend: arXiv-ID form, chat transcript with citation markers, delivery-mode toggle, notes side panel.
+- [ ] Write this lab's in-app doc (`write-lab-doc`).
+- [ ] Add the browser E2E spec (`e2e/tests/document-research-assistant.spec.ts`) — per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs", only once the in-app doc above already exists, since the spec's docs-panel assertion needs real rendered content to check.
 - [ ] Wire `DocumentResearchAssistantModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`, `ContentBlockBuilderModule`, `CachingLayerModule`).
 
 ## Open questions

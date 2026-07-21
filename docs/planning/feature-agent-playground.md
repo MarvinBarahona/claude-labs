@@ -77,7 +77,7 @@ Streaming and non-streaming, reusing Live Tool-Use Console's loop/SSE shape exac
 
 ### Automated
 
-Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit" buckets:
+Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"Backend integration"/"Frontend unit"/"Frontend browser E2E" buckets:
 
 - [ ] **Unit** — `list_files`/`read_file`/`search` execute against a fake `GithubClient`, `read_file` on a not-found path returning `is_error: true` (not a transport failure).
 - [ ] **Unit** — `ask_deepwiki` is available via `DeepwikiConnectorService.buildRequestFragment()`, mixed into the same request as the 3 custom tools.
@@ -87,6 +87,7 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] **Unit** — `calls` holds every iteration's call, in true chronological order.
 - [ ] **Integration** — a `nock`-intercepted end-to-end run (fixture GitHub + Anthropic responses, including a fixture `mcp_tool_use`/`mcp_tool_result` pair) proves the full non-streaming and streaming shapes.
 - [ ] **Frontend unit** — the Run button (no form fields); the live tool-activity list renders each of the 4 tool kinds from mocked SSE frames; the `hitIterationCap` banner appears only when true; the final answer and the Workflow-Gallery comparison callout render from a mocked response using that response's own counts; the tool-activity/answer skeleton holds for the minimum duration per `loading-states.md`.
+- [ ] **E2E (Playwright)** — `agent-playground.spec.ts`, per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs": nav reachable as the last entry; docs panel renders non-empty content; the happy path clicks Run (no form fields) and confirms the tool-activity list and a final answer render.
 
 ### Manual
 
@@ -103,6 +104,8 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 - [ ] Implement `toolActivity` flattening across both tool kinds.
 - [ ] Implement streaming, reusing Live Tool-Use Console's SSE plumbing.
 - [ ] Build the frontend: Run button, live tool-activity list with environment-inspection callouts, `hitIterationCap` banner, final answer, Workflow-Gallery comparison callout.
+- [ ] Write this lab's in-app doc (`write-lab-doc`).
+- [ ] Add the browser E2E spec (`e2e/tests/agent-playground.spec.ts`) — per [`frontend-browser-e2e-tests.md`](../shared/frontend-browser-e2e-tests.md)'s "Specs", only once the in-app doc above already exists, since the spec's docs-panel assertion needs real rendered content to check.
 - [ ] Wire `AgentPlaygroundModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`, `GithubProviderModule`, `DeepwikiConnectorModule`).
 
 ## Open questions
