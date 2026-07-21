@@ -32,4 +32,12 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
         (m) => m.LiveToolUseConsole,
       ),
   },
+  {
+    slug: 'workflow-gallery',
+    label: 'Workflow Gallery',
+    loadComponent: () =>
+      import('../workflow-gallery/workflow-gallery').then(
+        (m) => m.WorkflowGallery,
+      ),
+  },
 ];

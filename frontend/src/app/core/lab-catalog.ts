@@ -17,4 +17,8 @@ export const LAB_CATALOG: Readonly<Record<string, LabCatalogEntry>> = {
     goal: 'Let Claude choose between two backend-executed tools — real-time weather lookup and GitHub repo stats — across a full tool-use loop, including fine-grained streaming of tool arguments.',
     concepts: ['Custom tool definitions', 'Tool-use/tool-result loop', 'Fine-grained (eager) tool-argument streaming'],
   },
+  'workflow-gallery': {
+    goal: 'Route a real open GitHub issue to a category, chain a draft-then-refine reply, grade it in parallel against several criteria, and loop that feedback back into drafting until it passes or hits a retry cap.',
+    concepts: ['Routing', 'Chaining', 'Parallelization', 'Evaluator-optimizer', 'Prompt caching'],
+  },
 };
