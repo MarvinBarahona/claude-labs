@@ -32,6 +32,8 @@ Always runs against a fake-mode dev-stack instance, never real mode — verifyin
 
 One file per lab under `e2e/tests/`, named `<slug>.spec.ts` (`home.spec.ts` for the landing route). Each spec asserts its page's own nav reachability (relative to whichever entry precedes it — a change to nav order is exactly the kind of thing a spec should catch, so assert the real adjacent entry rather than a hard-coded index believed stable), its docs panel where the page has one, and its own happy-path flow end to end, non-streamed and streamed for a lab that supports both.
 
+A spec's docs-panel assertion checks for real, non-empty rendered content, which means that lab's in-app doc (`frontend/public/lab-docs/<slug>.md`) has to already exist — write a lab's in-app doc before its E2E spec, not after, or the spec has nothing real to assert against.
+
 This doc doesn't enumerate what each spec currently asserts — that lives in the spec file itself, which is the only place it can't silently go stale. Adding a new lab's spec, or changing an existing one, never requires an edit here.
 
 ## Notes for writing future specs
