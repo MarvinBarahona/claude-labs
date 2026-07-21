@@ -9,7 +9,7 @@
 - **PDF support** — a PDF is a `document` content block (`media_type: "application/pdf"`); Claude processes each page as both extracted text and a rendered image, same setup as images; capped at 100 pages / 32MB.
 - **Citations** — add `title` and `citations: {enabled: true}` to the document block; each claim in the response comes back with a citation object (`cited_text`, `document_index`, `document_title`, `start_page_number`, `end_page_number`) pointing to the exact source text.
 - **Prompt caching + breakpoints** — mark a manual cache breakpoint on a block (system prompt, tools, messages, images, ...); processing always runs tools → system → messages, so a breakpoint caches everything before it too; minimum 1024 tokens to cache, up to 4 breakpoints per request, ~1-hour TTL; changing an earlier region (e.g. the document, if placed before the breakpoint) invalidates every region after it too, forcing a full-price reprocess.
-- **Files API vs. base64 toggle** — upload once and reference a file ID vs. re-sending base64 inline; see `task-content-block-builder.md` for the confirmed field shapes.
+- **Files API vs. base64 toggle** — upload once and reference a file ID vs. re-sending base64 inline; see [`content-block-builder.md`](../shared/content-block-builder.md) for the confirmed field shapes.
 - **Text editor tool** — server tool `str_replace_based_edit_tool` (type `text_editor_20250728`), schema-less; commands `view` / `str_replace` / `create` / `insert`; the app does the real file I/O and must enforce `str_replace` uniqueness (return `is_error: true` with a clear message on 0 or 2+ matches) and prepend line numbers to file contents so `view_range`/`insert_line` targeting works.
 
 ## Main idea
@@ -27,12 +27,12 @@ After Foundations Console's shell, the GitHub data provider, Live Tool-Use Conso
 
 - Requires Foundations Console's shell (inspector panel, config/model layer).
 - Reuses the **caching layer** ([`caching-layer.md`](../shared/caching-layer.md)), shared with Workflow Gallery.
-- Requires the **content-block builder** ([`task-content-block-builder.md`](task-content-block-builder.md), built right before this feature) to already exist — this is its first real consumer. Data & Code Sandbox and Vision Lab depend on it too and are built after this feature.
+- Requires the **content-block builder** ([`content-block-builder.md`](../shared/content-block-builder.md), built right before this feature) to already exist — this is its first real consumer. Data & Code Sandbox and Vision Lab depend on it too and are built after this feature.
 
 ## Shared functionality used
 
 - Caching layer ([`caching-layer.md`](../shared/caching-layer.md)).
-- Content-block builder ([`task-content-block-builder.md`](task-content-block-builder.md)) — first real consumer here; later reused by Data & Code Sandbox in Files-API-only mode, and by Vision Lab.
+- Content-block builder ([`content-block-builder.md`](../shared/content-block-builder.md)) — first real consumer here; later reused by Data & Code Sandbox in Files-API-only mode, and by Vision Lab.
 
 ## Files API / base64
 
@@ -52,7 +52,7 @@ Concretely: `DocumentResearchAssistantService` keeps an in-memory `Map<sessionId
 
 ## Depends on
 
-- [`task-content-block-builder.md`](task-content-block-builder.md)'s `ContentBlockBuilderService.buildBlock()` — builds the document content block in whichever mode the current `ask` requests.
+- [`content-block-builder.md`](../shared/content-block-builder.md)'s `ContentBlockBuilderService.buildBlock()` — builds the document content block in whichever mode the current `ask` requests.
 - [`caching-layer.md`](../shared/caching-layer.md)'s `CachingLayerService.markBreakpoints()`/`readCacheStatus()` — the document (first user message) is the cached region.
 - [`architecture.md`](../technical/architecture.md), "Custom tools vs. server-executed tools" — the text-editor tool loop follows exactly this convention (backend executes real file I/O, replies with `tool_result`, repeats until `stop_reason` isn't `tool_use`), the same shape [`live-tool-use-console.md`](../features/live-tool-use-console.md) already established for `get_weather`/`get_repo_stats`.
 - [`architecture.md`](../technical/architecture.md), "Streaming transport" — this feature's tool loop is structurally the same shape as Live Tool-Use Console's, so it reuses that lab's own streaming convention (raw events forwarded verbatim, plus `tool_call_start`/`tool_call_result` app-level events, plus a terminal `turn_complete`) rather than inventing a new one.
@@ -128,4 +128,4 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Backend unit"/"
 
 ## Open questions
 
-None specific to this feature. The Files API field-shape question is tracked in [`task-content-block-builder.md`](task-content-block-builder.md) instead, since that's where the content-block builder's interface is actually decided.
+None specific to this feature. The Files API field-shape question is tracked in [`content-block-builder.md`](../shared/content-block-builder.md) instead, since that's where the content-block builder's interface is actually decided.

@@ -22,11 +22,11 @@ Compare/count/describe across several real, freely-licensed images fetched from 
 
 Reuses the content-block builder first used by Document Research Assistant (see `status.md` for current position).
 
-- Requires the **content-block builder** ([`task-content-block-builder.md`](task-content-block-builder.md)) to already exist.
+- Requires the **content-block builder** ([`content-block-builder.md`](../shared/content-block-builder.md)) to already exist.
 
 ## Shared functionality used
 
-- Content-block builder ([`task-content-block-builder.md`](task-content-block-builder.md)).
+- Content-block builder ([`content-block-builder.md`](../shared/content-block-builder.md)).
 - Response Envelope Builder ([`envelope-builder.md`](../shared/envelope-builder.md)).
 
 ## Files API / base64
@@ -40,7 +40,7 @@ Both mechanisms are technically valid for attaching images here, so this feature
 
 ## Depends on
 
-- [`task-content-block-builder.md`](task-content-block-builder.md)'s `ContentBlockBuilderService.buildBlock()` — builds one `image` content block per fetched image, in whichever delivery mode the current request asks for.
+- [`content-block-builder.md`](../shared/content-block-builder.md)'s `ContentBlockBuilderService.buildBlock()` — builds one `image` content block per fetched image, in whichever delivery mode the current request asks for.
 - [`architecture.md`](../technical/architecture.md), "Streaming transport" — this feature has no tools and no structured-output parsing, the same shape as Messages Console's plain multi-block call, so it reuses that lab's own streaming convention (raw events forwarded verbatim, a synthetic response reconstructed from `content_block_delta` events, a terminal `turn_complete`) rather than Structured Output Console's non-streaming precedent, which exists specifically because that feature has to parse the final text as JSON.
 - **Wikimedia Commons client** — a new data-source client, built **lab-local** (`backend/src/vision-lab/wikimedia-client.ts`), not under `backend/src/shared/`, per [`repo-layout.md`](../technical/repo-layout.md)'s "Lab-specific, or shared functionality?" rule — no other planned feature consumes Wikimedia Commons, the same situation Document Research Assistant's lab-local `ArxivClient` and Live Tool-Use Console's lab-local `OpenMeteoClient` are already in. Follows the same DI-token-plus-fake pattern as those: an abstract-class `WikimediaClient` token (`searchImages(query: string, count: number): Promise<{ url: string; title: string; mediaType: string; widthPx: number; heightPx: number; bytes: Buffer }[]>`), a `RealWikimediaClient` (rethrowing any failure as `ExternalApiError('wikimedia', ...)` per [`api-error-handling.md`](../shared/api-error-handling.md)), a `FakeWikimediaClient` under `backend/src/testing/wikimedia/` returning canned image metadata and small canned buffers by default, and wired through [`fake-mode.md`](../shared/fake-mode.md)'s `fakeSwitchProvider()`.
   - **Confirmed wire call:** one `GET` to `https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrsearch=<query>&gsrnamespace=6&gsrlimit=<count>&prop=imageinfo&iiprop=url|size|mime` — `generator=search` (namespace `6` = File) produces the candidate pages, and `prop=imageinfo` resolves each one's metadata in the same round trip (the `gsr`-prefixed params are the generator's own copies of `list=search`'s `sr`-prefixed ones, not a second call). The response's `query.pages` is a pageid-keyed map; each page's `imageinfo[0]` carries `url`, `width`, `height`, and `mime`, and its own `title` is the `File:...` name. `RealWikimediaClient.searchImages()` makes this call, then issues one plain `GET` per result against each `imageinfo[0].url` to fetch the actual image bytes (the search+imageinfo call returns metadata only, never the file content itself) — mapping `mime` to this client's own `mediaType` field and `width`/`height` to `widthPx`/`heightPx`.

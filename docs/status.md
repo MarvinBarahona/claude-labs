@@ -45,7 +45,7 @@ This table is a summary pointer — whatever process currently carries out each 
 | Demo deploy | Task | `demo-deploy` | ✅ Done | [`demo-deploy.md`](shared/demo-deploy.md) |
 | Caching layer | Task | `caching-layer` | ✅ Done | [`caching-layer.md`](shared/caching-layer.md) |
 | Workflow Gallery | Feature | `workflow-gallery` | ✅ Done | [`workflow-gallery.md`](features/workflow-gallery.md) |
-| Content-block builder | Task | `content-block-builder` | 📋 Planned | [`task-content-block-builder.md`](planning/task-content-block-builder.md) |
+| Content-block builder | Task | `content-block-builder` | ✅ Done | [`content-block-builder.md`](shared/content-block-builder.md) |
 | Document Research Assistant | Feature | `document-research-assistant` | 📋 Planned | [`feature-document-research-assistant.md`](planning/feature-document-research-assistant.md) |
 | Data & Code Sandbox | Feature | `data-code-sandbox` | 📋 Planned | [`feature-data-code-sandbox.md`](planning/feature-data-code-sandbox.md) |
 | DeepWiki MCP connector | Task | `deepwiki-connector` | 📋 Planned | [`task-deepwiki-connector.md`](planning/task-deepwiki-connector.md) |
