@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { navLinkAfter } from './support/nav-link-after';
 
-test('is reachable as the nav entry right after Live Tool-Use Console, loads its docs, and runs the full routing/chaining/parallelization/evaluator-optimizer pipeline', async ({
+test('is reachable as the nav entry right after Document Research Assistant, loads its docs, and runs the full routing/chaining/parallelization/evaluator-optimizer pipeline', async ({
   page,
 }) => {
-  await page.goto('/live-tool-use-console');
+  await page.goto('/document-research-assistant');
 
-  await test.step('Workflow Gallery is the nav entry right after Live Tool-Use Console', async () => {
-    const link = await navLinkAfter(page, 'Live Tool-Use Console');
+  await test.step('Workflow Gallery is the nav entry right after Document Research Assistant', async () => {
+    const link = await navLinkAfter(page, 'Document Research Assistant');
     await expect(link).toHaveText('Workflow Gallery');
     await link.click();
     await expect(page).toHaveURL(/\/workflow-gallery$/);
