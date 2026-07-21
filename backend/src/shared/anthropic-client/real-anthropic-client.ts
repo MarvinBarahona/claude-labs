@@ -20,8 +20,17 @@ export class RealAnthropicClient extends AnthropicClient {
 
   async createMessage(
     params: AnthropicMessageParams,
+    betas?: string[],
   ): Promise<AnthropicMessage> {
     try {
+      if (betas && betas.length > 0) {
+        // The beta response type is a structural superset of the stable `Message` shape.
+        return (await this.client.beta.messages.create({
+          ...params,
+          stream: false,
+          betas,
+        })) as unknown as AnthropicMessage;
+      }
       return await this.client.messages.create({
         ...params,
         stream: false,
@@ -33,8 +42,20 @@ export class RealAnthropicClient extends AnthropicClient {
 
   async *streamMessage(
     params: AnthropicMessageParams,
+    betas?: string[],
   ): AsyncIterable<AnthropicStreamEvent> {
     try {
+      if (betas && betas.length > 0) {
+        const stream = await this.client.beta.messages.create({
+          ...params,
+          stream: true,
+          betas,
+        });
+        for await (const event of stream) {
+          yield event as unknown as AnthropicStreamEvent;
+        }
+        return;
+      }
       const stream = await this.client.messages.create({
         ...params,
         stream: true,

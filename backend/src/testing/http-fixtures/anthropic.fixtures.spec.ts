@@ -5,6 +5,7 @@ import {
   mockAnthropicMessagesAuthError,
   mockAnthropicMessagesStream,
   mockAnthropicModelsList,
+  mockAnthropicBetaMessagesCreate,
 } from './anthropic.fixtures';
 import {
   fakeTextMessage,
@@ -71,6 +72,26 @@ describe('Anthropic nock fixtures', () => {
       'message_delta',
       'message_stop',
     ]);
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('intercepts a real SDK beta.messages.create() call (?beta=true) with a canned response', async () => {
+    const client = new Anthropic({ apiKey: 'test-key' });
+    const scope = mockAnthropicBetaMessagesCreate(
+      fakeTextMessage('hello from beta fixture'),
+    );
+
+    const message = await client.beta.messages.create({
+      model: 'claude-sonnet-5',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: 'hi' }],
+      betas: ['files-api-2025-04-14'],
+    });
+
+    expect(message.content[0]).toMatchObject({
+      type: 'text',
+      text: 'hello from beta fixture',
+    });
     expect(scope.isDone()).toBe(true);
   });
 

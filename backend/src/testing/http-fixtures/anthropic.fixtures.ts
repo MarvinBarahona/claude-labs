@@ -25,6 +25,20 @@ export function mockAnthropicMessagesStream(
     .reply(200, body, { 'Content-Type': 'text/event-stream' });
 }
 
+/** Streaming counterpart of `mockAnthropicBetaMessagesCreate` — same `?beta=true` path, SSE body. */
+export function mockAnthropicBetaMessagesStream(
+  events: AnthropicStreamEvent[],
+): nock.Scope {
+  const body = events
+    .map((event) => `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`)
+    .join('');
+
+  return nock(ANTHROPIC_API_BASE_URL)
+    .post('/v1/messages')
+    .query({ beta: 'true' })
+    .reply(200, body, { 'Content-Type': 'text/event-stream' });
+}
+
 export function mockAnthropicMessagesAuthError(): nock.Scope {
   return nock(ANTHROPIC_API_BASE_URL)
     .post('/v1/messages')
@@ -66,6 +80,16 @@ export function mockAnthropicModelsAuthError(): nock.Scope {
       type: 'error',
       error: { type: 'authentication_error', message: 'invalid x-api-key' },
     });
+}
+
+/** For a call made with `betas` set (e.g. a Files-API `file_id` document reference) — the SDK's beta client posts to this same path with `?beta=true`, not a different URL. */
+export function mockAnthropicBetaMessagesCreate(
+  response: AnthropicMessage,
+): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .post('/v1/messages')
+    .query({ beta: 'true' })
+    .reply(200, response);
 }
 
 export function mockAnthropicFilesUpload(fileId: string): nock.Scope {
