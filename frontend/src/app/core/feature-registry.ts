@@ -33,6 +33,14 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
       ),
   },
   {
+    slug: 'document-research-assistant',
+    label: 'Document Research Assistant',
+    loadComponent: () =>
+      import('../document-research-assistant/document-research-assistant').then(
+        (m) => m.DocumentResearchAssistant,
+      ),
+  },
+  {
     slug: 'workflow-gallery',
     label: 'Workflow Gallery',
     loadComponent: () =>

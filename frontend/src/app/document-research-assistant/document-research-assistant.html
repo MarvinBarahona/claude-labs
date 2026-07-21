@@ -1,0 +1,212 @@
+<div class="flex flex-col gap-6">
+  <h1 class="text-xl font-bold text-foreground">Document Research Assistant</h1>
+
+  <app-docs-panel [slug]="'document-research-assistant'" />
+
+  <section class="flex flex-col gap-4 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+    <h2 class="text-base font-bold text-foreground">Paper</h2>
+
+    @if (session(); as current) {
+      <div class="flex flex-col gap-2">
+        <h3 class="text-sm font-bold text-foreground">{{ current.paper.title }}</h3>
+        <p class="text-xs text-muted-foreground">{{ current.paper.authors.join(', ') }}</p>
+        <p class="whitespace-pre-wrap text-sm" data-testid="paper-summary">{{ current.paper.summary }}</p>
+        <a class="text-xs text-primary underline" [href]="current.paper.pdfUrl" target="_blank" rel="noopener">View PDF</a>
+      </div>
+    } @else {
+      <div class="flex flex-col gap-3">
+        <label class="flex flex-col gap-1 lg:max-w-sm">
+          <span class="text-xs font-bold tracking-wide text-foreground">arXiv ID or URL</span>
+          <input
+            class="rounded-sm border border-border bg-background p-2 text-sm"
+            type="text"
+            aria-label="arXiv ID or URL"
+            placeholder="e.g. 2301.00234"
+            [value]="arxivIdInput()"
+            (input)="onArxivIdChange($event)"
+            (keydown.enter)="startSession()"
+          />
+        </label>
+
+        <div>
+          <button
+            type="button"
+            class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+            [disabled]="!arxivIdInput().trim() || isStartingSession()"
+            (click)="startSession()"
+          >
+            Start
+          </button>
+        </div>
+
+        @if (sessionError(); as error) {
+          <p role="alert" class="text-xs text-destructive">{{ error }}</p>
+        }
+
+        @if (isStartingSession()) {
+          <div class="flex flex-col gap-2" aria-hidden="true" data-testid="session-skeleton">
+            <app-skeleton widthClass="w-1/2" [heightPx]="20" />
+            <app-skeleton widthClass="w-full" />
+            <app-skeleton widthClass="w-2/3" />
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  @if (session()) {
+    <section class="flex flex-col gap-4 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+      <h2 class="text-base font-bold text-foreground">Ask</h2>
+
+      <div class="flex flex-col gap-4">
+        <label class="flex items-center gap-2 text-xs">
+          <input type="checkbox" aria-label="Stream response" [checked]="streamingEnabled()" (change)="onStreamingToggle($event)" />
+          <span class="text-xs font-bold tracking-wide text-foreground">Stream Response ({{ streamingEnabled() ? 'Yes' : 'No' }})</span>
+        </label>
+
+        <fieldset class="flex flex-col gap-1">
+          <legend class="text-xs font-bold tracking-wide text-foreground">Delivery Mode</legend>
+          <div class="flex flex-wrap gap-3">
+            @for (option of deliveryModeOptions; track option.value) {
+              <label class="flex items-center gap-1 text-xs">
+                <input
+                  type="radio"
+                  name="delivery-mode"
+                  [attr.aria-label]="option.label"
+                  [value]="option.value"
+                  [checked]="deliveryMode() === option.value"
+                  (change)="onDeliveryModeChange(option.value)"
+                />
+                {{ option.label }}
+              </label>
+            }
+          </div>
+        </fieldset>
+
+        <div class="flex gap-2">
+          <input
+            class="flex-1 rounded-sm border border-border bg-background p-2 text-sm"
+            type="text"
+            aria-label="Question"
+            placeholder="Ask about this paper…"
+            [value]="draftQuestion()"
+            (input)="onQuestionChange($event)"
+            (keydown.enter)="askQuestion()"
+          />
+          <button
+            type="button"
+            class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+            [disabled]="!draftQuestion().trim() || isAsking()"
+            (click)="askQuestion()"
+          >
+            Ask
+          </button>
+        </div>
+
+        @if (askError(); as error) {
+          <p role="alert" class="text-xs text-destructive">{{ error }}</p>
+        }
+
+        <div class="flex flex-col gap-2 border-t border-border pt-4">
+          <h3 class="text-xs font-bold uppercase tracking-wide text-foreground">Transcript</h3>
+          <ol class="flex flex-col gap-3" data-testid="transcript-list">
+            @for (turn of transcript(); track $index) {
+              <li class="flex flex-col gap-2">
+                <div class="flex justify-end">
+                  <div class="max-w-[80%] rounded-lg bg-primary px-3 py-2 text-primary-foreground">
+                    <p class="whitespace-pre-wrap text-sm">{{ turn.question }}</p>
+                  </div>
+                </div>
+                <div class="flex justify-start">
+                  <div class="max-w-[80%] rounded-lg bg-secondary px-3 py-2 text-secondary-foreground">
+                    @if (turn.paragraphs) {
+                      <div class="flex flex-col gap-2">
+                        @for (paragraph of turn.paragraphs; track $index) {
+                          <div class="flex flex-col gap-1">
+                            <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ paragraph.text }}</p>
+                            @if (paragraph.citations.length > 0) {
+                              <div class="flex flex-wrap gap-1">
+                                @for (citation of paragraph.citations; track $index) {
+                                  <details class="text-[10px]">
+                                    <summary
+                                      data-testid="citation-marker"
+                                      class="cursor-pointer text-secondary-foreground underline"
+                                    >[{{ $index + 1 }}]</summary>
+                                    <div
+                                      data-testid="citation-detail"
+                                      class="mt-1 max-w-xs rounded-sm border border-border bg-card p-2 text-card-foreground"
+                                    >
+                                      <p class="italic">"{{ citation.citedText }}"</p>
+                                      <p class="mt-1 opacity-70">{{ citation.documentTitle }} · pp. {{ citation.startPage }}–{{ citation.endPage }}</p>
+                                    </div>
+                                  </details>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    } @else if (streamingAnswerText()) {
+                      <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ streamingAnswerText() }}</p>
+                    } @else {
+                      <div class="flex flex-col gap-2" aria-hidden="true" data-testid="answer-skeleton">
+                        <app-skeleton widthClass="w-48" />
+                        <app-skeleton widthClass="w-32" />
+                      </div>
+                    }
+                  </div>
+                </div>
+              </li>
+            }
+          </ol>
+        </div>
+
+        @if (isAsking() || toolActivity().length > 0) {
+          <div class="flex flex-col gap-2 border-t border-border pt-4">
+            <h3 class="text-xs font-bold uppercase tracking-wide text-foreground">Tool Activity</h3>
+            @if (toolActivity().length > 0) {
+              <ol class="flex flex-col gap-2" data-testid="tool-activity-list">
+                @for (activity of toolActivity(); track $index) {
+                  <li class="rounded-sm border border-border p-2">
+                    <span class="rounded-sm bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground">{{ activity.name }}</span>
+                    <span
+                      class="ml-2 rounded-sm px-1.5 py-0.5 text-xs"
+                      [class.bg-accent]="activity.status === 'running'"
+                      [class.text-accent-foreground]="activity.status === 'running'"
+                      [class.bg-secondary]="activity.status === 'done'"
+                      [class.text-secondary-foreground]="activity.status === 'done'"
+                    >
+                      {{ activity.status }}
+                    </span>
+                  </li>
+                }
+              </ol>
+            } @else {
+              <div class="flex flex-row gap-2" aria-hidden="true" data-testid="tool-activity-skeleton">
+                <app-skeleton widthClass="w-32" [heightPx]="20" [borderRadiusPx]="4" />
+                <app-skeleton widthClass="w-24" [heightPx]="20" [borderRadiusPx]="4" />
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    @if (isAsking() || notes() !== null) {
+      <section class="flex flex-col gap-2 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+        <h2 class="text-base font-bold text-foreground">Notes</h2>
+        @if (notes() !== null) {
+          <div class="notes-content text-sm" data-testid="notes-panel" [innerHTML]="notesHtml()"></div>
+        } @else {
+          <div class="flex flex-col gap-2" aria-hidden="true" data-testid="notes-skeleton">
+            <app-skeleton widthClass="w-full" />
+            <app-skeleton widthClass="w-full" />
+            <app-skeleton widthClass="w-2/3" />
+          </div>
+        }
+      </section>
+    }
+  }
+
+  <app-inspector-panel [call]="inspectorCall()" />
+</div>
