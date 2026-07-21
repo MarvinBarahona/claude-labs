@@ -11,6 +11,7 @@ import { MessagesConsoleModule } from './messages-console/messages-console.modul
 import { StructuredOutputConsoleModule } from './structured-output-console/structured-output-console.module';
 import { LiveToolUseConsoleModule } from './live-tool-use-console/live-tool-use-console.module';
 import { WorkflowGalleryModule } from './workflow-gallery/workflow-gallery.module';
+import { DocumentResearchAssistantModule } from './document-research-assistant/document-research-assistant.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { WorkflowGalleryModule } from './workflow-gallery/workflow-gallery.modul
     StructuredOutputConsoleModule,
     LiveToolUseConsoleModule,
     WorkflowGalleryModule,
+    DocumentResearchAssistantModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api{/*splat}'],
