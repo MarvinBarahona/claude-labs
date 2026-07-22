@@ -26,9 +26,9 @@ Wired via `MessagesConsoleModule` (imports `ModelConfigModule`, `AnthropicClient
 
 ## Frontend
 
-`frontend/src/app/messages-console/` (`MessagesConsole`). Stacks `<app-docs-panel [slug]="'messages-console'" />` → the transcript demo (model picker, system prompt, temperature, streaming toggle, message list/input) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. Uses the shared `<app-model-picker>` for model selection.
+`frontend/src/app/messages-console/` (`MessagesConsole`). Stacks `<app-docs-panel [slug]="'messages-console'" />` → the transcript demo (model picker, system prompt, temperature, streaming toggle, the shared `<app-chat-transcript>`) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. Uses the shared `<app-model-picker>` for model selection and the shared `<app-chat-transcript>` (see `chat-transcript.md`) for the transcript list/input dock — a turn is pushed with `answerMarkdown: null` immediately on send, giving the shared component's pending-turn skeleton something to attach to, and a 500ms minimum-duration floor timer (per `loading-states.md`) holds that skeleton even when a fake-mode response resolves near-instantly.
 
-Calls the backend route above: non-streaming via `HttpClient`, streaming via `fetch()` with a manual `ReadableStream` reader parsing `event:`/`data:` SSE frames, accumulating `content_block_delta` text incrementally into the transcript and applying the final `TurnEnvelope` from `turn_complete` to the inspector panel. A mid-stream `error` frame surfaces its `message` as a visible error state.
+Calls the backend route above: non-streaming via `HttpClient`, streaming via `fetch()` with a manual `ReadableStream` reader parsing `event:`/`data:` SSE frames, accumulating `content_block_delta` text incrementally into `pendingAnswerMarkdown` and applying the final `TurnEnvelope` from `turn_complete` to the inspector panel. A mid-stream `error` frame surfaces its `message` as a visible error state.
 
 ## In-app doc
 
