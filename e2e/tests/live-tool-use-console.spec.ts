@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { navLinkAfter } from './support/nav-link-after';
+import { navLink } from './support/nav-link';
 
-test('is reachable as the nav entry right after Structured Output Console, loads its docs, and completes a tool-use turn non-streamed then streamed', async ({
+test('is reachable from the nav, loads its docs, and completes a tool-use turn non-streamed then streamed', async ({
   page,
 }) => {
-  await page.goto('/structured-output-console');
+  await page.goto('/home');
 
-  await test.step('Live Tool-Use Console is the nav entry right after Structured Output Console', async () => {
-    const link = await navLinkAfter(page, 'Structured Output Console');
-    await expect(link).toHaveText('Live Tool-Use Console');
+  await test.step('Live Tool-Use Console is reachable from the nav', async () => {
+    const link = navLink(page, 'Live Tool-Use Console');
     await link.click();
     await expect(page).toHaveURL(/\/live-tool-use-console$/);
     await expect(link).toHaveClass(/nav-link-active/);

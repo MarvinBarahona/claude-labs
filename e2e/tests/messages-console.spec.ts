@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { navLinkAfter } from './support/nav-link-after';
+import { navLink } from './support/nav-link';
 
-test('is reachable right after Home, nav/docs/banner render, and a non-streamed then streamed turn complete', async ({
+test('is reachable from the nav, nav/docs/banner render, and a non-streamed then streamed turn complete', async ({
   page,
 }) => {
   await page.goto('/home');
 
-  await test.step('Messages Console is the nav entry right after Home', async () => {
-    const link = await navLinkAfter(page, 'Home');
-    await expect(link).toHaveText('Messages Console');
+  await test.step('Messages Console is reachable from the nav', async () => {
+    const link = navLink(page, 'Messages Console');
     await link.click();
     await expect(page).toHaveURL(/\/messages-console$/);
     await expect(link).toHaveClass(/nav-link-active/);

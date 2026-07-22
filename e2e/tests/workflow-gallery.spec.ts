@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { navLinkAfter } from './support/nav-link-after';
+import { navLink } from './support/nav-link';
 
-test('is reachable as the nav entry right after Document Research Assistant, loads its docs, and runs the full routing/chaining/parallelization/evaluator-optimizer pipeline', async ({
+test('is reachable from the nav, loads its docs, and runs the full routing/chaining/parallelization/evaluator-optimizer pipeline', async ({
   page,
 }) => {
-  await page.goto('/document-research-assistant');
+  await page.goto('/home');
 
-  await test.step('Workflow Gallery is the nav entry right after Document Research Assistant', async () => {
-    const link = await navLinkAfter(page, 'Document Research Assistant');
-    await expect(link).toHaveText('Workflow Gallery');
+  await test.step('Workflow Gallery is reachable from the nav', async () => {
+    const link = navLink(page, 'Workflow Gallery');
     await link.click();
     await expect(page).toHaveURL(/\/workflow-gallery$/);
     await expect(link).toHaveClass(/nav-link-active/);

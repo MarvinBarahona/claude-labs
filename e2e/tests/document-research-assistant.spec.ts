@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { navLinkAfter } from './support/nav-link-after';
+import { navLink } from './support/nav-link';
 
-test('is reachable as the nav entry right after Live Tool-Use Console, loads its docs, and completes a document research turn non-streamed then streamed', async ({
+test('is reachable from the nav, loads its docs, and completes a document research turn non-streamed then streamed', async ({
   page,
 }) => {
-  await page.goto('/live-tool-use-console');
+  await page.goto('/home');
 
-  await test.step('Document Research Assistant is the nav entry right after Live Tool-Use Console', async () => {
-    const link = await navLinkAfter(page, 'Live Tool-Use Console');
-    await expect(link).toHaveText('Document Research Assistant');
+  await test.step('Document Research Assistant is reachable from the nav', async () => {
+    const link = navLink(page, 'Document Research Assistant');
     await link.click();
     await expect(page).toHaveURL(/\/document-research-assistant$/);
     await expect(link).toHaveClass(/nav-link-active/);

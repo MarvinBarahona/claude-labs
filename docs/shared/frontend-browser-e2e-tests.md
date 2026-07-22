@@ -12,7 +12,7 @@ New top-level `e2e/` directory (sibling to `frontend/`, `backend/` — see `repo
 - **`e2e/playwright.config.ts`** — `testDir: './tests'`, `globalSetup: './global-setup.ts'`, `use.baseURL: 'http://frontend:4200'` (the dev stack's own Compose service name/port).
 - **`e2e/global-setup.ts`** — the fake-mode guard, see below.
 - **`e2e/tests/`** — one spec file per lab, plus `home.spec.ts` for the landing route; see "Specs" below for the naming/coverage convention.
-- **`e2e/tests/support/`** — shared pure-function helpers reused across spec files (e.g. `nav-link-after.ts`, which looks up "the nav link right after label X" by content instead of a hard-coded index — see "Specs" below for why). Filenames here deliberately avoid `test`/`spec` so Playwright's own file discovery never picks them up as specs.
+- **`e2e/tests/support/`** — shared pure-function helpers reused across spec files (e.g. `nav-link.ts`, which looks up a nav link by its exact label rather than by position — see "Specs" below for why). Filenames here deliberately avoid `test`/`spec` so Playwright's own file discovery never picks them up as specs.
 
 ## Running it
 
@@ -30,7 +30,7 @@ Always runs against a fake-mode dev-stack instance, never real mode — verifyin
 
 ## Specs
 
-One file per lab under `e2e/tests/`, named `<slug>.spec.ts` (`home.spec.ts` for the landing route). Each spec asserts its page's own nav reachability (relative to whichever entry precedes it — a change to nav order is exactly the kind of thing a spec should catch, so assert the real adjacent entry rather than a hard-coded index believed stable), its docs panel where the page has one, and its own happy-path flow end to end, non-streamed and streamed for a lab that supports both.
+One file per lab under `e2e/tests/`, named `<slug>.spec.ts` (`home.spec.ts` for the landing route). Each spec starts at `/home` and asserts its own page is reachable by clicking its nav link, found by exact label rather than position — nav order beyond Home being first isn't a fixed contract, so no spec should assert one entry's position relative to another. (Home being the first nav entry is its own thing, asserted once in `home.spec.ts`.) Each spec also asserts its docs panel where the page has one, and its own happy-path flow end to end, non-streamed and streamed for a lab that supports both.
 
 A spec's docs-panel assertion checks for real, non-empty rendered content, which means that lab's in-app doc (`frontend/public/lab-docs/<slug>.md`) has to already exist — write a lab's in-app doc before its E2E spec, not after, or the spec has nothing real to assert against.
 

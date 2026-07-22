@@ -1,14 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { navLinkAfter } from './support/nav-link-after';
+import { navLink } from './support/nav-link';
 
-test('is reachable right after Messages Console, loads its docs, and renders a parsed structured-output call', async ({
+test('is reachable from the nav, loads its docs, and renders a parsed structured-output call', async ({
   page,
 }) => {
-  await page.goto('/messages-console');
+  await page.goto('/home');
 
-  await test.step('Structured Output Console is the nav entry right after Messages Console', async () => {
-    const link = await navLinkAfter(page, 'Messages Console');
-    await expect(link).toHaveText('Structured Output Console');
+  await test.step('Structured Output Console is reachable from the nav', async () => {
+    const link = navLink(page, 'Structured Output Console');
     await link.click();
     await expect(page).toHaveURL(/\/structured-output-console$/);
   });
