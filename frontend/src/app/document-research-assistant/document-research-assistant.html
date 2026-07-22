@@ -98,11 +98,18 @@
                     @if (paragraph.citations.length > 0) {
                       <div class="flex flex-wrap gap-1">
                         @for (citation of paragraph.citations; track $index) {
-                          <details class="text-[10px]">
+                          <details class="text-xs">
                             <summary
                               data-testid="citation-marker"
-                              class="cursor-pointer text-secondary-foreground underline"
-                            >[{{ $index + 1 }}]</summary>
+                              class="inline-flex cursor-pointer items-center rounded-sm text-secondary-foreground"
+                              aria-label="View citation source"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="size-4">
+                                <circle cx="12" cy="12" r="9" />
+                                <line x1="12" y1="11" x2="12" y2="16" />
+                                <circle cx="12" cy="8" r="0.5" fill="currentColor" stroke="none" />
+                              </svg>
+                            </summary>
                             <div
                               data-testid="citation-detail"
                               class="mt-1 max-w-xs rounded-sm border border-border bg-card p-2 text-card-foreground"

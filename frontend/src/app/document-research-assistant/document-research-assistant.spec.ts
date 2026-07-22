@@ -246,7 +246,7 @@ describe('DocumentResearchAssistant', () => {
     // Only the first text block carries a citation — exactly one marker should be paired to it.
     const markers = transcript.querySelectorAll('[data-testid="citation-marker"]');
     expect(markers.length).toBe(1);
-    expect(markers[0].textContent?.trim()).toBe('[1]');
+    expect(markers[0].getAttribute('aria-label')).toBe('View citation source');
 
     const detail = transcript.querySelector('[data-testid="citation-detail"]');
     expect(detail?.textContent).toContain('Attention Is All You Need, 2017.');
