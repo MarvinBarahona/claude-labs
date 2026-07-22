@@ -4,8 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { DocumentResearchAssistant } from './document-research-assistant';
 
-// Mirrors the component's own MIN_SESSION_MS/MIN_ASKING_MS — neither is exported, so this is the
-// spec's own local copy (see docs/technical/loading-states.md's testing guidance).
+// Mirrors the component's own MIN_SESSION_MS/MIN_ASKING_MS — neither is exported, so this is the spec's own local copy.
 const MIN_SESSION_MS = 500;
 const MIN_ASKING_MS = 500;
 
@@ -255,6 +254,29 @@ describe('DocumentResearchAssistant', () => {
     expect(detail?.textContent).toContain('1–1');
   });
 
+  it('renders each answer paragraph as markdown, not literal text', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+    await startSession(fixture, httpMock, el);
+
+    typeInto(questionInput(el)!, 'Summarize the key idea.');
+    fixture.detectChanges();
+    askButton(el)!.click();
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/document-research-assistant/session/sess_1/ask').flush(
+      turnEnvelope({
+        response: { content: [{ type: 'text', text: '**Self-attention** is key.', citations: null }] },
+        citations: [],
+      }),
+    );
+    await vi.advanceTimersByTimeAsync(MIN_ASKING_MS);
+    fixture.detectChanges();
+
+    const transcript = el.querySelector('[data-testid="transcript-list"]') as HTMLElement;
+    expect(transcript.querySelector('[data-testid="answer-text"] strong')?.textContent).toBe('Self-attention');
+  });
+
   it('renders the notes panel from the notes field after an ask, as rendered Markdown', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();
@@ -387,8 +409,7 @@ describe('DocumentResearchAssistant', () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();
     await startSession(fixture, httpMock, el);
-    // The streaming path below drives real Promise-based delays by hand (see waitMs) — fake timers
-    // would hang those, so switch back to real timers now that the (fake-timer-driven) session start is done.
+    // The streaming path below drives real Promise-based delays by hand (see waitMs), which fake timers would hang.
     vi.useRealTimers();
 
     const { reader, push, finish } = createControllableReader();

@@ -1,6 +1,6 @@
 # Task — Chat Transcript
 
-**Status:** 📋 Planned.
+**Status:** 🔵 In progress.
 
 ## Purpose
 
@@ -59,13 +59,19 @@ Per [`testing-strategy.md`](../technical/testing-strategy.md)'s "Frontend unit" 
 
 ## To-do list
 
-- [ ] Implement `frontend/src/app/shared/markdown/render-markdown.ts` (`renderMarkdown()`).
-- [ ] Implement `frontend/src/app/shared/chat-transcript/` (`ChatTranscript` component + template) per "Interface" above.
-- [ ] Write `chat-transcript.spec.ts` per "Test scenarios" → "Automated" above.
-- [ ] Retrofit Messages Console onto `<app-chat-transcript>` per "Consumers" above, including the new pending-turn skeleton and minimum-duration floor timer.
-- [ ] Retrofit Document Research Assistant onto `<app-chat-transcript>` per "Consumers" above, including its custom citation body slot and its Notes panel's switch to the shared `renderMarkdown()`.
-- [ ] Update `messages-console.spec.ts` for the new turn-based DOM shape and new scenarios, per "Test scenarios" → "Automated" above.
-- [ ] Update `document-research-assistant.spec.ts` to confirm markdown-rendering of answer paragraphs and the Notes panel's shared-renderer source, per "Test scenarios" → "Automated" above.
+- [x] Implement `frontend/src/app/shared/markdown/render-markdown.ts` (`renderMarkdown()`).
+- [x] Implement `frontend/src/app/shared/chat-transcript/` (`ChatTranscript` component + template) per "Interface" above.
+- [x] Write `chat-transcript.spec.ts` per "Test scenarios" → "Automated" above.
+- [x] Retrofit Messages Console onto `<app-chat-transcript>` per "Consumers" above, including the new pending-turn skeleton and minimum-duration floor timer.
+- [x] Retrofit Document Research Assistant onto `<app-chat-transcript>` per "Consumers" above, including its custom citation body slot and its Notes panel's switch to the shared `renderMarkdown()`.
+- [x] Update `messages-console.spec.ts` for the new turn-based DOM shape and new scenarios, per "Test scenarios" → "Automated" above.
+- [x] Update `document-research-assistant.spec.ts` to confirm markdown-rendering of answer paragraphs and the Notes panel's shared-renderer source, per "Test scenarios" → "Automated" above.
+
+## Development notes
+
+- **Plan gap, fixed during build (coding-convention/process observation):** the plan's "Automated" test scenarios only cited the "Frontend unit" bucket, but `e2e/tests/messages-console.spec.ts` (Playwright, "Frontend browser E2E" bucket) hard-coded the pre-retrofit per-message `<li>` count (2 after one send, 4 after two), which the turn-based DOM shape breaks. Fixed it to assert per-turn counts (1, then 2) and to locate the two bubble `div`s inside each turn's own `<li>` instead of treating each `<li>` as a single bubble. `e2e/tests/document-research-assistant.spec.ts` needed no change — its DOM was already turn-based. Future plans touching a lab's transcript DOM shape should explicitly check `e2e/tests/` for hard-coded structural assertions, not just the two frontend-unit spec files.
+- No other implementation deviated from the plan — the `ChatTranscript` interface, the `renderMarkdown()` extraction, and both labs' retrofits match the plan's "Interface"/"Consumers" sections as written. The per-turn custom body slot ended up using an `NgTemplateOutlet` context of `{ $implicit: turn, index: $index }` (an `index` alongside the turn itself) so Document Research Assistant's own template can look up its richer paragraph/citation data by array index rather than the shared component needing to know about citations at all — the plan deferred this exact mechanism to build time, and this is the concrete shape it took.
+- Added a `sendLabel` input (default `'Send'`) to `ChatTranscript`, not named in the plan's own Input list — needed so Document Research Assistant could keep its existing `'Ask'` button label/testid unchanged, matching the plan's own claim that this lab's spec needs no rewrite.
 
 ## Open questions
 

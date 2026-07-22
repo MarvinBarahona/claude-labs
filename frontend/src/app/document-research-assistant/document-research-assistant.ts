@@ -2,11 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, map, of, switchMap, tap, timer } from 'rxjs';
-import { marked } from 'marked';
 import { DocsPanel } from '../shared/docs-panel/docs-panel';
 import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { Skeleton } from '../shared/skeleton/skeleton';
+import { ChatTranscript } from '../shared/chat-transcript/chat-transcript';
+import type { ChatTranscriptTurn } from '../shared/chat-transcript/chat-transcript';
+import { renderMarkdown } from '../shared/markdown/render-markdown';
 
 type DeliveryMode = 'files-api' | 'base64';
 
@@ -95,8 +97,7 @@ interface ToolUseBlock {
 type SessionOutcome = { ok: true; session: SessionResponse } | { ok: false; message: string };
 type TurnOutcome = { ok: true; envelope: TurnEnvelope } | { ok: false; message: string };
 
-// The fake-mode backend answers near-instantly, which otherwise makes the loading skeletons flash
-// by too fast to read as a loading state — hold these for at least this long.
+// The fake-mode backend answers near-instantly, which would otherwise make the loading skeletons flash by too fast to read.
 const MIN_SESSION_MS = 500;
 const MIN_ASKING_MS = 500;
 
@@ -252,7 +253,7 @@ const NO_CALL_YET: InspectorCall = { request: null };
 
 @Component({
   selector: 'app-document-research-assistant',
-  imports: [DocsPanel, InspectorPanel, Skeleton],
+  imports: [DocsPanel, InspectorPanel, Skeleton, ChatTranscript],
   templateUrl: './document-research-assistant.html',
   styleUrl: './document-research-assistant.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -306,7 +307,6 @@ export class DocumentResearchAssistant {
   // Ask / transcript
   protected readonly deliveryMode = signal<DeliveryMode>('files-api');
   protected readonly streamingEnabled = signal(false);
-  protected readonly draftQuestion = signal('');
   protected readonly transcript = signal<readonly TranscriptTurn[]>([]);
   protected readonly streamingAnswerText = signal('');
   protected readonly toolActivity = signal<readonly ToolActivityEntry[]>([]);
@@ -315,13 +315,26 @@ export class DocumentResearchAssistant {
   protected readonly notes = signal<string | null>(null);
   protected readonly inspectorCall = signal<InspectorCall>(NO_CALL_YET);
 
+  protected readonly renderMarkdown = renderMarkdown;
+
+  protected readonly chatTranscriptTurns = computed<readonly ChatTranscriptTurn[]>(() =>
+    this.transcript().map((turn) => ({
+      question: turn.question,
+      answerMarkdown: turn.paragraphs !== null ? turn.paragraphs.map((p) => p.text).join('\n\n') : null,
+    })),
+  );
+
   protected readonly notesHtml = computed(() => {
     const notes = this.notes();
-    return notes !== null ? marked.parse(notes, { async: false }) : '';
+    return notes !== null ? renderMarkdown(notes) : '';
   });
 
-  // Non-streaming ask: same trigger-signal → switchMap → toSignal() shape as the session flow,
-  // raced against a minimum-duration timer (see MIN_ASKING_MS) so the response is never applied sooner.
+  /** Looks up the richer paragraph/citation data for the turn at `index` — the custom answer-body template's own bridge from the generic `ChatTranscriptTurn` the shared component knows about back to this lab's own citation-carrying model. */
+  protected paragraphsForTurn(index: number): readonly AnswerParagraph[] | null {
+    return this.transcript()[index]?.paragraphs ?? null;
+  }
+
+  // Non-streaming ask: same trigger-signal → switchMap → toSignal() shape as the session flow, raced against MIN_ASKING_MS.
   private readonly turnTrigger = signal<AskRequestBody | null>(null);
   private readonly turnResult = toSignal(
     toObservable(this.turnTrigger).pipe(
@@ -375,14 +388,9 @@ export class DocumentResearchAssistant {
     this.streamingEnabled.set((event.target as HTMLInputElement).checked);
   }
 
-  protected onQuestionChange(event: Event): void {
-    this.draftQuestion.set((event.target as HTMLInputElement).value);
-  }
-
-  protected askQuestion(): void {
-    const question = this.draftQuestion().trim();
+  protected onSend(question: string): void {
     const sessionId = this.session()?.sessionId;
-    if (!question || !sessionId || this.isAsking()) {
+    if (!sessionId || this.isAsking()) {
       return;
     }
 
@@ -390,7 +398,6 @@ export class DocumentResearchAssistant {
     this.isAsking.set(true);
     this.streamingAnswerText.set('');
     this.toolActivity.set([]);
-    this.draftQuestion.set('');
     this.transcript.update((turns) => [...turns, { question, paragraphs: null }]);
 
     const body: AskRequestBody = {

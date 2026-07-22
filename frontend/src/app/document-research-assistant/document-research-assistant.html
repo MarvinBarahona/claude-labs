@@ -83,82 +83,52 @@
           </div>
         </fieldset>
 
-        <div class="flex gap-2">
-          <input
-            class="flex-1 rounded-sm border border-border bg-background p-2 text-sm"
-            type="text"
-            aria-label="Question"
-            placeholder="Ask about this paper…"
-            [value]="draftQuestion()"
-            (input)="onQuestionChange($event)"
-            (keydown.enter)="askQuestion()"
-          />
-          <button
-            type="button"
-            class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
-            [disabled]="!draftQuestion().trim() || isAsking()"
-            (click)="askQuestion()"
-          >
-            Ask
-          </button>
-        </div>
-
         @if (askError(); as error) {
           <p role="alert" class="text-xs text-destructive">{{ error }}</p>
         }
 
         <div class="flex flex-col gap-2 border-t border-border pt-4">
           <h3 class="text-xs font-bold uppercase tracking-wide text-foreground">Transcript</h3>
-          <ol class="flex flex-col gap-3" data-testid="transcript-list">
-            @for (turn of transcript(); track $index) {
-              <li class="flex flex-col gap-2">
-                <div class="flex justify-end">
-                  <div class="max-w-[80%] rounded-lg bg-primary px-3 py-2 text-primary-foreground">
-                    <p class="whitespace-pre-wrap text-sm">{{ turn.question }}</p>
-                  </div>
-                </div>
-                <div class="flex justify-start">
-                  <div class="max-w-[80%] rounded-lg bg-secondary px-3 py-2 text-secondary-foreground">
-                    @if (turn.paragraphs) {
-                      <div class="flex flex-col gap-2">
-                        @for (paragraph of turn.paragraphs; track $index) {
-                          <div class="flex flex-col gap-1">
-                            <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ paragraph.text }}</p>
-                            @if (paragraph.citations.length > 0) {
-                              <div class="flex flex-wrap gap-1">
-                                @for (citation of paragraph.citations; track $index) {
-                                  <details class="text-[10px]">
-                                    <summary
-                                      data-testid="citation-marker"
-                                      class="cursor-pointer text-secondary-foreground underline"
-                                    >[{{ $index + 1 }}]</summary>
-                                    <div
-                                      data-testid="citation-detail"
-                                      class="mt-1 max-w-xs rounded-sm border border-border bg-card p-2 text-card-foreground"
-                                    >
-                                      <p class="italic">"{{ citation.citedText }}"</p>
-                                      <p class="mt-1 opacity-70">{{ citation.documentTitle }} · pp. {{ citation.startPage }}–{{ citation.endPage }}</p>
-                                    </div>
-                                  </details>
-                                }
-                              </div>
-                            }
-                          </div>
+          <ng-template #answerBody let-i="index">
+            @if (paragraphsForTurn(i); as paragraphs) {
+              <div class="flex flex-col gap-2">
+                @for (paragraph of paragraphs; track $index) {
+                  <div class="flex flex-col gap-1">
+                    <div class="text-sm" data-testid="answer-text" [innerHTML]="renderMarkdown(paragraph.text)"></div>
+                    @if (paragraph.citations.length > 0) {
+                      <div class="flex flex-wrap gap-1">
+                        @for (citation of paragraph.citations; track $index) {
+                          <details class="text-[10px]">
+                            <summary
+                              data-testid="citation-marker"
+                              class="cursor-pointer text-secondary-foreground underline"
+                            >[{{ $index + 1 }}]</summary>
+                            <div
+                              data-testid="citation-detail"
+                              class="mt-1 max-w-xs rounded-sm border border-border bg-card p-2 text-card-foreground"
+                            >
+                              <p class="italic">"{{ citation.citedText }}"</p>
+                              <p class="mt-1 opacity-70">{{ citation.documentTitle }} · pp. {{ citation.startPage }}–{{ citation.endPage }}</p>
+                            </div>
+                          </details>
                         }
-                      </div>
-                    } @else if (streamingAnswerText()) {
-                      <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ streamingAnswerText() }}</p>
-                    } @else {
-                      <div class="flex flex-col gap-2" aria-hidden="true" data-testid="answer-skeleton">
-                        <app-skeleton widthClass="w-48" />
-                        <app-skeleton widthClass="w-32" />
                       </div>
                     }
                   </div>
-                </div>
-              </li>
+                }
+              </div>
             }
-          </ol>
+          </ng-template>
+          <app-chat-transcript
+            [turns]="chatTranscriptTurns()"
+            [pendingAnswerMarkdown]="streamingAnswerText()"
+            [disabled]="isAsking()"
+            [placeholder]="'Ask about this paper…'"
+            [ariaLabel]="'Question'"
+            [sendLabel]="'Ask'"
+            [answerBodyTemplate]="answerBody"
+            (send)="onSend($event)"
+          />
         </div>
 
         @if (isAsking() || toolActivity().length > 0) {

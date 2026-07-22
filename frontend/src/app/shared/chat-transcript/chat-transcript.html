@@ -1,0 +1,55 @@
+<div class="flex flex-col gap-4">
+  <ol class="flex flex-col gap-2" data-testid="transcript-list">
+    @for (turn of turns(); track $index) {
+      <li class="flex flex-col gap-2">
+        <div class="flex justify-end">
+          <div class="max-w-[80%] rounded-lg bg-primary px-3 py-2 text-primary-foreground">
+            <p class="whitespace-pre-wrap text-sm">{{ turn.question }}</p>
+          </div>
+        </div>
+        <div class="flex justify-start">
+          <div class="max-w-[80%] rounded-lg bg-secondary px-3 py-2 text-secondary-foreground">
+            @if (turn.answerMarkdown !== null) {
+              @if (answerBodyTemplate(); as bodyTemplate) {
+                <ng-container
+                  [ngTemplateOutlet]="bodyTemplate"
+                  [ngTemplateOutletContext]="{ $implicit: turn, index: $index }"
+                />
+              } @else {
+                <div class="text-sm" data-testid="answer-text" [innerHTML]="renderMarkdown(turn.answerMarkdown)"></div>
+              }
+            } @else if (pendingAnswerMarkdown()) {
+              <div class="text-sm" data-testid="answer-text" [innerHTML]="renderMarkdown(pendingAnswerMarkdown()!)"></div>
+            } @else {
+              <div class="flex flex-col gap-2" aria-hidden="true" data-testid="answer-skeleton">
+                <app-skeleton widthClass="w-48" />
+                <app-skeleton widthClass="w-32" />
+              </div>
+            }
+          </div>
+        </div>
+      </li>
+    }
+  </ol>
+
+  <div class="flex gap-2">
+    <input
+      class="flex-1 rounded-sm border border-border bg-background p-2 text-sm"
+      type="text"
+      [attr.aria-label]="ariaLabel()"
+      [placeholder]="placeholder()"
+      [value]="draftMessage()"
+      [disabled]="disabled()"
+      (input)="onDraftChange($event)"
+      (keydown.enter)="onSend()"
+    />
+    <button
+      type="button"
+      class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+      [disabled]="!draftMessage().trim() || disabled()"
+      (click)="onSend()"
+    >
+      {{ sendLabel() }}
+    </button>
+  </div>
+</div>

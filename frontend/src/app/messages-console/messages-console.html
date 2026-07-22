@@ -44,47 +44,18 @@
       </label>
 
       <div class="mt-6 flex flex-col gap-2 border-t border-border pt-4 lg:col-span-2">
-        <ol class="flex flex-col gap-2" data-testid="transcript-list">
-          @for (message of displayMessages(); track $index) {
-            <li class="flex" [class.justify-end]="message.role === 'user'">
-              <div
-                class="flex max-w-[80%] flex-col gap-0.5 rounded-lg px-3 py-2"
-                [class.bg-primary]="message.role === 'user'"
-                [class.text-primary-foreground]="message.role === 'user'"
-                [class.items-end]="message.role === 'user'"
-                [class.bg-secondary]="message.role === 'assistant'"
-                [class.text-secondary-foreground]="message.role === 'assistant'"
-              >
-                <span class="text-[10px] font-bold uppercase tracking-wide opacity-70">{{ message.role }}</span>
-                <p class="whitespace-pre-wrap text-sm">{{ message.text }}</p>
-              </div>
-            </li>
-          }
-        </ol>
-
         @if (transcriptError(); as error) {
           <p role="alert" class="text-xs text-destructive">{{ error }}</p>
         }
 
-        <div class="flex gap-2">
-          <input
-            class="flex-1 rounded-sm border border-border bg-background p-2 text-sm"
-            type="text"
-            aria-label="Message"
-            placeholder="Say something…"
-            [value]="draftMessage()"
-            (input)="onDraftMessageChange($event)"
-            (keydown.enter)="sendTranscriptMessage()"
-          />
-          <button
-            type="button"
-            class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
-            [disabled]="!draftMessage().trim()"
-            (click)="sendTranscriptMessage()"
-          >
-            Send
-          </button>
-        </div>
+        <app-chat-transcript
+          [turns]="turns()"
+          [pendingAnswerMarkdown]="pendingAnswerMarkdown()"
+          [disabled]="isSending()"
+          [placeholder]="'Say something…'"
+          [ariaLabel]="'Message'"
+          (send)="onSend($event)"
+        />
       </div>
     </div>
   </section>

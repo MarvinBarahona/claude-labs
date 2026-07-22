@@ -3,8 +3,15 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MessagesConsole } from './messages-console';
 
+// Mirrors the component's own MIN_TURN_MS — not exported, so this is the spec's own local copy (see docs/technical/loading-states.md's testing guidance).
+const MIN_TURN_MS = 500;
+
 function flushMicrotasks(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function sseFrame(event: string, data: unknown): string {
@@ -65,6 +72,7 @@ describe('MessagesConsole', () => {
   afterEach(() => {
     TestBed.inject(HttpTestingController).verify();
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   function typeMessage(el: HTMLElement, text: string): void {
@@ -89,6 +97,7 @@ describe('MessagesConsole', () => {
   });
 
   it('sends a message that renders right-aligned, and the assistant reply renders left-aligned once received', async () => {
+    vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();
 
     typeMessage(el, 'What is prompt caching?');
@@ -97,9 +106,7 @@ describe('MessagesConsole', () => {
     fixture.detectChanges();
 
     expect(el.textContent).toContain('What is prompt caching?');
-    const items = el.querySelectorAll('[data-testid="transcript-list"] li');
-    expect(items.length).toBe(1);
-    expect(items[0].querySelector('div')?.className).toContain('items-end');
+    expect(el.querySelectorAll('[data-testid="transcript-list"] li').length).toBe(1);
 
     const req = httpMock.expectOne('/api/messages-console/turn');
     expect(req.request.body.stream).toBe(false);
@@ -110,15 +117,67 @@ describe('MessagesConsole', () => {
       usage: { inputTokens: 10, outputTokens: 5 },
       stopReason: 'end_turn',
     });
+    await vi.advanceTimersByTimeAsync(MIN_TURN_MS);
     fixture.detectChanges();
 
-    const items2 = el.querySelectorAll('[data-testid="transcript-list"] li');
-    expect(items2.length).toBe(2);
+    const items = el.querySelectorAll('[data-testid="transcript-list"] li');
+    expect(items.length).toBe(1);
     expect(el.textContent).toContain('It reduces token cost.');
-    expect(items2[1].querySelector('div')?.className).not.toContain('items-end');
+    const bubbles = items[0].querySelectorAll(':scope > div');
+    expect(bubbles[0].className).toContain('justify-end');
+    expect(bubbles[1].className).toContain('justify-start');
   });
 
-  it('streams the assistant reply incrementally from content_block_delta events before the terminal event', async () => {
+  it('shows the pending-turn skeleton between send and response landing (non-streaming)', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    typeMessage(el, 'Hello?');
+    fixture.detectChanges();
+    clickSend(el);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="answer-skeleton"]')).toBeTruthy();
+
+    httpMock.expectOne('/api/messages-console/turn').flush({
+      request: { model: 'claude-sonnet-5' },
+      response: { content: [{ type: 'text', text: 'Hi there.' }] },
+      usage: { inputTokens: 1, outputTokens: 1 },
+      stopReason: 'end_turn',
+    });
+    await vi.advanceTimersByTimeAsync(MIN_TURN_MS);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="answer-skeleton"]')).toBeFalsy();
+    expect(el.textContent).toContain('Hi there.');
+  });
+
+  it('holds the pending-turn skeleton for at least MIN_TURN_MS even when the response resolves sooner', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    typeMessage(el, 'Hello?');
+    fixture.detectChanges();
+    clickSend(el);
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/messages-console/turn').flush({
+      request: { model: 'claude-sonnet-5' },
+      response: { content: [{ type: 'text', text: 'Hi there.' }] },
+      usage: { inputTokens: 1, outputTokens: 1 },
+      stopReason: 'end_turn',
+    });
+
+    await vi.advanceTimersByTimeAsync(MIN_TURN_MS - 50);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="answer-skeleton"]')).toBeTruthy();
+
+    await vi.advanceTimersByTimeAsync(50);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="answer-skeleton"]')).toBeFalsy();
+  });
+
+  it('streams the assistant reply incrementally from content_block_delta events, rendered as markdown once complete', async () => {
     const { fixture, el } = await createFixture();
     const { reader, push, finish } = createControllableReader();
     vi.spyOn(globalThis, 'fetch').mockResolvedValue({
@@ -141,32 +200,80 @@ describe('MessagesConsole', () => {
       expect.objectContaining({ method: 'POST' }),
     );
 
-    push(sseFrame('content_block_delta', { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Old ' } }));
+    push(
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        delta: { type: 'text_delta', text: '**Old** ' },
+      }),
+    );
     await flushMicrotasks();
     fixture.detectChanges();
-    expect(el.textContent).toContain('Old');
+    expect(el.querySelector('[data-testid="answer-text"] strong')?.textContent).toBe('Old');
 
-    push(sseFrame('content_block_delta', { type: 'content_block_delta', delta: { type: 'text_delta', text: 'pond' } }));
+    push(
+      sseFrame('content_block_delta', {
+        type: 'content_block_delta',
+        delta: { type: 'text_delta', text: 'pond' },
+      }),
+    );
     await flushMicrotasks();
     fixture.detectChanges();
-    expect(el.textContent).toContain('Old pond');
+    expect(el.textContent).toContain('pond');
 
     push(
       sseFrame('turn_complete', {
         request: { model: 'claude-sonnet-5' },
-        response: { content: [{ type: 'text', text: 'Old pond' }] },
+        response: { content: [{ type: 'text', text: '**Old** pond' }] },
         usage: { inputTokens: 3, outputTokens: 2 },
         stopReason: 'end_turn',
       }),
     );
     finish();
+    await waitMs(MIN_TURN_MS + 100);
+    fixture.detectChanges();
+
+    expect(el.querySelectorAll('[data-testid="transcript-list"] li').length).toBe(1);
+    expect(el.querySelector('[data-testid="answer-text"] strong')?.textContent).toBe('Old');
+  });
+
+  it('shows the pending-turn skeleton between send and response landing (streaming)', async () => {
+    const { fixture, el } = await createFixture();
+    const { reader, push, finish } = createControllableReader();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      body: { getReader: () => reader },
+    } as unknown as Response);
+
+    const toggle = el.querySelector('[aria-label="Stream response"]') as HTMLInputElement;
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    typeMessage(el, 'Hello?');
+    fixture.detectChanges();
+    clickSend(el);
     await flushMicrotasks();
     fixture.detectChanges();
 
-    expect(el.querySelectorAll('[data-testid="transcript-list"] li').length).toBe(2);
+    expect(el.querySelector('[data-testid="answer-skeleton"]')).toBeTruthy();
+
+    push(
+      sseFrame('turn_complete', {
+        request: { model: 'claude-sonnet-5' },
+        response: { content: [{ type: 'text', text: 'Hi there.' }] },
+        usage: { inputTokens: 1, outputTokens: 1 },
+        stopReason: 'end_turn',
+      }),
+    );
+    finish();
+    await waitMs(MIN_TURN_MS + 100);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="answer-skeleton"]')).toBeFalsy();
+    expect(el.textContent).toContain('Hi there.');
   });
 
   it('reflects the completed turn request/response/usage/stopReason in the inspector panel', async () => {
+    vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();
 
     typeMessage(el, 'hi there');
@@ -180,6 +287,7 @@ describe('MessagesConsole', () => {
       usage: { inputTokens: 7, outputTokens: 3 },
       stopReason: 'end_turn',
     });
+    await vi.advanceTimersByTimeAsync(MIN_TURN_MS);
     fixture.detectChanges();
 
     expect(el.textContent).toContain('turn-call');
@@ -187,6 +295,7 @@ describe('MessagesConsole', () => {
   });
 
   it('shows a visible error state when the (non-streaming) request fails', async () => {
+    vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();
 
     typeMessage(el, 'hello');
@@ -198,11 +307,14 @@ describe('MessagesConsole', () => {
       { error: { message: 'Server error' } },
       { status: 500, statusText: 'Server Error' },
     );
+    await vi.advanceTimersByTimeAsync(MIN_TURN_MS);
     fixture.detectChanges();
 
     const alert = el.querySelector('[role="alert"]');
     expect(alert).toBeTruthy();
     expect(alert?.textContent).toContain('failed');
+    // The failed turn shouldn't remain stuck in the transcript with a permanent skeleton.
+    expect(el.querySelector('[data-testid="answer-skeleton"]')).toBeFalsy();
   });
 
   it('surfaces a visible error when the stream sends a terminal error event', async () => {
@@ -224,7 +336,7 @@ describe('MessagesConsole', () => {
 
     push(sseFrame('error', { error: { message: 'Upstream overloaded', source: 'anthropic' } }));
     finish();
-    await flushMicrotasks();
+    await waitMs(MIN_TURN_MS + 100);
     fixture.detectChanges();
 
     expect(el.textContent).toContain('Upstream overloaded');

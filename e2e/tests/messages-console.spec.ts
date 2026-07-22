@@ -34,11 +34,12 @@ test('is reachable from the nav, nav/docs/banner render, and a non-streamed then
     await page.getByLabel('Message').fill('Hello there');
     await page.getByRole('button', { name: 'Send' }).click();
 
-    await expect(transcriptItems).toHaveCount(2);
-    await expect(transcriptItems.nth(0)).toHaveClass(/justify-end/);
-    await expect(transcriptItems.nth(0)).toContainText('Hello there');
-    await expect(transcriptItems.nth(1)).not.toHaveClass(/justify-end/);
-    await expect(transcriptItems.nth(1)).toContainText('fabricated fake-mode response');
+    await expect(transcriptItems).toHaveCount(1);
+    const firstTurn = transcriptItems.nth(0).locator('> div');
+    await expect(firstTurn.nth(0)).toHaveClass(/justify-end/);
+    await expect(firstTurn.nth(0)).toContainText('Hello there');
+    await expect(firstTurn.nth(1)).toHaveClass(/justify-start/);
+    await expect(firstTurn.nth(1)).toContainText('fabricated fake-mode response');
 
     await expect(inspector.getByText('stop_reason: end_turn')).toBeVisible();
     await expect(inspector.getByText('in 10 / out 10')).toBeVisible();
@@ -50,11 +51,12 @@ test('is reachable from the nav, nav/docs/banner render, and a non-streamed then
     await page.getByLabel('Message').fill('Second message');
     await page.getByRole('button', { name: 'Send' }).click();
 
-    await expect(transcriptItems).toHaveCount(4);
-    await expect(transcriptItems.nth(2)).toHaveClass(/justify-end/);
-    await expect(transcriptItems.nth(2)).toContainText('Second message');
-    await expect(transcriptItems.nth(3)).not.toHaveClass(/justify-end/);
-    await expect(transcriptItems.nth(3)).toContainText('fabricated fake-mode response');
+    await expect(transcriptItems).toHaveCount(2);
+    const secondTurn = transcriptItems.nth(1).locator('> div');
+    await expect(secondTurn.nth(0)).toHaveClass(/justify-end/);
+    await expect(secondTurn.nth(0)).toContainText('Second message');
+    await expect(secondTurn.nth(1)).toHaveClass(/justify-start/);
+    await expect(secondTurn.nth(1)).toContainText('fabricated fake-mode response');
 
     await expect(inspector.getByText('Stream events')).toBeVisible();
     await expect(inspector.locator('ol li')).not.toHaveCount(0);
