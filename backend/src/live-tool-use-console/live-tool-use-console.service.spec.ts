@@ -79,6 +79,16 @@ describe('LiveToolUseConsoleService', () => {
       ]);
     });
 
+    it('sends a system prompt restricting Claude to the repo and weather tools', async () => {
+      fakeAnthropic.queueMessage(fakeTextMessage('The sky is blue.'));
+
+      await service.createTurn(buildDto());
+
+      const [{ system }] = fakeAnthropic.recordedCalls;
+      expect(system).toEqual(expect.stringContaining('weather'));
+      expect(system).toEqual(expect.stringContaining('GitHub'));
+    });
+
     it('resolves via one get_weather call: second call includes the tool_result, calls holds the first pair', async () => {
       fakeOpenMeteo.setWeather('Tokyo', {
         temperatureC: 18,

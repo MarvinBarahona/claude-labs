@@ -11,12 +11,16 @@ against two real backend-executed tools.
 
 Every call in this lab offers both tools, whatever the question (this is
 the actual request the demo below sends, built from the model picker and
-free-text box):
+free-text box). A `system` prompt keeps Claude on topic — without it, an
+off-topic question would just get answered from Claude's own knowledge,
+with neither tool involved and nothing for this lab to demonstrate; the
+prompt makes Claude decline instead:
 
 ```json
 {
   "model": "claude-sonnet-5",
   "max_tokens": 4096,
+  "system": "You can only discuss two things: the weather (via the get_weather tool) and this app's configured GitHub repository (via the get_repo_stats tool). If the user asks about anything else, politely decline and explain that you can only answer questions about the repo or the weather.",
   "messages": [{ "role": "user", "content": "<your question>" }],
   "tools": [
     {

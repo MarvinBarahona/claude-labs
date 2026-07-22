@@ -18,6 +18,12 @@ import { TurnDto } from './dto/turn.dto';
 /** No env-configurable default elsewhere in the repo to defer to. */
 const DEFAULT_MAX_TOKENS = 4096;
 
+/** Keeps the console demonstrating the tool-use loop rather than drifting into a general-purpose chat interface. */
+const SYSTEM_PROMPT =
+  "You can only discuss two things: the weather (via the get_weather tool) and this app's " +
+  'configured GitHub repository (via the get_repo_stats tool). If the user asks about anything ' +
+  'else, politely decline and explain that you can only answer questions about the repo or the weather.';
+
 type MessageContentBlock = AnthropicMessage['content'][number];
 type ToolUseBlock = Extract<MessageContentBlock, { type: 'tool_use' }>;
 type AnthropicTool = Anthropic.Messages.Tool;
@@ -273,6 +279,7 @@ export class LiveToolUseConsoleService {
     return {
       model: this.modelConfig.getModel(dto.modelChoice),
       max_tokens: DEFAULT_MAX_TOKENS,
+      system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: dto.question }],
       tools: TOOLS,
     };
