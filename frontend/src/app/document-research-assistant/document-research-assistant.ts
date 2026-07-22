@@ -10,6 +10,7 @@ import { ChatTranscript } from '../shared/chat-transcript/chat-transcript';
 import type { ChatTranscriptTurn } from '../shared/chat-transcript/chat-transcript';
 import { renderMarkdown } from '../shared/markdown/render-markdown';
 import { MarkdownPipe } from '../shared/markdown/markdown.pipe';
+import { ParagraphsForTurnPipe } from './paragraphs-for-turn.pipe';
 
 type DeliveryMode = 'files-api' | 'base64';
 
@@ -65,12 +66,12 @@ interface TurnEnvelope {
   readonly cache: { read: boolean; write: boolean };
 }
 
-interface AnswerParagraph {
+export interface AnswerParagraph {
   readonly text: string;
   readonly citations: readonly Citation[];
 }
 
-interface TranscriptTurn {
+export interface TranscriptTurn {
   readonly question: string;
   // null while the turn's answer hasn't landed yet (non-streaming: in flight; streaming: before turn_complete).
   readonly paragraphs: readonly AnswerParagraph[] | null;
@@ -254,7 +255,7 @@ const NO_CALL_YET: InspectorCall = { request: null };
 
 @Component({
   selector: 'app-document-research-assistant',
-  imports: [DocsPanel, InspectorPanel, Skeleton, ChatTranscript, MarkdownPipe],
+  imports: [DocsPanel, InspectorPanel, Skeleton, ChatTranscript, MarkdownPipe, ParagraphsForTurnPipe],
   templateUrl: './document-research-assistant.html',
   styleUrl: './document-research-assistant.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -327,11 +328,6 @@ export class DocumentResearchAssistant {
     const notes = this.notes();
     return notes !== null ? renderMarkdown(notes) : '';
   });
-
-  /** Looks up the richer paragraph/citation data for the turn at `index` — the custom answer-body template's own bridge from the generic `ChatTranscriptTurn` the shared component knows about back to this lab's own citation-carrying model. */
-  protected paragraphsForTurn(index: number): readonly AnswerParagraph[] | null {
-    return this.transcript()[index]?.paragraphs ?? null;
-  }
 
   // Non-streaming ask: same trigger-signal → switchMap → toSignal() shape as the session flow, raced against MIN_ASKING_MS.
   private readonly turnTrigger = signal<AskRequestBody | null>(null);
