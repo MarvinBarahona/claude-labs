@@ -94,7 +94,7 @@
               <div class="flex flex-col gap-2">
                 @for (paragraph of paragraphs; track $index) {
                   <div class="flex flex-col gap-1">
-                    <div class="text-sm" data-testid="answer-text" [innerHTML]="renderMarkdown(paragraph.text)"></div>
+                    <div class="text-sm" data-testid="answer-text" [innerHTML]="paragraph.text | markdown"></div>
                     @if (paragraph.citations.length > 0) {
                       <div class="flex flex-wrap gap-1">
                         @for (citation of paragraph.citations; track $index) {

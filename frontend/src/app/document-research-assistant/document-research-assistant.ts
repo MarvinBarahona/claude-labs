@@ -9,6 +9,7 @@ import { Skeleton } from '../shared/skeleton/skeleton';
 import { ChatTranscript } from '../shared/chat-transcript/chat-transcript';
 import type { ChatTranscriptTurn } from '../shared/chat-transcript/chat-transcript';
 import { renderMarkdown } from '../shared/markdown/render-markdown';
+import { MarkdownPipe } from '../shared/markdown/markdown.pipe';
 
 type DeliveryMode = 'files-api' | 'base64';
 
@@ -253,7 +254,7 @@ const NO_CALL_YET: InspectorCall = { request: null };
 
 @Component({
   selector: 'app-document-research-assistant',
-  imports: [DocsPanel, InspectorPanel, Skeleton, ChatTranscript],
+  imports: [DocsPanel, InspectorPanel, Skeleton, ChatTranscript, MarkdownPipe],
   templateUrl: './document-research-assistant.html',
   styleUrl: './document-research-assistant.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -314,8 +315,6 @@ export class DocumentResearchAssistant {
   protected readonly askError = signal<string | null>(null);
   protected readonly notes = signal<string | null>(null);
   protected readonly inspectorCall = signal<InspectorCall>(NO_CALL_YET);
-
-  protected readonly renderMarkdown = renderMarkdown;
 
   protected readonly chatTranscriptTurns = computed<readonly ChatTranscriptTurn[]>(() =>
     this.transcript().map((turn) => ({

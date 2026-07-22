@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { Skeleton } from '../skeleton/skeleton';
-import { renderMarkdown } from '../markdown/render-markdown';
+import { MarkdownPipe } from '../markdown/markdown.pipe';
 
 export interface ChatTranscriptTurn {
   readonly question: string;
@@ -26,7 +26,7 @@ export interface ChatTranscriptBodyContext {
 
 @Component({
   selector: 'app-chat-transcript',
-  imports: [NgTemplateOutlet, Skeleton],
+  imports: [NgTemplateOutlet, Skeleton, MarkdownPipe],
   templateUrl: './chat-transcript.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -42,7 +42,6 @@ export class ChatTranscript {
   readonly send = output<string>();
 
   protected readonly draftMessage = signal('');
-  protected readonly renderMarkdown = renderMarkdown;
 
   private readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('transcriptScroll');
 
