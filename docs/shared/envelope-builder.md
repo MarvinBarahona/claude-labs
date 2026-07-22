@@ -4,7 +4,7 @@ A small shared backend helper that turns a Messages API call's `params`/`respons
 
 Deliberately narrow: only the `{ request, response, usage, stopReason }` skeleton every lab always produces. The optional `calls` (multi-call turns) and `cache` (cache read/write status) fields `architecture.md` also defines are assembled by whichever lab actually has a tool loop or places a cache breakpoint — not part of this module. Model-tier resolution (`ModelConfigService.getModel(choice)`, see `model-config.md`) is a separate one-line delegation, also not part of this module.
 
-Streaming's own envelope reconstruction (turning raw SSE events back into a `Message`-shaped response before calling `build()` below) is not part of this module — it stays lab-local to whichever lab actually streams, composing with `build()` as its final step once the response is reconstructed.
+Streaming's own envelope reconstruction (turning raw SSE events back into a `Message`-shaped response before calling `build()` below) is not part of this module — see [`stream-response-builder.md`](stream-response-builder.md) for that; a streaming consumer calls `StreamResponseBuilderService.reconstructMessage()` first and passes its result into `build()` here.
 
 ## Interface
 
