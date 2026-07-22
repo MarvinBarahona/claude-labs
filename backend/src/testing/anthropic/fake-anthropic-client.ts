@@ -10,6 +10,7 @@ import {
   fakeTextStreamEvents,
   fakeToolUseMessage,
   fakeToolUseStreamEvents,
+  FakeTextCitation,
   FakeToolCall,
 } from './message-builders';
 
@@ -203,6 +204,19 @@ function fallbackToolCall(params: AnthropicMessageParams): FakeToolCall | null {
   return null;
 }
 
+/** Shared by both fallback paths so a citations-enabled lab gets the same fabricated citation whether it asked non-streaming or streaming. */
+function fabricatedCitation(documentTitle: string): FakeTextCitation {
+  return {
+    type: 'page_location',
+    cited_text: 'no real Claude API call was made',
+    document_index: 0,
+    document_title: documentTitle,
+    start_page_number: 1,
+    end_page_number: 1,
+    file_id: null,
+  };
+}
+
 /** Honors a requested `output_config.format` so a structured-output caller gets parseable JSON, not fallback prose; honors offered `tools` so a tool-use loop gets one fabricated tool call round trip instead of an immediate plain-text answer. */
 function fallbackMessage(params: AnthropicMessageParams): AnthropicMessage {
   const format = params.output_config?.format;
@@ -222,17 +236,7 @@ function fallbackMessage(params: AnthropicMessageParams): AnthropicMessage {
         {
           type: 'text',
           text: FALLBACK_TEXT,
-          citations: [
-            {
-              type: 'page_location',
-              cited_text: 'no real Claude API call was made',
-              document_index: 0,
-              document_title: documentCitations.documentTitle,
-              start_page_number: 1,
-              end_page_number: 1,
-              file_id: null,
-            },
-          ],
+          citations: [fabricatedCitation(documentCitations.documentTitle)],
         },
       ],
     });
@@ -241,7 +245,7 @@ function fallbackMessage(params: AnthropicMessageParams): AnthropicMessage {
   return fakeTextMessage(FALLBACK_TEXT);
 }
 
-/** Streaming counterpart of `fallbackMessage()` — same tool-call heuristic, reassembled as the raw event sequence a real streamed call would emit. */
+/** Streaming counterpart of `fallbackMessage()` — same tool-call and citations heuristics, reassembled as the raw event sequence a real streamed call would emit. */
 function fallbackStreamEvents(
   params: AnthropicMessageParams,
 ): AnthropicStreamEvent[] {
@@ -249,6 +253,16 @@ function fallbackStreamEvents(
   if (toolCall) {
     return fakeToolUseStreamEvents([toolCall]);
   }
+
+  const documentCitations = requestedDocumentCitations(params);
+  if (documentCitations) {
+    return fakeTextStreamEvents(
+      FALLBACK_TEXT,
+      {},
+      fabricatedCitation(documentCitations.documentTitle),
+    );
+  }
+
   return fakeTextStreamEvents(FALLBACK_TEXT);
 }
 

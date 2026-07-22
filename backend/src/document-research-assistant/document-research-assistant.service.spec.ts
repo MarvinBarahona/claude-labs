@@ -117,8 +117,7 @@ describe('DocumentResearchAssistantService', () => {
         title: TEST_PAPER.title,
         citations: { enabled: true },
       });
-      // markBreakpoints caches through (and including) messages[0]'s LAST block — the question
-      // text — which is what caches the document ahead of it too, per caching-layer.md.
+      // markBreakpoints caches through messages[0]'s last block — the question text — which caches the document ahead of it too, per caching-layer.md.
       expect(content[1]).toEqual({
         type: 'text',
         text: 'What is this paper about?',
@@ -148,9 +147,7 @@ describe('DocumentResearchAssistantService', () => {
       fakeAnthropic.queueMessage(fakeTextMessage('First answer.'));
       fakeAnthropic.queueMessage(fakeTextMessage('Second answer.'));
 
-      // Only one file upload was ever queued — if a second ask in files-api mode re-uploaded,
-      // FakeAnthropicClient.uploadFile() would reject (nothing queued, no fallback enabled) and
-      // this second `ask` call would throw instead of resolving.
+      // Only one file upload was queued — a re-upload would make uploadFile() reject and this second ask throw.
       await service.ask(
         sessionId,
         buildAskDto({ question: 'First question?', deliveryMode: 'files-api' }),
@@ -194,8 +191,7 @@ describe('DocumentResearchAssistantService', () => {
       );
 
       const secondCallMessages = fakeAnthropic.recordedCalls[1].messages;
-      // [rebuilt messages[0] (doc+first question), first turn's assistant reply, new question] — the
-      // document is never resent as its own message; it only ever lives inside messages[0].
+      // [rebuilt messages[0] (doc+first question), first turn's reply, new question] — the document only ever lives inside messages[0].
       expect(secondCallMessages).toHaveLength(3);
       expect(
         (secondCallMessages[0].content as Array<Record<string, unknown>>)[1],
@@ -227,9 +223,7 @@ describe('DocumentResearchAssistantService', () => {
                   document_title: TEST_PAPER.title,
                   start_page_number: 1,
                   end_page_number: 1,
-                  // A resent citation ties back to the exact document state it was generated
-                  // against — the real API 400s ("Document not found for placeholder citation")
-                  // once that's no longer true, e.g. after a delivery-mode switch.
+                  // A resent citation ties to the document state it was generated against — the real API 400s once that's stale, e.g. after a delivery-mode switch.
                   file_id: 'file_abc123',
                 },
               ],
@@ -553,6 +547,90 @@ describe('DocumentResearchAssistantService', () => {
       );
       expect(thinkingBlock?.thinking).toBe('Considering the question...');
       expect(thinkingBlock?.signature).toBe('sig-abc');
+    });
+
+    it('accumulates a citations_delta event into the reconstructed text block, flattened the same as a non-streamed response', async () => {
+      const { sessionId } = await service.createSession({
+        arxivId: '2301.00234',
+      });
+
+      fakeAnthropic.queueStream([
+        {
+          type: 'message_start',
+          message: fakeTextMessage('', { content: [], stop_reason: null }),
+        },
+        {
+          type: 'content_block_start',
+          index: 0,
+          content_block: { type: 'text', text: '', citations: null },
+        },
+        {
+          type: 'content_block_delta',
+          index: 0,
+          delta: {
+            type: 'text_delta',
+            text: 'It found nothing interesting.',
+          },
+        },
+        {
+          type: 'content_block_delta',
+          index: 0,
+          delta: {
+            type: 'citations_delta',
+            citation: {
+              type: 'page_location',
+              cited_text: 'nothing interesting was found',
+              document_index: 0,
+              document_title: TEST_PAPER.title,
+              start_page_number: 2,
+              end_page_number: 3,
+              file_id: null,
+            },
+          },
+        },
+        { type: 'content_block_stop', index: 0 },
+        {
+          type: 'message_delta',
+          delta: {
+            container: null,
+            stop_details: null,
+            stop_reason: 'end_turn',
+            stop_sequence: null,
+          },
+          usage: {
+            cache_creation_input_tokens: null,
+            cache_read_input_tokens: null,
+            input_tokens: 10,
+            output_tokens: 10,
+            output_tokens_details: null,
+            server_tool_use: null,
+          },
+        },
+        { type: 'message_stop' },
+      ]);
+
+      const frames: DocumentResearchAssistantStreamFrame[] = [];
+      for await (const frame of service.streamAsk(
+        sessionId,
+        buildAskDto({ stream: true }),
+      )) {
+        frames.push(frame);
+      }
+      const turnComplete = frames.find(
+        (frame) => frame.kind === 'turn-complete',
+      );
+      if (turnComplete?.kind !== 'turn-complete') {
+        throw new Error('expected a turn-complete frame');
+      }
+
+      expect(turnComplete.envelope.citations).toEqual([
+        {
+          citedText: 'nothing interesting was found',
+          documentTitle: TEST_PAPER.title,
+          startPage: 2,
+          endPage: 3,
+        },
+      ]);
     });
   });
 });

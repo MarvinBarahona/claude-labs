@@ -138,6 +138,13 @@ function accumulateStreamedContent(
       ) {
         block.signature += event.delta.signature;
       }
+      if (
+        block &&
+        block.type === 'text' &&
+        event.delta.type === 'citations_delta'
+      ) {
+        block.citations = [...(block.citations ?? []), event.delta.citation];
+      }
       if (event.delta.type === 'input_json_delta') {
         const soFar = toolInputJsonByIndex.get(event.index) ?? '';
         toolInputJsonByIndex.set(event.index, soFar + event.delta.partial_json);
@@ -417,9 +424,7 @@ export class DocumentResearchAssistantService {
       }
     }
 
-    // The Files-API `file_id` source shape (and, for base64, a non-literal `media_type`) isn't
-    // part of the stable SDK's `DocumentBlockParam.source` union — see the development note in
-    // this feature's plan file for why this cast is necessary rather than a modeling mistake.
+    // Files-API `file_id` source (and base64's non-literal `media_type`) isn't in the stable SDK's `DocumentBlockParam.source` union — cast is deliberate, not a modeling mistake.
     return {
       ...block,
       type: 'document',

@@ -5,6 +5,9 @@ import {
 } from '../../shared/anthropic-client/anthropic-client';
 
 type ContentBlock = Anthropic.Messages.ContentBlock;
+export type FakeTextCitation = NonNullable<
+  Extract<ContentBlock, { type: 'text' }>['citations']
+>[number];
 
 const DEFAULT_USAGE: Anthropic.Messages.Usage = {
   input_tokens: 10,
@@ -68,10 +71,11 @@ export function fakeToolUseMessage(
   });
 }
 
-/** The event sequence a real streamed call emits for a single text block, in order. */
+/** The event sequence a real streamed call emits for a single text block, in order; an optional `citation` reproduces the trailing `citations_delta` event real citations-enabled streaming sends after the text. */
 export function fakeTextStreamEvents(
   text: string,
   overrides: Partial<AnthropicMessage> = {},
+  citation?: FakeTextCitation,
 ): AnthropicStreamEvent[] {
   const startMessage = baseMessage({
     content: [],
@@ -92,6 +96,15 @@ export function fakeTextStreamEvents(
       index: 0,
       delta: { type: 'text_delta', text },
     },
+    ...(citation
+      ? [
+          {
+            type: 'content_block_delta' as const,
+            index: 0,
+            delta: { type: 'citations_delta' as const, citation },
+          },
+        ]
+      : []),
     { type: 'content_block_stop', index: 0 },
     {
       type: 'message_delta',
