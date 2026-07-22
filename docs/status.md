@@ -47,6 +47,7 @@ This table is a summary pointer — whatever process currently carries out each 
 | Workflow Gallery | Feature | `workflow-gallery` | ✅ Done | [`workflow-gallery.md`](features/workflow-gallery.md) |
 | Content-block builder | Task | `content-block-builder` | ✅ Done | [`content-block-builder.md`](shared/content-block-builder.md) |
 | Document Research Assistant | Feature | `document-research-assistant` | 🔵 In progress | [`feature-document-research-assistant.md`](planning/feature-document-research-assistant.md) |
+| Chat Transcript | Task | `chat-transcript` | 📝 Draft | [`task-chat-transcript.md`](planning/task-chat-transcript.md) |
 | Data & Code Sandbox | Feature | `data-code-sandbox` | 📋 Planned | [`feature-data-code-sandbox.md`](planning/feature-data-code-sandbox.md) |
 | DeepWiki MCP connector | Task | `deepwiki-connector` | 📋 Planned | [`task-deepwiki-connector.md`](planning/task-deepwiki-connector.md) |
 | Web & Repo Research Reporter | Feature | `web-repo-research-reporter` | 📋 Planned | [`feature-web-repo-research-reporter.md`](planning/feature-web-repo-research-reporter.md) |
