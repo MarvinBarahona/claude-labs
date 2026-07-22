@@ -46,7 +46,8 @@ This table is a summary pointer — whatever process currently carries out each 
 | Caching layer | Task | `caching-layer` | ✅ Done | [`caching-layer.md`](shared/caching-layer.md) |
 | Workflow Gallery | Feature | `workflow-gallery` | ✅ Done | [`workflow-gallery.md`](features/workflow-gallery.md) |
 | Content-block builder | Task | `content-block-builder` | ✅ Done | [`content-block-builder.md`](shared/content-block-builder.md) |
-| Document Research Assistant | Feature | `document-research-assistant` | 🔵 In progress | [`feature-document-research-assistant.md`](planning/feature-document-research-assistant.md) |
+| Document Research Assistant | Feature | `document-research-assistant` | ✅ Done | [`document-research-assistant.md`](features/document-research-assistant.md) |
+| Streamed-Response Reconstruction | Task | `stream-reconstruction` | 📝 Draft | [`task-stream-reconstruction.md`](planning/task-stream-reconstruction.md) |
 | Chat Transcript | Task | `chat-transcript` | 📝 Draft | [`task-chat-transcript.md`](planning/task-chat-transcript.md) |
 | Data & Code Sandbox | Feature | `data-code-sandbox` | 📋 Planned | [`feature-data-code-sandbox.md`](planning/feature-data-code-sandbox.md) |
 | DeepWiki MCP connector | Task | `deepwiki-connector` | 📋 Planned | [`task-deepwiki-connector.md`](planning/task-deepwiki-connector.md) |
