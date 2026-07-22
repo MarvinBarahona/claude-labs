@@ -137,10 +137,14 @@ metadata itself doesn't. Worth knowing if you're building your own
 multi-turn citations app: keep citations for display, not for replay.
 
 If you reconstruct a streamed response by hand (rather than using an SDK
-helper that does it for you), a `thinking` content block needs its own
-delta accumulation, separate from text: its `thinking` and `signature`
-fields arrive incrementally via `thinking_delta`/`signature_delta` events
-on `content_block_delta`, the same way text arrives via `text_delta`. Miss
-that, and the reconstructed block looks present but is empty — harmless
-until you resend it (e.g. as this lab's conversation history), at which
-point the API rejects it: a thinking block must actually contain thinking.
+helper that does it for you), several fields arrive incrementally on
+`content_block_delta` and each needs its own accumulation, separate from
+plain text: a `thinking` block's `thinking`/`signature` fields via
+`thinking_delta`/`signature_delta`, and — with citations enabled, as in
+this lab — a text block's `citations` array via one `citations_delta`
+event per citation, appended rather than overwritten. Miss any of these,
+and the reconstructed block looks present but is missing that field —
+for `thinking`, harmless until you resend it as history, at which point
+the API rejects it (a thinking block must actually contain thinking); for
+citations, it just means a streamed turn silently comes back with no
+citations at all, same shape as a turn that never had any.
