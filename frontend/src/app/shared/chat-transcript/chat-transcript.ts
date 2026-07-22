@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, TemplateRef, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  TemplateRef,
+  effect,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { Skeleton } from '../skeleton/skeleton';
 import { renderMarkdown } from '../markdown/render-markdown';
@@ -33,6 +43,18 @@ export class ChatTranscript {
 
   protected readonly draftMessage = signal('');
   protected readonly renderMarkdown = renderMarkdown;
+
+  private readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('transcriptScroll');
+
+  /** Keeps the newest turn in view as the list grows or the pending answer streams in — the list scrolls internally instead of the whole page. */
+  private readonly scrollToLatest = effect(() => {
+    this.turns();
+    this.pendingAnswerMarkdown();
+    const el = this.scrollContainer()?.nativeElement;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  });
 
   protected onDraftChange(event: Event): void {
     this.draftMessage.set((event.target as HTMLInputElement).value);

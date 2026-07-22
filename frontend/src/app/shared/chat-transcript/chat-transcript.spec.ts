@@ -37,6 +37,30 @@ describe('ChatTranscript', () => {
     return buttons.find((b) => b.textContent?.trim() === 'Send') as HTMLButtonElement;
   }
 
+  it('shows an empty-state placeholder when there are no turns yet, and hides it once one exists', async () => {
+    const { el } = await createFixture();
+
+    expect(el.querySelector('[data-testid="transcript-empty"]')).toBeTruthy();
+    expect(el.querySelectorAll('[data-testid="transcript-list"] li').length).toBe(0);
+  });
+
+  it('hides the empty-state placeholder once a turn exists', async () => {
+    const { el } = await createFixture({
+      turns: [{ question: 'Hi', answerMarkdown: 'Hello there' }],
+    });
+
+    expect(el.querySelector('[data-testid="transcript-empty"]')).toBeFalsy();
+  });
+
+  it('keeps the input focusable (read-only, not disabled) while disabled is true, so a send never needs to be refocused', async () => {
+    const { fixture, el } = await createFixture({ disabled: true });
+    fixture.detectChanges();
+
+    const input = messageInput(el);
+    expect(input.disabled).toBe(false);
+    expect(input.readOnly).toBe(true);
+  });
+
   it('renders one <li> per turn, user bubble right-aligned, assistant bubble left-aligned', async () => {
     const { el } = await createFixture({
       turns: [{ question: 'Hi', answerMarkdown: 'Hello there' }],

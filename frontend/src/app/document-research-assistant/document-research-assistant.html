@@ -173,7 +173,7 @@
       <section class="flex flex-col gap-2 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
         <h2 class="text-base font-bold text-foreground">Notes</h2>
         @if (notes() !== null) {
-          <div class="notes-content text-sm" data-testid="notes-panel" [innerHTML]="notesHtml()"></div>
+          <div class="notes-content max-h-[50vh] overflow-y-auto pr-2 text-sm" data-testid="notes-panel" [innerHTML]="notesHtml()"></div>
         } @else {
           <div class="flex flex-col gap-2" aria-hidden="true" data-testid="notes-skeleton">
             <app-skeleton widthClass="w-full" />

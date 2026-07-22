@@ -1,36 +1,40 @@
 <div class="flex flex-col gap-4">
-  <ol class="flex flex-col gap-2" data-testid="transcript-list">
-    @for (turn of turns(); track $index) {
-      <li class="flex flex-col gap-2">
-        <div class="flex justify-end">
-          <div class="max-w-[80%] rounded-lg bg-primary px-3 py-2 text-primary-foreground">
-            <p class="whitespace-pre-wrap text-sm">{{ turn.question }}</p>
-          </div>
-        </div>
-        <div class="flex justify-start">
-          <div class="max-w-[80%] rounded-lg bg-secondary px-3 py-2 text-secondary-foreground">
-            @if (turn.answerMarkdown !== null) {
-              @if (answerBodyTemplate(); as bodyTemplate) {
-                <ng-container
-                  [ngTemplateOutlet]="bodyTemplate"
-                  [ngTemplateOutletContext]="{ $implicit: turn, index: $index }"
-                />
-              } @else {
-                <div class="text-sm" data-testid="answer-text" [innerHTML]="renderMarkdown(turn.answerMarkdown)"></div>
-              }
-            } @else if (pendingAnswerMarkdown()) {
-              <div class="text-sm" data-testid="answer-text" [innerHTML]="renderMarkdown(pendingAnswerMarkdown()!)"></div>
-            } @else {
-              <div class="flex flex-col gap-2" aria-hidden="true" data-testid="answer-skeleton">
-                <app-skeleton widthClass="w-48" />
-                <app-skeleton widthClass="w-32" />
-              </div>
-            }
-          </div>
-        </div>
-      </li>
+  <div #transcriptScroll class="max-h-[60vh] overflow-y-auto rounded-md border border-border bg-background p-3">
+    @if (turns().length === 0) {
+      <p class="text-xs text-muted-foreground text-center" data-testid="transcript-empty">No messages yet — say something to get started.</p>
     }
-  </ol>
+    <ol class="flex flex-col gap-2" data-testid="transcript-list">
+      @for (turn of turns(); track $index) {
+        <li class="flex flex-col gap-2">
+          <div class="flex justify-end">
+            <div class="max-w-[80%] rounded-lg bg-primary px-3 py-2 text-primary-foreground">
+              <p class="whitespace-pre-wrap text-sm">{{ turn.question }}</p>
+            </div>
+          </div>
+          <div class="flex justify-start">
+            <div class="max-w-[80%] rounded-lg bg-secondary px-3 py-2 text-secondary-foreground">
+              @if (turn.answerMarkdown !== null) {
+                @if (answerBodyTemplate(); as bodyTemplate) {
+                  <ng-container
+                    [ngTemplateOutlet]="bodyTemplate"
+                    [ngTemplateOutletContext]="{ $implicit: turn, index: $index }"
+                  />
+                } @else {
+                  <div class="text-sm" data-testid="answer-text" [innerHTML]="renderMarkdown(turn.answerMarkdown)"></div>
+                }
+              } @else if (pendingAnswerMarkdown()) {
+                <div class="text-sm" data-testid="answer-text" [innerHTML]="renderMarkdown(pendingAnswerMarkdown()!)"></div>
+              } @else {
+                <div class="flex flex-col gap-2" aria-hidden="true" data-testid="answer-skeleton">
+                  <app-skeleton widthClass="w-128" />
+                </div>
+              }
+            </div>
+          </div>
+        </li>
+      }
+    </ol>
+  </div>
 
   <div class="flex gap-2">
     <input
@@ -39,7 +43,7 @@
       [attr.aria-label]="ariaLabel()"
       [placeholder]="placeholder()"
       [value]="draftMessage()"
-      [disabled]="disabled()"
+      [readOnly]="disabled()"
       (input)="onDraftChange($event)"
       (keydown.enter)="onSend()"
     />
