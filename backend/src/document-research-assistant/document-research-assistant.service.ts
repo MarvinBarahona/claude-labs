@@ -11,6 +11,7 @@ import {
 import { shapeError, ShapedError } from '../shared/api-error-handling';
 import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-builder.service';
 import { TurnEnvelope } from '../shared/envelope-builder/envelope-builder.types';
+import { StreamResponseBuilderService } from '../shared/stream-response-builder/stream-response-builder.service';
 import { ContentBlockBuilderService } from '../shared/content-block-builder/content-block-builder.service';
 import { ContentBlockDeliveryMode } from '../shared/content-block-builder/content-block-builder.types';
 import { CachingLayerService } from '../shared/caching-layer/caching-layer.service';
@@ -104,67 +105,6 @@ interface ExecutedTool {
   isError: boolean;
 }
 
-/** `message_start`'s own `content` is always `[]` in real streaming — reassembles it from the delta events instead, including streamed tool_use input JSON. Duplicated from live-tool-use-console.service.ts: per envelope-builder.md, this reconstruction is deliberately lab-local, not shared. */
-function accumulateStreamedContent(
-  events: readonly AnthropicStreamEvent[],
-): MessageContentBlock[] {
-  const blocksByIndex = new Map<number, MessageContentBlock>();
-  const toolInputJsonByIndex = new Map<number, string>();
-
-  for (const event of events) {
-    if (event.type === 'content_block_start') {
-      blocksByIndex.set(event.index, { ...event.content_block });
-      if (event.content_block.type === 'tool_use') {
-        toolInputJsonByIndex.set(event.index, '');
-      }
-      continue;
-    }
-    if (event.type === 'content_block_delta') {
-      const block = blocksByIndex.get(event.index);
-      if (block && block.type === 'text' && event.delta.type === 'text_delta') {
-        block.text += event.delta.text;
-      }
-      if (
-        block &&
-        block.type === 'thinking' &&
-        event.delta.type === 'thinking_delta'
-      ) {
-        block.thinking += event.delta.thinking;
-      }
-      if (
-        block &&
-        block.type === 'thinking' &&
-        event.delta.type === 'signature_delta'
-      ) {
-        block.signature += event.delta.signature;
-      }
-      if (
-        block &&
-        block.type === 'text' &&
-        event.delta.type === 'citations_delta'
-      ) {
-        block.citations = [...(block.citations ?? []), event.delta.citation];
-      }
-      if (event.delta.type === 'input_json_delta') {
-        const soFar = toolInputJsonByIndex.get(event.index) ?? '';
-        toolInputJsonByIndex.set(event.index, soFar + event.delta.partial_json);
-      }
-      continue;
-    }
-    if (event.type === 'content_block_stop') {
-      const block = blocksByIndex.get(event.index);
-      const json = toolInputJsonByIndex.get(event.index);
-      if (block && block.type === 'tool_use' && json !== undefined) {
-        block.input = json.length > 0 ? JSON.parse(json) : {};
-      }
-    }
-  }
-
-  return [...blocksByIndex.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([, block]) => block);
-}
-
 function numberLines(content: string): string {
   return content
     .split('\n')
@@ -251,6 +191,7 @@ export class DocumentResearchAssistantService {
     private readonly anthropicClient: AnthropicClient,
     private readonly modelConfig: ModelConfigService,
     private readonly envelopeBuilder: EnvelopeBuilderService,
+    private readonly streamResponseBuilder: StreamResponseBuilderService,
     private readonly contentBlockBuilder: ContentBlockBuilderService,
     private readonly cachingLayer: CachingLayerService,
     private readonly arxivClient: ArxivClient,
@@ -648,39 +589,6 @@ export class DocumentResearchAssistantService {
   private buildMessageFromEvents(
     events: AnthropicStreamEvent[],
   ): AnthropicMessage {
-    const startEvent = events.find((event) => event.type === 'message_start');
-    if (!startEvent || startEvent.type !== 'message_start') {
-      throw new Error(
-        'Streamed response completed without a message_start event',
-      );
-    }
-
-    const deltaEvent = events.find((event) => event.type === 'message_delta');
-
-    return {
-      ...startEvent.message,
-      content: accumulateStreamedContent(events),
-      ...(deltaEvent && deltaEvent.type === 'message_delta'
-        ? {
-            stop_reason: deltaEvent.delta.stop_reason,
-            stop_sequence: deltaEvent.delta.stop_sequence,
-            usage: {
-              ...startEvent.message.usage,
-              input_tokens:
-                deltaEvent.usage.input_tokens ??
-                startEvent.message.usage.input_tokens,
-              output_tokens:
-                deltaEvent.usage.output_tokens ??
-                startEvent.message.usage.output_tokens,
-              cache_creation_input_tokens:
-                deltaEvent.usage.cache_creation_input_tokens ??
-                startEvent.message.usage.cache_creation_input_tokens,
-              cache_read_input_tokens:
-                deltaEvent.usage.cache_read_input_tokens ??
-                startEvent.message.usage.cache_read_input_tokens,
-            },
-          }
-        : {}),
-    };
+    return this.streamResponseBuilder.reconstructMessage(events);
   }
 }

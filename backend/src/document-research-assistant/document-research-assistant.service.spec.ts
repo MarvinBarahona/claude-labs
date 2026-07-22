@@ -7,6 +7,7 @@ import {
 import { ModelConfigService } from '../shared/model-config/model-config.service';
 import { ModelTier } from '../shared/model-config/model-config.types';
 import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-builder.service';
+import { StreamResponseBuilderService } from '../shared/stream-response-builder/stream-response-builder.service';
 import { ContentBlockBuilderService } from '../shared/content-block-builder/content-block-builder.service';
 import { CachingLayerService } from '../shared/caching-layer/caching-layer.service';
 import { FakeAnthropicClient } from '../testing/anthropic/fake-anthropic-client';
@@ -62,6 +63,7 @@ describe('DocumentResearchAssistantService', () => {
       providers: [
         DocumentResearchAssistantService,
         EnvelopeBuilderService,
+        StreamResponseBuilderService,
         ContentBlockBuilderService,
         CachingLayerService,
         { provide: AnthropicClient, useValue: fakeAnthropic },

@@ -10,6 +10,7 @@ import {
 import { shapeError, ShapedError } from '../shared/api-error-handling';
 import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-builder.service';
 import { TurnEnvelope } from '../shared/envelope-builder/envelope-builder.types';
+import { StreamResponseBuilderService } from '../shared/stream-response-builder/stream-response-builder.service';
 import { GithubClient } from '../shared/github-provider/github-client';
 import { OpenMeteoClient } from './open-meteo-client';
 import { TurnDto } from './dto/turn.dto';
@@ -81,52 +82,13 @@ export type LiveToolUseConsoleStreamFrame =
   | { kind: 'turn-complete'; envelope: LiveToolUseEnvelope }
   | { kind: 'error'; shaped: ShapedError };
 
-/** `message_start`'s own `content` is always `[]` in real streaming — reassembles it from the delta events instead, including streamed tool_use input JSON. */
-function accumulateStreamedContent(
-  events: readonly AnthropicStreamEvent[],
-): MessageContentBlock[] {
-  const blocksByIndex = new Map<number, MessageContentBlock>();
-  const toolInputJsonByIndex = new Map<number, string>();
-
-  for (const event of events) {
-    if (event.type === 'content_block_start') {
-      blocksByIndex.set(event.index, { ...event.content_block });
-      if (event.content_block.type === 'tool_use') {
-        toolInputJsonByIndex.set(event.index, '');
-      }
-      continue;
-    }
-    if (event.type === 'content_block_delta') {
-      const block = blocksByIndex.get(event.index);
-      if (block && block.type === 'text' && event.delta.type === 'text_delta') {
-        block.text += event.delta.text;
-      }
-      if (event.delta.type === 'input_json_delta') {
-        const soFar = toolInputJsonByIndex.get(event.index) ?? '';
-        toolInputJsonByIndex.set(event.index, soFar + event.delta.partial_json);
-      }
-      continue;
-    }
-    if (event.type === 'content_block_stop') {
-      const block = blocksByIndex.get(event.index);
-      const json = toolInputJsonByIndex.get(event.index);
-      if (block && block.type === 'tool_use' && json !== undefined) {
-        block.input = json.length > 0 ? JSON.parse(json) : {};
-      }
-    }
-  }
-
-  return [...blocksByIndex.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([, block]) => block);
-}
-
 @Injectable()
 export class LiveToolUseConsoleService {
   constructor(
     private readonly anthropicClient: AnthropicClient,
     private readonly modelConfig: ModelConfigService,
     private readonly envelopeBuilder: EnvelopeBuilderService,
+    private readonly streamResponseBuilder: StreamResponseBuilderService,
     private readonly githubClient: GithubClient,
     private readonly openMeteoClient: OpenMeteoClient,
   ) {}
@@ -319,39 +281,6 @@ export class LiveToolUseConsoleService {
   private buildMessageFromEvents(
     events: AnthropicStreamEvent[],
   ): AnthropicMessage {
-    const startEvent = events.find((event) => event.type === 'message_start');
-    if (!startEvent || startEvent.type !== 'message_start') {
-      throw new Error(
-        'Streamed response completed without a message_start event',
-      );
-    }
-
-    const deltaEvent = events.find((event) => event.type === 'message_delta');
-
-    return {
-      ...startEvent.message,
-      content: accumulateStreamedContent(events),
-      ...(deltaEvent && deltaEvent.type === 'message_delta'
-        ? {
-            stop_reason: deltaEvent.delta.stop_reason,
-            stop_sequence: deltaEvent.delta.stop_sequence,
-            usage: {
-              ...startEvent.message.usage,
-              input_tokens:
-                deltaEvent.usage.input_tokens ??
-                startEvent.message.usage.input_tokens,
-              output_tokens:
-                deltaEvent.usage.output_tokens ??
-                startEvent.message.usage.output_tokens,
-              cache_creation_input_tokens:
-                deltaEvent.usage.cache_creation_input_tokens ??
-                startEvent.message.usage.cache_creation_input_tokens,
-              cache_read_input_tokens:
-                deltaEvent.usage.cache_read_input_tokens ??
-                startEvent.message.usage.cache_read_input_tokens,
-            },
-          }
-        : {}),
-    };
+    return this.streamResponseBuilder.reconstructMessage(events);
   }
 }

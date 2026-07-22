@@ -3,6 +3,7 @@ import { AnthropicClient } from '../shared/anthropic-client/anthropic-client';
 import { ModelConfigService } from '../shared/model-config/model-config.service';
 import { ModelTier } from '../shared/model-config/model-config.types';
 import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-builder.service';
+import { StreamResponseBuilderService } from '../shared/stream-response-builder/stream-response-builder.service';
 import { FakeAnthropicClient } from '../testing/anthropic/fake-anthropic-client';
 import {
   fakeTextMessage,
@@ -43,6 +44,7 @@ describe('MessagesConsoleService', () => {
       providers: [
         MessagesConsoleService,
         EnvelopeBuilderService,
+        StreamResponseBuilderService,
         { provide: AnthropicClient, useValue: fakeClient },
         { provide: ModelConfigService, useValue: modelConfigStub },
       ],
@@ -148,8 +150,7 @@ describe('MessagesConsoleService', () => {
     });
 
     it('yields a terminal error frame instead of turn_complete when the client throws mid-stream', async () => {
-      // Nothing queued — FakeAnthropicClient.streamMessage() throws its own
-      // "no queued stream left" error.
+      // Nothing queued — FakeAnthropicClient.streamMessage() throws its own "no queued stream left" error.
       const frames: MessagesConsoleStreamFrame[] = [];
       for await (const frame of service.streamTurn(
         buildDto({ stream: true }),

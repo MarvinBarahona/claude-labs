@@ -3,6 +3,7 @@ import { AnthropicClient } from '../shared/anthropic-client/anthropic-client';
 import { ModelConfigService } from '../shared/model-config/model-config.service';
 import { ModelTier } from '../shared/model-config/model-config.types';
 import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-builder.service';
+import { StreamResponseBuilderService } from '../shared/stream-response-builder/stream-response-builder.service';
 import { GithubClient } from '../shared/github-provider/github-client';
 import { ExternalApiError } from '../shared/api-error-handling';
 import { FakeGithubClient } from '../testing/github/fake-github-client';
@@ -54,6 +55,7 @@ describe('LiveToolUseConsoleService', () => {
       providers: [
         LiveToolUseConsoleService,
         EnvelopeBuilderService,
+        StreamResponseBuilderService,
         { provide: AnthropicClient, useValue: fakeAnthropic },
         { provide: ModelConfigService, useValue: modelConfigStub },
         { provide: GithubClient, useValue: fakeGithub },
