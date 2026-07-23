@@ -19,4 +19,10 @@ export abstract class AnthropicClient {
     bytes: Buffer,
     mediaType: string,
   ): Promise<{ id: string }>;
+  abstract downloadFile(
+    fileId: string,
+  ): Promise<{ bytes: Buffer; mediaType: string; filename: string }>;
+  abstract registerSkill(
+    files: { filename: string; content: Buffer }[],
+  ): Promise<{ id: string }>;
 }

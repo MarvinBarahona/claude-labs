@@ -116,3 +116,78 @@ export function mockAnthropicFilesUploadAuthError(): nock.Scope {
       error: { type: 'authentication_error', message: 'invalid x-api-key' },
     });
 }
+
+export function mockAnthropicFilesRetrieveMetadata(
+  fileId: string,
+  filename: string,
+  mimeType: string,
+): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .get(`/v1/files/${fileId}`)
+    .query({ beta: 'true' })
+    .reply(200, {
+      id: fileId,
+      type: 'file',
+      created_at: '2026-01-01T00:00:00Z',
+      filename,
+      mime_type: mimeType,
+      size_bytes: 0,
+      downloadable: true,
+    });
+}
+
+export function mockAnthropicFilesRetrieveMetadataAuthError(
+  fileId: string,
+): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .get(`/v1/files/${fileId}`)
+    .query({ beta: 'true' })
+    .reply(401, {
+      type: 'error',
+      error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    });
+}
+
+export function mockAnthropicFilesDownload(
+  fileId: string,
+  content: Buffer,
+): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .get(`/v1/files/${fileId}/content`)
+    .query({ beta: 'true' })
+    .reply(200, content);
+}
+
+export function mockAnthropicFilesDownloadAuthError(
+  fileId: string,
+): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .get(`/v1/files/${fileId}/content`)
+    .query({ beta: 'true' })
+    .reply(401, {
+      type: 'error',
+      error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    });
+}
+
+export function mockAnthropicSkillsCreate(skillId: string): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .post('/v1/skills')
+    .query({ beta: 'true' })
+    .reply(200, {
+      id: skillId,
+      type: 'skill',
+      created_at: '2026-01-01T00:00:00Z',
+      latest_version: '1',
+    });
+}
+
+export function mockAnthropicSkillsCreateAuthError(): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .post('/v1/skills')
+    .query({ beta: 'true' })
+    .reply(401, {
+      type: 'error',
+      error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    });
+}

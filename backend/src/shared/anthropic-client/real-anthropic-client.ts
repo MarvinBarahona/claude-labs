@@ -82,6 +82,44 @@ export class RealAnthropicClient extends AnthropicClient {
       throw toExternalApiError(error);
     }
   }
+
+  async downloadFile(
+    fileId: string,
+  ): Promise<{ bytes: Buffer; mediaType: string; filename: string }> {
+    try {
+      const metadata = await this.client.beta.files.retrieveMetadata(fileId, {
+        betas: ['files-api-2025-04-14'],
+      });
+      const download = await this.client.beta.files.download(fileId, {
+        betas: ['files-api-2025-04-14'],
+      });
+      const bytes = Buffer.from(await download.arrayBuffer());
+      return {
+        bytes,
+        mediaType: metadata.mime_type,
+        filename: metadata.filename,
+      };
+    } catch (error) {
+      throw toExternalApiError(error);
+    }
+  }
+
+  async registerSkill(
+    files: { filename: string; content: Buffer }[],
+  ): Promise<{ id: string }> {
+    try {
+      const uploadFiles = await Promise.all(
+        files.map((file) => Anthropic.toFile(file.content, file.filename)),
+      );
+      const result = await this.client.beta.skills.create({
+        files: uploadFiles,
+        betas: ['skills-2025-10-02'],
+      });
+      return { id: result.id };
+    } catch (error) {
+      throw toExternalApiError(error);
+    }
+  }
 }
 
 function toExternalApiError(error: unknown): ExternalApiError {

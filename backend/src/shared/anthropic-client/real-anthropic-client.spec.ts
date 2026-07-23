@@ -7,6 +7,11 @@ import {
   mockAnthropicMessagesStream,
   mockAnthropicFilesUpload,
   mockAnthropicFilesUploadAuthError,
+  mockAnthropicFilesRetrieveMetadata,
+  mockAnthropicFilesRetrieveMetadataAuthError,
+  mockAnthropicFilesDownload,
+  mockAnthropicSkillsCreate,
+  mockAnthropicSkillsCreateAuthError,
 } from '../../testing/http-fixtures/anthropic.fixtures';
 import {
   fakeTextMessage,
@@ -134,6 +139,73 @@ describe('RealAnthropicClient', () => {
 
     const error = await client
       .uploadFile(Buffer.from('fake pdf bytes'), 'application/pdf')
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ExternalApiError);
+    expect(error).toMatchObject({ source: 'anthropic' });
+  });
+
+  it('returns the downloaded bytes/mediaType/filename on a successful downloadFile() call', async () => {
+    mockAnthropicFilesRetrieveMetadata('file_abc123', 'chart.png', 'image/png');
+    mockAnthropicFilesDownload('file_abc123', Buffer.from('chart bytes'));
+    const client = buildClient();
+
+    const result = await client.downloadFile('file_abc123');
+
+    expect(result.filename).toBe('chart.png');
+    expect(result.mediaType).toBe('image/png');
+    expect(result.bytes.toString()).toBe('chart bytes');
+  });
+
+  it('rethrows a downloadFile() metadata auth failure as a normalized ExternalApiError', async () => {
+    mockAnthropicFilesRetrieveMetadataAuthError('file_abc123');
+    const client = buildClient('bad-key');
+
+    const error = await client
+      .downloadFile('file_abc123')
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ExternalApiError);
+    expect(error).toMatchObject({ source: 'anthropic' });
+  });
+
+  it('returns the registered skill id on a successful registerSkill() call', async () => {
+    mockAnthropicSkillsCreate('skill_abc123');
+    const client = buildClient();
+
+    const result = await client.registerSkill([
+      { filename: 'SKILL.md', content: Buffer.from('# spreadsheet-export') },
+    ]);
+
+    expect(result).toEqual({ id: 'skill_abc123' });
+  });
+
+  it('sends the skills-2025-10-02 beta flag on registerSkill()', async () => {
+    let sentBetaHeader: string | undefined;
+    nock(ANTHROPIC_API_BASE_URL)
+      .post('/v1/skills')
+      .query({ beta: 'true' })
+      .reply(function replyToSkillCreate() {
+        sentBetaHeader = this.req.headers['anthropic-beta'];
+        return [200, { id: 'skill_abc123' }];
+      });
+    const client = buildClient();
+
+    await client.registerSkill([
+      { filename: 'SKILL.md', content: Buffer.from('# spreadsheet-export') },
+    ]);
+
+    expect(sentBetaHeader).toContain('skills-2025-10-02');
+  });
+
+  it('rethrows a registerSkill() auth failure as a normalized ExternalApiError', async () => {
+    mockAnthropicSkillsCreateAuthError();
+    const client = buildClient('bad-key');
+
+    const error = await client
+      .registerSkill([
+        { filename: 'SKILL.md', content: Buffer.from('# spreadsheet-export') },
+      ])
       .catch((e: unknown) => e);
 
     expect(error).toBeInstanceOf(ExternalApiError);
