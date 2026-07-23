@@ -170,6 +170,16 @@ describe('DataCodeSandboxController (e2e)', () => {
 
   it('returns a 502 with the shaped error body when the GitHub fetch fails', async () => {
     mockGithubRateLimitError(REPO_PATH);
+    mockGithubCommits(REPO_PATH, [
+      {
+        sha: 'abc123',
+        commit: {
+          message: 'Fix a bug',
+          author: { name: 'someone', date: '2026-01-01T00:00:00Z' },
+        },
+        html_url: `https://github.com/${REPO_PATH}/commit/abc123`,
+      },
+    ]);
 
     const response = await request(app.getHttpServer())
       .post('/data-code-sandbox/run')
