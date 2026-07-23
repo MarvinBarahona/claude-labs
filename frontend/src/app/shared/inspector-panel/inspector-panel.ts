@@ -31,6 +31,8 @@ function eventType(event: unknown): string {
 })
 export class InspectorPanel {
   readonly call = input.required<InspectorCall>();
+  /** Distinguishes multiple instances stacked on one page (e.g. one per comparison run) — every existing single-instance lab keeps the plain default. */
+  readonly title = input('Inspector');
 
   protected readonly requestJson = computed(() => prettyJson(this.call().request));
 

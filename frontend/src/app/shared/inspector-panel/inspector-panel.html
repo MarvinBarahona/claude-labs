@@ -1,6 +1,6 @@
 <section class="flex flex-col gap-4 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
   <header class="flex flex-wrap items-center gap-3">
-    <h2 class="text-base font-semibold">Inspector</h2>
+    <h2 class="text-base font-semibold">{{ title() }}</h2>
     @if (stopReason(); as reason) {
       <span class="rounded-sm bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">stop_reason: {{ reason }}</span>
     }

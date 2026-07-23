@@ -26,6 +26,17 @@ describe('InspectorPanel', () => {
     expect(text).toContain('in 12 / out 4');
   });
 
+  it('titles itself "Inspector" by default, and a custom title when one is passed', async () => {
+    const fixture = await createFixture({ request: {} });
+    expect((fixture.nativeElement as HTMLElement).querySelector('h2')?.textContent).toBe('Inspector');
+
+    fixture.componentRef.setInput('title', 'Thinking — High Effort');
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('h2')?.textContent).toBe(
+      'Thinking — High Effort',
+    );
+  });
+
   it('shows a placeholder when no response has arrived yet', async () => {
     const fixture = await createFixture({ request: { model: 'claude-sonnet-5' } });
 
