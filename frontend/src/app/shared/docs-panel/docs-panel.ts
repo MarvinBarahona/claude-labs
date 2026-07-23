@@ -15,7 +15,6 @@ const MIN_LOADING_MS = 500;
   selector: 'app-docs-panel',
   imports: [Skeleton],
   templateUrl: './docs-panel.html',
-  styleUrl: './docs-panel.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DocsPanel {

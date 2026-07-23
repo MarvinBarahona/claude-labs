@@ -31,6 +31,6 @@
   } @else if (isError()) {
     <p role="alert" class="text-xs text-destructive">Couldn't load the docs for this lab.</p>
   } @else {
-    <div class="docs-panel-content" [innerHTML]="html()"></div>
+    <div class="docs-panel-content markdown-content" [innerHTML]="html()"></div>
   }
 </section>

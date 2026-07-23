@@ -257,7 +257,6 @@ const NO_CALL_YET: InspectorCall = { request: null };
   selector: 'app-document-research-assistant',
   imports: [DocsPanel, InspectorPanel, Skeleton, ChatTranscript, MarkdownPipe, ParagraphsForTurnPipe],
   templateUrl: './document-research-assistant.html',
-  styleUrl: './document-research-assistant.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DocumentResearchAssistant {
