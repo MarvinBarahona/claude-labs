@@ -14,6 +14,7 @@ import { WorkflowGalleryModule } from './workflow-gallery/workflow-gallery.modul
 import { DocumentResearchAssistantModule } from './document-research-assistant/document-research-assistant.module';
 import { WebRepoResearchReporterModule } from './web-repo-research-reporter/web-repo-research-reporter.module';
 import { DataCodeSandboxModule } from './data-code-sandbox/data-code-sandbox.module';
+import { VisionLabModule } from './vision-lab/vision-lab.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { DataCodeSandboxModule } from './data-code-sandbox/data-code-sandbox.mod
     DocumentResearchAssistantModule,
     WebRepoResearchReporterModule,
     DataCodeSandboxModule,
+    VisionLabModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api{/*splat}'],
