@@ -2,7 +2,7 @@
 
 **Status:** 📋 Planned.
 
-**Nav position:** after `feature-document-research-assistant`.
+**Nav position:** after `feature-document-research-assistant` — but Data & Code Sandbox has since graduated expecting to sit directly after this feature (see `docs/features/data-code-sandbox.md`), and was appended at the end of `FEATURE_ROUTES` in the meantime since this feature didn't exist yet to insert after. Insert this feature's entry immediately before Data & Code Sandbox's current entry, not simply after Document Research Assistant (which by now also has Workflow Gallery after it).
 
 ## Claude API features
 
