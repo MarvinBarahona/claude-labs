@@ -54,6 +54,6 @@ This table is a summary pointer — whatever process currently carries out each 
 | Web & Repo Research Reporter | Feature | `web-repo-research-reporter` | ✅ Done | [`web-repo-research-reporter.md`](features/web-repo-research-reporter.md) |
 | Vision Lab | Feature | `vision-lab` | ✅ Done | [`vision-lab.md`](features/vision-lab.md) |
 | Extended Thinking Bench | Feature | `extended-thinking-bench` | ✅ Done | [`extended-thinking-bench.md`](features/extended-thinking-bench.md) |
-| Agent Playground | Feature | `agent-playground` | 📋 Planned | [`feature-agent-playground.md`](planning/feature-agent-playground.md) |
+| Agent Playground | Feature | `agent-playground` | ✅ Done | [`agent-playground.md`](features/agent-playground.md) |
 
 
