@@ -48,6 +48,7 @@ Never reference another skill by name here, project-specific or otherwise — th
 
 - Unit-test services in isolation using `Test.createTestingModule` with mocked providers — don't spin up the full Nest application for logic tests.
 - Use Nest's testing utilities (`@nestjs/testing` + `supertest`) for controller-level/e2e tests that need to exercise the full HTTP pipeline (guards, pipes, filters included).
+- DTO field validation (range/type/format checks via `class-validator` decorators) only runs through the global `ValidationPipe` — a bare service-level unit test never triggers it. When writing test-scenario plans for that kind of check, cite the integration/e2e-spec bucket rather than "Unit," matching how the validation is actually exercised.
 
 ## General
 
