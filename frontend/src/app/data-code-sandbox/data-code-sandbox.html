@@ -1,0 +1,102 @@
+<div class="flex flex-col gap-6">
+  <h1 class="text-xl font-bold text-foreground">Data &amp; Code Sandbox</h1>
+
+  <app-docs-panel [slug]="'data-code-sandbox'" />
+
+  <section class="flex flex-col gap-4 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+    <h2 class="text-base font-bold text-foreground">Run the sandbox</h2>
+
+    <div class="flex flex-col gap-2">
+      <span class="text-xs font-bold tracking-wide text-foreground">Prompt</span>
+      <textarea
+        class="min-h-32 rounded-sm border border-border bg-background p-2 text-sm"
+        aria-label="Analysis prompt"
+        placeholder="Chart commit frequency by month…"
+        [value]="prompt()"
+        (input)="onPromptChange($event)"
+      ></textarea>
+    </div>
+
+    <label class="flex items-center gap-2 text-xs font-bold tracking-wide text-foreground">
+      <input type="checkbox" [checked]="useSkill()" (change)="onUseSkillChange($event)" />
+      Use Spreadsheet Export Skill ({{ useSkill() ? 'Yes' : 'No' }})
+    </label>
+
+    <div>
+      <button
+        type="button"
+        class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+        [disabled]="!prompt().trim() || isRunning()"
+        (click)="run()"
+      >
+        Run
+      </button>
+    </div>
+
+    @if (error(); as message) {
+      <p role="alert" class="text-xs text-destructive">{{ message }}</p>
+    }
+
+    @if (isRunning() || result()) {
+      <div class="flex flex-col gap-4 border-t border-border pt-4" data-testid="run-result">
+        @if (result(); as result) {
+          <div>
+            <span class="rounded-sm bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground" data-testid="skill-used-badge">
+              Skill used: {{ result.skillUsed ? 'Yes' : 'No' }}
+            </span>
+          </div>
+
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wide text-foreground">Executed code</span>
+            @if (result.executedCode.length > 0) {
+              <ul class="flex flex-col gap-2" data-testid="executed-code-list">
+                @for (entry of result.executedCode; track $index) {
+                  <li class="rounded-sm border border-border p-2">
+                    <pre class="whitespace-pre-wrap text-xs" data-testid="executed-command">{{ entry.command }}</pre>
+                    @if (entry.stdout) {
+                      <pre class="whitespace-pre-wrap text-xs text-foreground" data-testid="executed-stdout">{{ entry.stdout }}</pre>
+                    }
+                    @if (entry.stderr) {
+                      <pre class="whitespace-pre-wrap text-xs text-destructive" data-testid="executed-stderr">{{ entry.stderr }}</pre>
+                    }
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="text-sm">Claude answered without running any code.</p>
+            }
+          </div>
+
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wide text-foreground">Output files</span>
+            @if (result.outputFiles.length > 0) {
+              <ul class="flex flex-col gap-2" data-testid="output-file-list">
+                @for (file of result.outputFiles; track file.fileId) {
+                  <li class="rounded-sm border border-border p-2">
+                    @if (isImage(file.mediaType)) {
+                      <img [src]="dataUrl(file)" [alt]="file.filename" class="max-w-full rounded-sm" />
+                    } @else {
+                      <a [href]="dataUrl(file)" [download]="file.filename" class="text-sm underline">
+                        Download {{ file.filename }}
+                      </a>
+                    }
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="text-sm">No output files were produced.</p>
+            }
+          </div>
+        } @else {
+          <div class="flex flex-col gap-2" aria-hidden="true" data-testid="run-result-skeleton">
+            <app-skeleton widthClass="w-1/3" />
+            <app-skeleton widthClass="w-full" [heightPx]="72" />
+            <app-skeleton widthClass="w-full" [heightPx]="72" />
+          </div>
+        }
+      </div>
+    }
+  </section>
+
+  <app-inspector-panel [call]="inspectorCall()" />
+</div>

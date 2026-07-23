@@ -25,4 +25,8 @@ export const LAB_CATALOG: Readonly<Record<string, LabCatalogEntry>> = {
     goal: 'Route a real open GitHub issue to a category, chain a draft-then-refine reply, grade it in parallel against several criteria, and loop that feedback back into drafting until it passes or hits a retry cap.',
     concepts: ['Routing', 'Chaining', 'Parallelization', 'Evaluator-optimizer', 'Prompt caching'],
   },
+  'data-code-sandbox': {
+    goal: 'Upload real GitHub issue/commit data through the Files API and have Claude write and run Python in a sandboxed container to analyze it, producing charts and, optionally, a spreadsheet via an Agent Skill.',
+    concepts: ['Code execution tool', 'Files API', 'Agent Skills'],
+  },
 };

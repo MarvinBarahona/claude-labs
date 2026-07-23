@@ -1,9 +1,6 @@
 import type { FeatureRoute } from './feature-route';
 
-/**
- * Every feature's route, keyed by slug.
- * Array order is the nav render order, by design.
- */
+// Every feature's route, keyed by slug. Array order is the nav render order, by design.
 export const FEATURE_ROUTES: readonly FeatureRoute[] = [
   {
     slug: 'home',
@@ -46,6 +43,14 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
     loadComponent: () =>
       import('../workflow-gallery/workflow-gallery').then(
         (m) => m.WorkflowGallery,
+      ),
+  },
+  {
+    slug: 'data-code-sandbox',
+    label: 'Data & Code Sandbox',
+    loadComponent: () =>
+      import('../data-code-sandbox/data-code-sandbox').then(
+        (m) => m.DataCodeSandbox,
       ),
   },
 ];
