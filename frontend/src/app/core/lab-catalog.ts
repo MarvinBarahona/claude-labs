@@ -33,4 +33,8 @@ export const LAB_CATALOG: Readonly<Record<string, LabCatalogEntry>> = {
     goal: 'Upload real GitHub issue/commit data through the Files API and have Claude write and run Python in a sandboxed container to analyze it, producing charts and, optionally, a spreadsheet via an Agent Skill.',
     concepts: ['Code execution tool', 'Files API', 'Agent Skills'],
   },
+  'vision-lab': {
+    goal: 'Search Wikimedia Commons for images by a text query, fetch a chosen number of them, and ask Claude to compare, describe, or count across them.',
+    concepts: ['Image content blocks', 'Multi-image dimension limits', 'Files API'],
+  },
 };

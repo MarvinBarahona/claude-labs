@@ -61,4 +61,12 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
         (m) => m.DataCodeSandbox,
       ),
   },
+  {
+    slug: 'vision-lab',
+    label: 'Vision Lab',
+    loadComponent: () =>
+      import('../vision-lab/vision-lab').then(
+        (m) => m.VisionLab,
+      ),
+  },
 ];

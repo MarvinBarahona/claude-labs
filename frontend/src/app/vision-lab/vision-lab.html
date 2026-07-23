@@ -1,0 +1,131 @@
+<div class="flex flex-col gap-6">
+  <h1 class="text-xl font-bold text-foreground">Vision Lab</h1>
+
+  <app-docs-panel [slug]="'vision-lab'" />
+
+  <section class="flex flex-col gap-4 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+    <h2 class="text-base font-bold text-foreground">Vision demo</h2>
+
+    <label class="flex flex-col gap-1 lg:max-w-sm">
+      <span class="text-xs font-bold tracking-wide text-foreground">Search query</span>
+      <input
+        class="rounded-sm border border-border bg-background p-2 text-sm"
+        type="text"
+        aria-label="Search query"
+        placeholder="e.g. red panda"
+        [value]="query()"
+        (input)="onQueryChange($event)"
+      />
+    </label>
+
+    <fieldset class="flex flex-col gap-1">
+      <legend class="text-xs font-bold tracking-wide text-foreground">Image Count</legend>
+      <div class="flex flex-wrap gap-3">
+        @for (option of imageCountOptions; track option) {
+          <label class="flex items-center gap-1 text-xs">
+            <input
+              type="radio"
+              name="image-count"
+              [attr.aria-label]="option + ' images'"
+              [value]="option"
+              [checked]="imageCount() === option"
+              (change)="onImageCountChange(option)"
+            />
+            {{ option }}
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    <label class="flex flex-col gap-1">
+      <span class="text-xs font-bold tracking-wide text-foreground">Instruction</span>
+      <textarea
+        class="rounded-sm border border-border bg-background p-2 text-sm"
+        rows="3"
+        aria-label="Instruction"
+        placeholder="What should Claude do with these images?"
+        [value]="instruction()"
+        (input)="onInstructionChange($event)"
+      ></textarea>
+    </label>
+
+    <label class="flex items-center gap-2 text-xs">
+      <input type="checkbox" aria-label="Stream response" [checked]="streamingEnabled()" (change)="onStreamingToggle($event)" />
+      <span class="text-xs font-bold tracking-wide text-foreground">Stream Response ({{ streamingEnabled() ? 'Yes' : 'No' }})</span>
+    </label>
+
+    <fieldset class="flex flex-col gap-1">
+      <legend class="text-xs font-bold tracking-wide text-foreground">Delivery Mode</legend>
+      <div class="flex flex-wrap gap-3">
+        @for (option of deliveryModeOptions; track option.value) {
+          <label class="flex items-center gap-1 text-xs">
+            <input
+              type="radio"
+              name="delivery-mode"
+              [attr.aria-label]="option.label"
+              [value]="option.value"
+              [checked]="deliveryMode() === option.value"
+              (change)="onDeliveryModeChange(option.value)"
+            />
+            {{ option.label }}
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    <div>
+      <button
+        type="button"
+        class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+        [disabled]="!query().trim() || !instruction().trim() || isRunning()"
+        (click)="run()"
+      >
+        Run
+      </button>
+    </div>
+
+    @if (error(); as message) {
+      <p role="alert" class="text-xs text-destructive">{{ message }}</p>
+    }
+
+    @if (dimensionCapApplied()) {
+      <p role="alert" class="rounded-sm border border-accent bg-accent/10 p-2 text-xs text-accent-foreground" data-testid="dimension-cap-banner">
+        Dimension cap applied — images were downscaled because more than one image was attached to this request.
+      </p>
+    }
+
+    @if (isRunning() || images().length > 0 || answerText()) {
+      <div class="flex flex-col gap-3 border-t border-border pt-4" data-testid="vision-result">
+        <h3 class="text-xs font-bold uppercase tracking-wide text-foreground">Result</h3>
+
+        @if (isRunning()) {
+          <div class="flex flex-wrap gap-2" aria-hidden="true" data-testid="gallery-skeleton">
+            @for (placeholder of skeletonPlaceholders(); track placeholder) {
+              <app-skeleton widthClass="w-24" [heightPx]="96" [borderRadiusPx]="4" />
+            }
+          </div>
+        } @else if (images().length > 0) {
+          <div class="flex flex-wrap gap-2" data-testid="image-gallery">
+            @for (image of images(); track image.url) {
+              <img class="h-24 w-24 rounded-sm border border-border object-cover" [src]="image.url" [alt]="image.title" />
+            }
+          </div>
+        }
+
+        @if (isRunning() && !streamingAnswerText()) {
+          <div class="flex flex-col gap-2" aria-hidden="true" data-testid="answer-skeleton">
+            <app-skeleton widthClass="w-full" />
+            <app-skeleton widthClass="w-full" />
+            <app-skeleton widthClass="w-2/3" />
+          </div>
+        } @else if (isRunning()) {
+          <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ streamingAnswerText() }}</p>
+        } @else if (answerText()) {
+          <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ answerText() }}</p>
+        }
+      </div>
+    }
+  </section>
+
+  <app-inspector-panel [call]="inspectorCall()" />
+</div>
