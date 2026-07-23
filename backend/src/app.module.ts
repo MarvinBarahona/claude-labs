@@ -11,6 +11,7 @@ import { MessagesConsoleModule } from './messages-console/messages-console.modul
 import { StructuredOutputConsoleModule } from './structured-output-console/structured-output-console.module';
 import { LiveToolUseConsoleModule } from './live-tool-use-console/live-tool-use-console.module';
 import { WorkflowGalleryModule } from './workflow-gallery/workflow-gallery.module';
+import { ExtendedThinkingBenchModule } from './extended-thinking-bench/extended-thinking-bench.module';
 import { DocumentResearchAssistantModule } from './document-research-assistant/document-research-assistant.module';
 import { WebRepoResearchReporterModule } from './web-repo-research-reporter/web-repo-research-reporter.module';
 import { DataCodeSandboxModule } from './data-code-sandbox/data-code-sandbox.module';
@@ -26,6 +27,7 @@ import { VisionLabModule } from './vision-lab/vision-lab.module';
     StructuredOutputConsoleModule,
     LiveToolUseConsoleModule,
     WorkflowGalleryModule,
+    ExtendedThinkingBenchModule,
     DocumentResearchAssistantModule,
     WebRepoResearchReporterModule,
     DataCodeSandboxModule,
