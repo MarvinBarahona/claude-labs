@@ -22,13 +22,13 @@ The one deliberate agent in the app, built specifically to contrast with Workflo
 Last, deliberately, since agents are the exception here, not the default (see `status.md` for current position).
 
 - Requires the **GitHub data provider** ([`github-provider.md`](../shared/github-provider.md)) — extended by this feature, see "Depends on" below.
-- Requires the **DeepWiki MCP connector** ([`task-deepwiki-connector.md`](task-deepwiki-connector.md)), reused from Web & Repo Research Reporter.
+- Requires the **DeepWiki MCP connector** ([`deepwiki-connector.md`](../shared/deepwiki-connector.md)), reused from Web & Repo Research Reporter.
 - Requires **Workflow Gallery** to exist, since this feature closes with a direct comparison against it.
 
 ## Shared functionality used
 
 - GitHub data provider ([`github-provider.md`](../shared/github-provider.md)).
-- DeepWiki MCP connector ([`task-deepwiki-connector.md`](task-deepwiki-connector.md)).
+- DeepWiki MCP connector ([`deepwiki-connector.md`](../shared/deepwiki-connector.md)).
 - Config/model layer ([`model-config.md`](../shared/model-config.md)) — `getModel('default')`.
 - Response Envelope Builder ([`envelope-builder.md`](../shared/envelope-builder.md)).
 
@@ -43,7 +43,7 @@ Not applicable — no documents or images in this feature.
 
 ## Depends on
 
-- [`architecture.md`](../technical/architecture.md), "Custom tools vs. server-executed tools" — this turn mixes both kinds in one loop: `list_files`/`read_file`/`search` are custom, backend-executed (the loop only advances on their `tool_use` blocks), while `ask_deepwiki` (via [`task-deepwiki-connector.md`](task-deepwiki-connector.md)) is server-executed and resolves inline within whichever call it appears in, per that section's "a single turn can mix both kinds" note.
+- [`architecture.md`](../technical/architecture.md), "Custom tools vs. server-executed tools" — this turn mixes both kinds in one loop: `list_files`/`read_file`/`search` are custom, backend-executed (the loop only advances on their `tool_use` blocks), while `ask_deepwiki` (via [`deepwiki-connector.md`](../shared/deepwiki-connector.md)) is server-executed and resolves inline within whichever call it appears in, per that section's "a single turn can mix both kinds" note.
 - [`architecture.md`](../technical/architecture.md), "Streaming transport" — reuses Live Tool-Use Console's exact SSE convention (`tool_call_start`/`tool_call_result` app-level events around each custom-tool execution, terminal `turn_complete`), the same shape this feature's loop already has.
 - [`github-provider.md`](../shared/github-provider.md) — extended with a new method, `getFileContent(path: string): Promise<{ content: string; encoding: 'utf-8' | 'base64' }>` (backed by GitHub's Contents API, `GET /repos/{owner}/{repo}/contents/{path}`), since reading a specific file's content is core to this feature and naturally belongs alongside `GithubClient`'s existing list-endpoint methods — unlike a whole new integration, this is one more method on an already-shared client. `RealGithubClient` rethrows any failure as `ExternalApiError('github', ...)` same as its other methods; `FakeGithubClient` gets a matching canned default. This task's own to-do list includes updating `github-provider.md` in place to document the new method once built.
 

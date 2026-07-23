@@ -50,7 +50,7 @@ This table is a summary pointer — whatever process currently carries out each 
 | Streamed-Response Reconstruction | Task | `stream-reconstruction` | ✅ Done | [`stream-response-builder.md`](shared/stream-response-builder.md) |
 | Chat Transcript | Task | `chat-transcript` | ✅ Done | [`chat-transcript.md`](shared/chat-transcript.md) |
 | Data & Code Sandbox | Feature | `data-code-sandbox` | ✅ Done | [`data-code-sandbox.md`](features/data-code-sandbox.md) |
-| DeepWiki MCP connector | Task | `deepwiki-connector` | 📋 Planned | [`task-deepwiki-connector.md`](planning/task-deepwiki-connector.md) |
+| DeepWiki MCP connector | Task | `deepwiki-connector` | ✅ Done | [`deepwiki-connector.md`](shared/deepwiki-connector.md) |
 | Web & Repo Research Reporter | Feature | `web-repo-research-reporter` | 📋 Planned | [`feature-web-repo-research-reporter.md`](planning/feature-web-repo-research-reporter.md) |
 | Vision Lab | Feature | `vision-lab` | 📋 Planned | [`feature-vision-lab.md`](planning/feature-vision-lab.md) |
 | Extended Thinking Bench | Feature | `extended-thinking-bench` | 📋 Planned | [`feature-extended-thinking-bench.md`](planning/feature-extended-thinking-bench.md) |
