@@ -48,6 +48,17 @@ export function mockAnthropicMessagesAuthError(): nock.Scope {
     });
 }
 
+/** Non-streaming counterpart used by a beta-only caller (e.g. an MCP-toolset request) — same `?beta=true` path as `mockAnthropicBetaMessagesCreate`. */
+export function mockAnthropicBetaMessagesAuthError(): nock.Scope {
+  return nock(ANTHROPIC_API_BASE_URL)
+    .post('/v1/messages')
+    .query({ beta: 'true' })
+    .reply(401, {
+      type: 'error',
+      error: { type: 'authentication_error', message: 'invalid x-api-key' },
+    });
+}
+
 export function mockAnthropicModelsList(
   models: Array<Partial<Anthropic.Models.ModelInfo> & { id: string }>,
 ): nock.Scope {

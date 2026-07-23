@@ -16,6 +16,7 @@ import { DocumentResearchAssistantModule } from './document-research-assistant/d
 import { WebRepoResearchReporterModule } from './web-repo-research-reporter/web-repo-research-reporter.module';
 import { DataCodeSandboxModule } from './data-code-sandbox/data-code-sandbox.module';
 import { VisionLabModule } from './vision-lab/vision-lab.module';
+import { AgentPlaygroundModule } from './agent-playground/agent-playground.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { VisionLabModule } from './vision-lab/vision-lab.module';
     WebRepoResearchReporterModule,
     DataCodeSandboxModule,
     VisionLabModule,
+    AgentPlaygroundModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api{/*splat}'],
