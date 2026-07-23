@@ -41,4 +41,8 @@ export const LAB_CATALOG: Readonly<Record<string, LabCatalogEntry>> = {
     goal: 'Search Wikimedia Commons for images by a text query, fetch a chosen number of them, and ask Claude to compare, describe, or count across them.',
     concepts: ['Image content blocks', 'Multi-image dimension limits', 'Files API'],
   },
+  'agent-playground': {
+    goal: 'Give Claude a fixed goal and a small set of general-purpose tools — list files, read a file, search, ask DeepWiki — and let it decide its own steps to investigate the subject repo, in contrast to Workflow Gallery’s fixed pipeline.',
+    concepts: ['Agentic tool-use loops', 'Abstract, combinable tool design', 'Environment inspection', 'MCP connector'],
+  },
 };

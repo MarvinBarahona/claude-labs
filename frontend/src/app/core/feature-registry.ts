@@ -77,4 +77,12 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
         (m) => m.VisionLab,
       ),
   },
+  {
+    slug: 'agent-playground',
+    label: 'Agent Playground',
+    loadComponent: () =>
+      import('../agent-playground/agent-playground').then(
+        (m) => m.AgentPlayground,
+      ),
+  },
 ];

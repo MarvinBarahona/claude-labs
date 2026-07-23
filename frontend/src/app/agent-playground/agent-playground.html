@@ -1,0 +1,98 @@
+<div class="flex flex-col gap-6">
+  <h1 class="text-xl font-bold text-foreground">Agent Playground</h1>
+
+  <app-docs-panel [slug]="'agent-playground'" />
+
+  <section class="flex flex-col gap-4 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+    <h2 class="text-base font-bold text-foreground">Run the agent</h2>
+
+    <div class="flex flex-col gap-4">
+      <label class="flex items-center gap-2 text-xs">
+        <input type="checkbox" aria-label="Stream response" [checked]="streamingEnabled()" (change)="onStreamingToggle($event)" />
+        <span class="text-xs font-bold tracking-wide text-foreground">Stream Response ({{ streamingEnabled() ? 'Yes' : 'No' }})</span>
+      </label>
+
+      <div>
+        <button
+          type="button"
+          class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+          [disabled]="isRunning()"
+          (click)="run()"
+        >
+          Run
+        </button>
+      </div>
+
+      @if (errorMessage(); as error) {
+        <p role="alert" class="text-xs text-destructive">{{ error }}</p>
+      }
+
+      @if (isRunning() || result()) {
+        <div class="flex flex-col gap-4 border-t border-border pt-4" data-testid="run-result">
+          @if (result()?.hitIterationCap) {
+            <p role="alert" class="rounded-sm border border-destructive bg-destructive/10 p-2 text-xs text-destructive" data-testid="iteration-cap-banner">
+              Hit the 10-tool-call iteration cap — the agent stopped before it necessarily finished exploring.
+            </p>
+          }
+
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wide text-foreground">Tool Activity</span>
+            @if (displayToolActivity().length > 0) {
+              <ol class="mt-2 flex flex-col gap-2" data-testid="tool-activity-list">
+                @for (activity of displayToolActivity(); track $index) {
+                  <li class="rounded-sm border border-border p-2">
+                    <span class="rounded-sm bg-secondary px-1.5 py-0.5 text-xs text-secondary-foreground">{{ activity.tool }}</span>
+                    <span
+                      class="ml-2 rounded-sm px-1.5 py-0.5 text-xs"
+                      [class.bg-accent]="activity.status === 'running'"
+                      [class.text-accent-foreground]="activity.status === 'running'"
+                      [class.bg-secondary]="activity.status === 'done' && !activity.isError"
+                      [class.text-secondary-foreground]="activity.status === 'done' && !activity.isError"
+                      [class.bg-destructive]="activity.status === 'done' && activity.isError"
+                      [class.text-destructive-foreground]="activity.status === 'done' && activity.isError"
+                    >
+                      {{ activity.status }}
+                    </span>
+                    @if (activity.isInspection) {
+                      <span class="ml-2 rounded-sm bg-accent px-1.5 py-0.5 text-xs text-accent-foreground" data-testid="inspection-callout">
+                        environment inspection — re-checking a prior result
+                      </span>
+                    }
+                  </li>
+                }
+              </ol>
+            } @else {
+              <div class="mt-2 flex flex-row gap-2" aria-hidden="true" data-testid="tool-activity-skeleton">
+                <app-skeleton widthClass="w-20" [heightPx]="20" [borderRadiusPx]="4" />
+                <app-skeleton widthClass="w-24" [heightPx]="20" [borderRadiusPx]="4" />
+                <app-skeleton widthClass="w-16" [heightPx]="20" [borderRadiusPx]="4" />
+              </div>
+            }
+          </div>
+
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wide text-foreground">Final Answer</span>
+            @if (result(); as result) {
+              <p class="mt-2 whitespace-pre-wrap text-sm" data-testid="final-answer">{{ result.finalAnswer }}</p>
+            } @else {
+              <div class="mt-2 flex flex-col gap-2" aria-hidden="true" data-testid="final-answer-skeleton">
+                <app-skeleton widthClass="w-full" />
+                <app-skeleton widthClass="w-2/3" />
+              </div>
+            }
+          </div>
+
+          @if (result(); as result) {
+            <div class="rounded-sm border border-border bg-secondary/40 p-2 text-xs text-secondary-foreground" data-testid="comparison-callout">
+              This agent made {{ result.callCount }} Claude API call{{ result.callCount === 1 ? '' : 's' }} across
+              {{ result.toolActivity.length }} tool use{{ result.toolActivity.length === 1 ? '' : 's' }}, choosing its own path —
+              compare to Workflow Gallery's fixed pipeline, where every run follows the same routing/chaining/parallelization/evaluator-optimizer steps in the same order.
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <app-inspector-panel [call]="inspectorCall()" />
+</div>
