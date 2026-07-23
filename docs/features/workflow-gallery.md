@@ -38,6 +38,8 @@ Wired via `WorkflowGalleryModule` (imports `ModelConfigModule`, `AnthropicClient
 
 `frontend/src/app/workflow-gallery/` (`WorkflowGallery`). Stacks `<app-docs-panel [slug]="'workflow-gallery'" />` → the demo (issue picker populated from `GET /issues`, Run button, a stage-by-stage result view showing the routed category, the final draft, each criterion's pass/fail with feedback, and the iteration count/pass state) → `<app-inspector-panel [call]="inspectorCall()" />`, per the app-shell composition convention. No streaming toggle, matching the backend's non-streaming route. The result view stays mounted (skeleton placeholders) for the run's duration, held for a minimum readable duration in fake mode the same way every other lab's loading state is.
 
+The issue picker auto-selects the first loaded issue as soon as `GET /issues` resolves, so Run is usable immediately without an explicit selection — the picker's own placeholder `<option>` is `disabled`, and a real browser auto-displays the next option for it without ever firing a `change` event, so the component has to independently default-select the same issue or Run silently stays disabled.
+
 ## In-app doc
 
 `frontend/public/lab-docs/workflow-gallery.md` — covers the four workflow patterns (routing, chaining, parallelization, evaluator-optimizer) as this pipeline actually implements them, real example requests for the routing and grading calls, and the prompt-caching boundary shared across a run, rendered inline by `DocsPanel`.

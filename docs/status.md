@@ -53,7 +53,7 @@ This table is a summary pointer — whatever process currently carries out each 
 | DeepWiki MCP connector | Task | `deepwiki-connector` | ✅ Done | [`deepwiki-connector.md`](shared/deepwiki-connector.md) |
 | Web & Repo Research Reporter | Feature | `web-repo-research-reporter` | ✅ Done | [`web-repo-research-reporter.md`](features/web-repo-research-reporter.md) |
 | Vision Lab | Feature | `vision-lab` | ✅ Done | [`vision-lab.md`](features/vision-lab.md) |
-| Extended Thinking Bench | Feature | `extended-thinking-bench` | 📋 Planned | [`feature-extended-thinking-bench.md`](planning/feature-extended-thinking-bench.md) |
+| Extended Thinking Bench | Feature | `extended-thinking-bench` | ✅ Done | [`extended-thinking-bench.md`](features/extended-thinking-bench.md) |
 | Agent Playground | Feature | `agent-playground` | 📋 Planned | [`feature-agent-playground.md`](planning/feature-agent-playground.md) |
 
 

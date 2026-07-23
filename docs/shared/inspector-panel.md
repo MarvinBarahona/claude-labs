@@ -4,7 +4,7 @@ The shared "raw payload" panel visible in every feature: request JSON, response 
 
 ## Interface
 
-`InspectorPanel` (`frontend/src/app/shared/inspector-panel/inspector-panel.ts`, selector `app-inspector-panel`) takes a single `call` input — `input.required<InspectorCall>()` (`inspector-call.ts`):
+`InspectorPanel` (`frontend/src/app/shared/inspector-panel/inspector-panel.ts`, selector `app-inspector-panel`) takes a required `call` input — `input.required<InspectorCall>()` (`inspector-call.ts`) — plus an optional `title` input (`input('Inspector')`), for a lab that stacks more than one instance on the same page (e.g. Extended Thinking Bench's 3 comparison runs) and needs to tell them apart; a lab with a single instance never needs to pass it:
 
 ```ts
 interface InspectorCall {
@@ -41,4 +41,4 @@ Because it already captures one call's full request/response, it's a natural pla
 
 ## Testing
 
-`frontend/src/app/shared/inspector-panel/inspector-panel.spec.ts` covers: static rendering of a non-streaming request/response pair (request/response JSON, `stop_reason`, `usage`); the no-response-yet placeholder; incremental streaming-event rendering in order; distinct cache read/write display; generic content-block rendering across `text`/`tool_use`/`tool_result` blocks; rendering each prior call in `calls` in order above the final call; and a regression check that an omitted/empty `calls` renders exactly as before.
+`frontend/src/app/shared/inspector-panel/inspector-panel.spec.ts` covers: static rendering of a non-streaming request/response pair (request/response JSON, `stop_reason`, `usage`); the no-response-yet placeholder; incremental streaming-event rendering in order; distinct cache read/write display; generic content-block rendering across `text`/`tool_use`/`tool_result` blocks; rendering each prior call in `calls` in order above the final call; a regression check that an omitted/empty `calls` renders exactly as before; and the `title` input defaulting to "Inspector" and reflecting a custom value when passed.
