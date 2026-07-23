@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, forkJoin, map, of, switchMap, tap, timer } from 'rxjs';
@@ -78,6 +78,14 @@ export class WorkflowGallery {
   );
 
   protected readonly selectedIssueNumber = signal<number | null>(null);
+
+  // A <select> with a disabled first option auto-displays the next option without firing `change` — this keeps selectedIssueNumber in sync with what's already shown, instead of leaving Run silently (and invisibly) disabled.
+  private readonly autoSelectFirstIssue = effect(() => {
+    const list = this.issues();
+    if (list.length > 0 && this.selectedIssueNumber() === null) {
+      this.selectedIssueNumber.set(list[0].number);
+    }
+  });
 
   protected readonly isRunning = signal(false);
 
