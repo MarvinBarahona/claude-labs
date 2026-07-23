@@ -46,6 +46,14 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
       ),
   },
   {
+    slug: 'extended-thinking-bench',
+    label: 'Extended Thinking Bench',
+    loadComponent: () =>
+      import('../extended-thinking-bench/extended-thinking-bench').then(
+        (m) => m.ExtendedThinkingBench,
+      ),
+  },
+  {
     slug: 'web-repo-research-reporter',
     label: 'Web & Repo Research Reporter',
     loadComponent: () =>

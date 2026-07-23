@@ -25,6 +25,10 @@ export const LAB_CATALOG: Readonly<Record<string, LabCatalogEntry>> = {
     goal: 'Route a real open GitHub issue to a category, chain a draft-then-refine reply, grade it in parallel against several criteria, and loop that feedback back into drafting until it passes or hits a retry cap.',
     concepts: ['Routing', 'Chaining', 'Parallelization', 'Evaluator-optimizer', 'Prompt caching'],
   },
+  'extended-thinking-bench': {
+    goal: 'Re-run a hard "draft a response" reasoning step over a real GitHub issue with thinking off vs. adaptive-on at medium and high effort, comparing the reasoning trace, latency, and answer quality side by side.',
+    concepts: ['Adaptive thinking', 'Effort levels', 'Reasoning traces'],
+  },
   'web-repo-research-reporter': {
     goal: "Ask a research question about the subject repo or its ecosystem — Claude combines a live web search with a direct call to the public DeepWiki MCP server and returns a structured, cited brief.",
     concepts: ['Web search tool', 'MCP connector', 'Structured output (output_config)'],

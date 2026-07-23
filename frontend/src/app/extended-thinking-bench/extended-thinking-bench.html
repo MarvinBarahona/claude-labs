@@ -1,0 +1,79 @@
+<div class="flex flex-col gap-6">
+  <h1 class="text-xl font-bold text-foreground">Extended Thinking Bench</h1>
+
+  <app-docs-panel [slug]="'extended-thinking-bench'" />
+
+  <section class="flex flex-col gap-4 rounded-md border border-border bg-card p-4 text-sm text-card-foreground">
+    <h2 class="text-base font-bold text-foreground">Run the comparison</h2>
+
+    <div class="flex flex-col gap-4">
+      <div class="flex gap-2">
+        <select
+          class="flex-1 rounded-sm border border-border bg-background p-2 text-sm"
+          aria-label="Select an issue"
+          [value]="selectedIssueNumber()"
+          (change)="onIssueChange($event)"
+        >
+          <option value="" disabled>Select an issue…</option>
+          @for (issue of issues(); track issue.number) {
+            <option [value]="issue.number">#{{ issue.number }} — {{ issue.title }}</option>
+          }
+        </select>
+        <button
+          type="button"
+          class="rounded-sm bg-primary px-3 py-2 text-xs text-primary-foreground"
+          [disabled]="selectedIssueNumber() === null || isRunning()"
+          (click)="run()"
+        >
+          Run
+        </button>
+      </div>
+
+      @if (error(); as message) {
+        <p role="alert" class="text-xs text-destructive">{{ message }}</p>
+      }
+
+      @if (isRunning() || runs()) {
+        <div class="grid grid-cols-1 gap-4 border-t border-border pt-4 lg:grid-cols-3" data-testid="comparison-result">
+          @if (runs(); as resultRuns) {
+            @for (run of resultRuns; track run.label) {
+              <div
+                class="flex flex-col gap-2 rounded-sm border border-border p-3"
+                [attr.data-testid]="'comparison-column-' + run.label"
+              >
+                <span class="text-xs font-bold uppercase tracking-wide text-foreground">{{ columnHeading(run.label) }}</span>
+                <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ run.answer }}</p>
+                <div>
+                  <span class="text-xs font-bold uppercase tracking-wide text-foreground">Reasoning Trace</span>
+                  @if (run.reasoningTrace) {
+                    <p class="whitespace-pre-wrap text-xs" data-testid="reasoning-trace">{{ run.reasoningTrace }}</p>
+                  } @else {
+                    <p class="text-xs italic text-muted-foreground" data-testid="reasoning-trace">No thinking used for this run.</p>
+                  }
+                </div>
+                <p class="text-xs text-muted-foreground" data-testid="latency">{{ run.latencyMs }}ms</p>
+                @if (run.envelope.usage; as usage) {
+                  <p class="text-xs text-muted-foreground" data-testid="usage">{{ usage.inputTokens }} in / {{ usage.outputTokens }} out</p>
+                }
+              </div>
+            }
+          } @else {
+            @for (column of skeletonColumns; track column.heading) {
+              <div class="flex flex-col gap-2 rounded-sm border border-border p-3" aria-hidden="true" data-testid="comparison-column-skeleton">
+                <span class="text-xs font-bold uppercase tracking-wide text-foreground">{{ column.heading }}</span>
+                <app-skeleton widthClass="w-full" />
+                <app-skeleton widthClass="w-full" />
+                <app-skeleton widthClass="w-2/3" />
+                <app-skeleton widthClass="w-1/3" />
+              </div>
+            }
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  @for (call of inspectorCalls(); track $index) {
+    <app-inspector-panel [title]="'Inspector (' + skeletonColumns[$index].heading + ')'" [call]="call" />
+  }
+</div>
