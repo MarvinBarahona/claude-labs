@@ -46,6 +46,14 @@ export const FEATURE_ROUTES: readonly FeatureRoute[] = [
       ),
   },
   {
+    slug: 'web-repo-research-reporter',
+    label: 'Web & Repo Research Reporter',
+    loadComponent: () =>
+      import('../web-repo-research-reporter/web-repo-research-reporter').then(
+        (m) => m.WebRepoResearchReporter,
+      ),
+  },
+  {
     slug: 'data-code-sandbox',
     label: 'Data & Code Sandbox',
     loadComponent: () =>

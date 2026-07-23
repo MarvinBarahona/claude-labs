@@ -12,6 +12,7 @@ import { StructuredOutputConsoleModule } from './structured-output-console/struc
 import { LiveToolUseConsoleModule } from './live-tool-use-console/live-tool-use-console.module';
 import { WorkflowGalleryModule } from './workflow-gallery/workflow-gallery.module';
 import { DocumentResearchAssistantModule } from './document-research-assistant/document-research-assistant.module';
+import { WebRepoResearchReporterModule } from './web-repo-research-reporter/web-repo-research-reporter.module';
 import { DataCodeSandboxModule } from './data-code-sandbox/data-code-sandbox.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { DataCodeSandboxModule } from './data-code-sandbox/data-code-sandbox.mod
     LiveToolUseConsoleModule,
     WorkflowGalleryModule,
     DocumentResearchAssistantModule,
+    WebRepoResearchReporterModule,
     DataCodeSandboxModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),

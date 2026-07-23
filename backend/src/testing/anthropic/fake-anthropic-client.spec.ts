@@ -320,6 +320,89 @@ describe('FakeAnthropicClient', () => {
       expect(toolResult.content.content[0].file_id).toEqual(expect.any(String));
     });
 
+    it('fabricates a web-search/DeepWiki-MCP round trip and a schema-conforming brief when both are offered', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const message = await fake.createMessage({
+        ...params,
+        messages: [
+          {
+            role: 'user',
+            content: 'What testing approach does this repo use?',
+          },
+        ],
+        tools: [
+          { type: 'web_search_20260209', name: 'web_search', max_uses: 5 },
+          { type: 'mcp_toolset', mcp_server_name: 'deepwiki' },
+        ],
+        mcp_servers: [
+          {
+            type: 'url',
+            url: 'https://mcp.deepwiki.com/mcp',
+            name: 'deepwiki',
+          },
+        ],
+        output_config: {
+          format: {
+            type: 'json_schema',
+            schema: {
+              type: 'object',
+              properties: {
+                summary: { type: 'string' },
+                findings: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      claim: { type: 'string' },
+                      source: { type: 'string' },
+                    },
+                    required: ['claim', 'source'],
+                  },
+                },
+              },
+              required: ['summary', 'findings'],
+            },
+          },
+        },
+      } as unknown as Parameters<typeof fake.createMessage>[0]);
+
+      const blocks = message.content as unknown as Array<
+        Record<string, unknown>
+      >;
+      expect(
+        blocks.find((block) => block['type'] === 'server_tool_use'),
+      ).toMatchObject({
+        name: 'web_search',
+      });
+      expect(
+        blocks.find((block) => block['type'] === 'web_search_tool_result'),
+      ).toBeTruthy();
+      expect(
+        blocks.find((block) => block['type'] === 'mcp_tool_use'),
+      ).toMatchObject({
+        name: 'ask_question',
+      });
+      expect(
+        blocks.find((block) => block['type'] === 'mcp_tool_result'),
+      ).toBeTruthy();
+
+      const textBlock = blocks.find((block) => block['type'] === 'text') as {
+        text: string;
+      };
+      const parsed: unknown = JSON.parse(textBlock.text);
+      expect(parsed).toEqual({
+        summary: 'fake mode — no response was queued for this call',
+        findings: [
+          {
+            claim: 'fake mode — no response was queued for this call',
+            source: 'fake mode — no response was queued for this call',
+          },
+        ],
+      });
+    });
+
     it('returns a fabricated create call on /notes.md when a schema-less text-editor tool is offered (no custom tools)', async () => {
       const fake = new FakeAnthropicClient();
       fake.allowUnqueuedFallback = true;

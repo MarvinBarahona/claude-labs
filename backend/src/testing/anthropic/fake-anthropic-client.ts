@@ -212,6 +212,69 @@ function offersCodeExecutionTool(params: AnthropicMessageParams): boolean {
   });
 }
 
+/** True when the request offers the server-executed web search tool (any `web_search_*` type). */
+function offersWebSearchTool(params: AnthropicMessageParams): boolean {
+  return (params.tools ?? []).some((tool) => {
+    const type: unknown = 'type' in tool ? tool.type : undefined;
+    return typeof type === 'string' && type.startsWith('web_search_');
+  });
+}
+
+/** True when the request offers an `mcp_toolset` entry (Web & Repo Research Reporter's DeepWiki connector, or any future MCP consumer). */
+function offersMcpToolset(params: AnthropicMessageParams): boolean {
+  return (params.tools ?? []).some((tool) => {
+    const type: unknown = 'type' in tool ? tool.type : undefined;
+    return type === 'mcp_toolset';
+  });
+}
+
+/** Synthesizes one web-search round trip, one DeepWiki MCP round trip, and a final text block — honoring a requested `output_config.format` for that final block so a structured-brief caller still gets parseable JSON. Both tools are server-executed, so — like the code-execution shape — there's no client round trip to gate on. */
+function fallbackWebSearchMcpContent(
+  params: AnthropicMessageParams,
+): AnthropicMessage['content'] {
+  const format = params.output_config?.format;
+  const text =
+    format?.type === 'json_schema' && format.schema
+      ? JSON.stringify(fallbackValueForSchema(format.schema))
+      : FALLBACK_TEXT;
+
+  return [
+    {
+      type: 'server_tool_use',
+      id: 'fake_web_search_1',
+      name: 'web_search',
+      input: { query: FALLBACK_TEXT },
+    },
+    {
+      type: 'web_search_tool_result',
+      tool_use_id: 'fake_web_search_1',
+      content: [
+        {
+          type: 'web_search_result',
+          url: 'https://example.com/fake-mode-result',
+          title: 'Fake-mode search result — no real search was performed',
+          page_age: null,
+          encrypted_content: 'fake_encrypted_content',
+        },
+      ],
+    },
+    {
+      type: 'mcp_tool_use',
+      id: 'fake_mcp_call_1',
+      name: 'ask_question',
+      server_name: 'deepwiki',
+      input: { question: FALLBACK_TEXT },
+    },
+    {
+      type: 'mcp_tool_result',
+      tool_use_id: 'fake_mcp_call_1',
+      is_error: false,
+      content: [{ type: 'text', text: FALLBACK_TEXT }],
+    },
+    { type: 'text', text, citations: null },
+  ] as unknown as AnthropicMessage['content'];
+}
+
 /** Synthesizes one bash command, its result, and a fabricated output file — this tool is server-executed (resolves within a single response), so unlike the client-tool fallback above there's no round trip to gate on. */
 function fallbackCodeExecutionContent(): AnthropicMessage['content'] {
   return [
@@ -255,6 +318,12 @@ function fabricatedCitation(documentTitle: string): FakeTextCitation {
 
 /** Honors a requested `output_config.format` so a structured-output caller gets parseable JSON, not fallback prose; honors offered `tools` so a tool-use loop gets one fabricated tool call round trip instead of an immediate plain-text answer. */
 function fallbackMessage(params: AnthropicMessageParams): AnthropicMessage {
+  if (offersWebSearchTool(params) && offersMcpToolset(params)) {
+    return fakeTextMessage(FALLBACK_TEXT, {
+      content: fallbackWebSearchMcpContent(params),
+    });
+  }
+
   const format = params.output_config?.format;
   if (format?.type === 'json_schema' && format.schema) {
     const value = fallbackValueForSchema(format.schema);
