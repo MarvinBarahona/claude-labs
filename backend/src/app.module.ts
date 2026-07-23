@@ -12,6 +12,7 @@ import { StructuredOutputConsoleModule } from './structured-output-console/struc
 import { LiveToolUseConsoleModule } from './live-tool-use-console/live-tool-use-console.module';
 import { WorkflowGalleryModule } from './workflow-gallery/workflow-gallery.module';
 import { DocumentResearchAssistantModule } from './document-research-assistant/document-research-assistant.module';
+import { DataCodeSandboxModule } from './data-code-sandbox/data-code-sandbox.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { DocumentResearchAssistantModule } from './document-research-assistant/d
     LiveToolUseConsoleModule,
     WorkflowGalleryModule,
     DocumentResearchAssistantModule,
+    DataCodeSandboxModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
       exclude: ['/api{/*splat}'],
