@@ -58,13 +58,19 @@ describe('WorkflowGallery', () => {
     expect(options[1].textContent).toContain('#34 — Add dark mode');
   });
 
-  it('disables the Run button when no issue is selected', async () => {
+  it('auto-selects the first issue once the picker loads, enabling Run without an explicit selection', async () => {
+    const { el } = await createFixture();
+
+    expect(selectEl(el).value).toBe('12');
+    expect(runButton(el).disabled).toBe(false);
+  });
+
+  it('still allows picking a different issue from the auto-selected default', async () => {
     const { fixture, el } = await createFixture();
 
-    expect(runButton(el).disabled).toBe(true);
-
-    selectIssue(el, 12);
+    selectIssue(el, 34);
     fixture.detectChanges();
+    expect(selectEl(el).value).toBe('34');
     expect(runButton(el).disabled).toBe(false);
   });
 
