@@ -86,4 +86,23 @@ describe('FakeGithubClient', () => {
 
     expect(await client.getFileTree()).toEqual(overridden);
   });
+
+  it('returns a built-in canned fixture for getFileContent() when nothing is overridden', async () => {
+    const client = new FakeGithubClient();
+    const content = await client.getFileContent();
+    expect(content.content.length).toBeGreaterThan(0);
+    expect(content.encoding).toBe('utf-8');
+  });
+
+  it('returns the overridden data after setFileContent()', async () => {
+    const client = new FakeGithubClient();
+    const overridden = {
+      content: 'overridden content',
+      encoding: 'base64' as const,
+    };
+
+    client.setFileContent(overridden);
+
+    expect(await client.getFileContent()).toEqual(overridden);
+  });
 });

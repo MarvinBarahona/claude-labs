@@ -14,4 +14,7 @@ export abstract class GithubClient {
   abstract getCommits(params?: { perPage?: number }): Promise<GithubCommit[]>;
   abstract getReleases(params?: { perPage?: number }): Promise<GithubRelease[]>;
   abstract getFileTree(): Promise<GithubFileTreeEntry[]>;
+  abstract getFileContent(
+    path: string,
+  ): Promise<{ content: string; encoding: 'utf-8' | 'base64' }>;
 }

@@ -43,6 +43,12 @@ export interface GithubTreeResponse {
   tree: Array<{ path: string; type: 'blob' | 'tree'; sha: string }>;
 }
 
+/** GitHub's Contents API always returns `content` base64-encoded (with embedded newlines), regardless of the file's actual text/binary nature. */
+export interface GithubContentResponse {
+  content: string;
+  encoding: string;
+}
+
 @Injectable()
 export class RealGithubClient extends GithubClient {
   private readonly http: AxiosInstance;
@@ -139,6 +145,33 @@ export class RealGithubClient extends GithubClient {
         type: entry.type,
         sha: entry.sha,
       }));
+    } catch (error) {
+      throw toExternalApiError(error);
+    }
+  }
+
+  async getFileContent(
+    path: string,
+  ): Promise<{ content: string; encoding: 'utf-8' | 'base64' }> {
+    try {
+      const encodedPath = path
+        .split('/')
+        .map((segment) => encodeURIComponent(segment))
+        .join('/');
+      const { data } = await this.http.get<GithubContentResponse>(
+        `/repos/${this.repoPath}/contents/${encodedPath}`,
+      );
+      if (typeof data.content !== 'string') {
+        throw new Error(`"${path}" is not a readable file`);
+      }
+      const raw = Buffer.from(data.content, 'base64');
+      try {
+        // `fatal: true` is what makes this throw on a byte sequence that isn't valid UTF-8 (a binary file) — Buffer#toString('utf-8') would silently replace invalid bytes instead.
+        const text = new TextDecoder('utf-8', { fatal: true }).decode(raw);
+        return { content: text, encoding: 'utf-8' };
+      } catch {
+        return { content: data.content.replace(/\n/g, ''), encoding: 'base64' };
+      }
     } catch (error) {
       throw toExternalApiError(error);
     }

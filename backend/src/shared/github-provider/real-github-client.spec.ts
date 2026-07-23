@@ -3,6 +3,8 @@ import { useNockFixtures } from '../../testing/http-fixtures/nock-lifecycle';
 import {
   GITHUB_API_BASE_URL,
   mockGithubCommits,
+  mockGithubContent,
+  mockGithubContentNotFoundError,
   mockGithubIssues,
   mockGithubNotFoundError,
   mockGithubRateLimitError,
@@ -160,6 +162,58 @@ describe('RealGithubClient', () => {
     await client.getIssues();
 
     expect(capturedAuth).toBe('Bearer a-token');
+  });
+
+  it('decodes a base64 text file into utf-8', async () => {
+    mockGithubContent('angular/angular', 'README.md', {
+      content: Buffer.from('# Hello world').toString('base64'),
+      encoding: 'base64',
+    });
+    const client = buildClient();
+
+    const result = await client.getFileContent('README.md');
+
+    expect(result).toEqual({ content: '# Hello world', encoding: 'utf-8' });
+  });
+
+  it('falls back to base64 for content that is not valid utf-8', async () => {
+    const binary = Buffer.from([0xff, 0xfe, 0x00, 0x01, 0x02]);
+    mockGithubContent('angular/angular', 'logo.png', {
+      content: binary.toString('base64'),
+      encoding: 'base64',
+    });
+    const client = buildClient();
+
+    const result = await client.getFileContent('logo.png');
+
+    expect(result).toEqual({
+      content: binary.toString('base64'),
+      encoding: 'base64',
+    });
+  });
+
+  it('encodes nested path segments in the request URL', async () => {
+    const scope = mockGithubContent('angular/angular', 'src/app/main.ts', {
+      content: Buffer.from('export {}').toString('base64'),
+      encoding: 'base64',
+    });
+    const client = buildClient();
+
+    await client.getFileContent('src/app/main.ts');
+
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it('rethrows a 404 not-found content lookup as a normalized ExternalApiError', async () => {
+    mockGithubContentNotFoundError('angular/angular', 'missing.ts');
+    const client = buildClient();
+
+    const error = await client
+      .getFileContent('missing.ts')
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(ExternalApiError);
+    expect(error).toMatchObject({ source: 'github' });
   });
 
   it('rethrows a 403 rate-limit response as a normalized ExternalApiError', async () => {

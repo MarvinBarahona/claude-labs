@@ -43,12 +43,21 @@ const DEFAULT_FILE_TREE: GithubFileTreeEntry[] = [
   { path: 'src', type: 'tree', sha: 'fake-src-sha' },
 ];
 
+const DEFAULT_FILE_CONTENT: { content: string; encoding: 'utf-8' | 'base64' } =
+  {
+    content:
+      '# Fake README\n\nThis is fabricated fake-mode data — no real GitHub call was made.',
+    encoding: 'utf-8',
+  };
+
 /** Test double for `GithubClient`; see docs/shared/test-doubles.md. Unlike FakeAnthropicClient, GitHub data is naturally static — canned by default, no unqueued-call fallback needed. */
 export class FakeGithubClient extends GithubClient {
   private issues: GithubIssue[] = DEFAULT_ISSUES;
   private commits: GithubCommit[] = DEFAULT_COMMITS;
   private releases: GithubRelease[] = DEFAULT_RELEASES;
   private fileTree: GithubFileTreeEntry[] = DEFAULT_FILE_TREE;
+  private fileContent: { content: string; encoding: 'utf-8' | 'base64' } =
+    DEFAULT_FILE_CONTENT;
 
   setIssues(issues: GithubIssue[]): this {
     this.issues = issues;
@@ -70,6 +79,14 @@ export class FakeGithubClient extends GithubClient {
     return this;
   }
 
+  setFileContent(fileContent: {
+    content: string;
+    encoding: 'utf-8' | 'base64';
+  }): this {
+    this.fileContent = fileContent;
+    return this;
+  }
+
   getIssues(): Promise<GithubIssue[]> {
     return Promise.resolve(this.issues);
   }
@@ -84,5 +101,9 @@ export class FakeGithubClient extends GithubClient {
 
   getFileTree(): Promise<GithubFileTreeEntry[]> {
     return Promise.resolve(this.fileTree);
+  }
+
+  getFileContent(): Promise<{ content: string; encoding: 'utf-8' | 'base64' }> {
+    return Promise.resolve(this.fileContent);
   }
 }

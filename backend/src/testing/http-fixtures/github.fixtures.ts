@@ -1,6 +1,7 @@
 import nock from 'nock';
 import {
   GithubCommitResponse,
+  GithubContentResponse,
   GithubIssueResponse,
   GithubReleaseResponse,
   GithubRepoResponse,
@@ -55,6 +56,33 @@ export function mockGithubTree(
     .get(`/repos/${repoPath}/git/trees/${defaultBranch}`)
     .query(true)
     .reply(200, tree);
+}
+
+export function mockGithubContent(
+  repoPath: string,
+  path: string,
+  content: GithubContentResponse,
+): nock.Scope {
+  const encodedPath = path
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  return nock(GITHUB_API_BASE_URL)
+    .get(`/repos/${repoPath}/contents/${encodedPath}`)
+    .reply(200, content);
+}
+
+export function mockGithubContentNotFoundError(
+  repoPath: string,
+  path: string,
+): nock.Scope {
+  const encodedPath = path
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+  return nock(GITHUB_API_BASE_URL)
+    .get(`/repos/${repoPath}/contents/${encodedPath}`)
+    .reply(404, { message: 'Not Found' });
 }
 
 export function mockGithubRateLimitError(repoPath: string): nock.Scope {
