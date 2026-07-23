@@ -204,6 +204,42 @@ function fallbackToolCall(params: AnthropicMessageParams): FakeToolCall | null {
   return null;
 }
 
+/** True when the request offers the server-executed code execution tool (any `code_execution_*` type). */
+function offersCodeExecutionTool(params: AnthropicMessageParams): boolean {
+  return (params.tools ?? []).some((tool) => {
+    const type: unknown = 'type' in tool ? tool.type : undefined;
+    return typeof type === 'string' && type.startsWith('code_execution_');
+  });
+}
+
+/** Synthesizes one bash command, its result, and a fabricated output file — this tool is server-executed (resolves within a single response), so unlike the client-tool fallback above there's no round trip to gate on. */
+function fallbackCodeExecutionContent(): AnthropicMessage['content'] {
+  return [
+    { type: 'text', text: FALLBACK_TEXT, citations: null },
+    {
+      type: 'server_tool_use',
+      id: 'fake_code_exec_1',
+      name: 'bash_code_execution',
+      input: { command: 'python analyze.py' },
+    },
+    {
+      type: 'bash_code_execution_tool_result',
+      tool_use_id: 'fake_code_exec_1',
+      content: {
+        stdout: FALLBACK_TEXT,
+        stderr: '',
+        return_code: 0,
+        content: [
+          {
+            type: 'bash_code_execution_output',
+            file_id: 'file_fake_code_exec_output_1',
+          },
+        ],
+      },
+    },
+  ] as unknown as AnthropicMessage['content'];
+}
+
 /** Shared by both fallback paths so a citations-enabled lab gets the same fabricated citation whether it asked non-streaming or streaming. */
 function fabricatedCitation(documentTitle: string): FakeTextCitation {
   return {
@@ -227,6 +263,12 @@ function fallbackMessage(params: AnthropicMessageParams): AnthropicMessage {
   const toolCall = fallbackToolCall(params);
   if (toolCall) {
     return fakeToolUseMessage([toolCall]);
+  }
+
+  if (offersCodeExecutionTool(params)) {
+    return fakeTextMessage(FALLBACK_TEXT, {
+      content: fallbackCodeExecutionContent(),
+    });
   }
 
   const documentCitations = requestedDocumentCitations(params);
@@ -273,6 +315,12 @@ export class FakeAnthropicClient extends AnthropicClient {
   private readonly queuedMessages: AnthropicMessage[] = [];
   private readonly queuedStreams: AnthropicStreamEvent[][] = [];
   private readonly queuedFileUploads: Array<{ id: string }> = [];
+  private readonly queuedFileDownloads: Array<{
+    bytes: Buffer;
+    mediaType: string;
+    filename: string;
+  }> = [];
+  private readonly queuedSkillRegistrations: Array<{ id: string }> = [];
   private readonly calls: AnthropicMessageParams[] = [];
 
   queueMessage(message: AnthropicMessage): this {
@@ -287,6 +335,20 @@ export class FakeAnthropicClient extends AnthropicClient {
 
   queueFileUpload(result: { id: string }): this {
     this.queuedFileUploads.push(result);
+    return this;
+  }
+
+  queueFileDownload(result: {
+    bytes: Buffer;
+    mediaType: string;
+    filename: string;
+  }): this {
+    this.queuedFileDownloads.push(result);
+    return this;
+  }
+
+  queueSkillRegistration(result: { id: string }): this {
+    this.queuedSkillRegistrations.push(result);
     return this;
   }
 
@@ -348,6 +410,46 @@ export class FakeAnthropicClient extends AnthropicClient {
     return Promise.reject(
       new Error(
         'FakeAnthropicClient.uploadFile() called with no queued result left — call queueFileUpload() first.',
+      ),
+    );
+  }
+
+  downloadFile(
+    fileId: string,
+  ): Promise<{ bytes: Buffer; mediaType: string; filename: string }> {
+    void fileId;
+    const next = this.queuedFileDownloads.shift();
+    if (next) {
+      return Promise.resolve(next);
+    }
+    if (this.allowUnqueuedFallback) {
+      return Promise.resolve({
+        bytes: Buffer.from('fake mode — no response was queued for this call'),
+        mediaType: 'application/octet-stream',
+        filename: 'fake-output.bin',
+      });
+    }
+    return Promise.reject(
+      new Error(
+        'FakeAnthropicClient.downloadFile() called with no queued result left — call queueFileDownload() first.',
+      ),
+    );
+  }
+
+  registerSkill(
+    files: { filename: string; content: Buffer }[],
+  ): Promise<{ id: string }> {
+    void files;
+    const next = this.queuedSkillRegistrations.shift();
+    if (next) {
+      return Promise.resolve(next);
+    }
+    if (this.allowUnqueuedFallback) {
+      return Promise.resolve({ id: 'skill_fake_unqueued' });
+    }
+    return Promise.reject(
+      new Error(
+        'FakeAnthropicClient.registerSkill() called with no queued result left — call queueSkillRegistration() first.',
       ),
     );
   }

@@ -123,6 +123,50 @@ describe('FakeAnthropicClient', () => {
     expect(result).toEqual({ id: 'file_queued_1' });
   });
 
+  it('throws a clear error from downloadFile() when called with nothing queued', async () => {
+    const fake = new FakeAnthropicClient();
+
+    await expect(fake.downloadFile('file_123')).rejects.toThrow(
+      /no queued result left/,
+    );
+  });
+
+  it('returns the queued result from downloadFile() once queued', async () => {
+    const fake = new FakeAnthropicClient().queueFileDownload({
+      bytes: Buffer.from('chart bytes'),
+      mediaType: 'image/png',
+      filename: 'chart.png',
+    });
+
+    const result = await fake.downloadFile('file_123');
+
+    expect(result).toEqual({
+      bytes: Buffer.from('chart bytes'),
+      mediaType: 'image/png',
+      filename: 'chart.png',
+    });
+  });
+
+  it('throws a clear error from registerSkill() when called with nothing queued', async () => {
+    const fake = new FakeAnthropicClient();
+
+    await expect(
+      fake.registerSkill([{ filename: 'SKILL.md', content: Buffer.from('') }]),
+    ).rejects.toThrow(/no queued result left/);
+  });
+
+  it('returns the queued result from registerSkill() once queued', async () => {
+    const fake = new FakeAnthropicClient().queueSkillRegistration({
+      id: 'skill_queued_1',
+    });
+
+    const result = await fake.registerSkill([
+      { filename: 'SKILL.md', content: Buffer.from('') },
+    ]);
+
+    expect(result).toEqual({ id: 'skill_queued_1' });
+  });
+
   describe('allowUnqueuedFallback', () => {
     it('still throws with nothing queued when left at its default (false)', async () => {
       const fake = new FakeAnthropicClient();
@@ -251,6 +295,31 @@ describe('FakeAnthropicClient', () => {
       });
     });
 
+    it('returns a fabricated bash_code_execution round trip with an output file when the code execution tool is offered', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const message = await fake.createMessage({
+        ...params,
+        tools: [{ type: 'code_execution_20250825', name: 'code_execution' }],
+        messages: [{ role: 'user', content: 'Chart something.' }],
+      });
+
+      const blocks = message.content as unknown as Array<
+        Record<string, unknown>
+      >;
+      const toolUse = blocks.find(
+        (block) => block['type'] === 'server_tool_use',
+      );
+      expect(toolUse).toMatchObject({ name: 'bash_code_execution' });
+      const toolResult = blocks.find(
+        (block) => block['type'] === 'bash_code_execution_tool_result',
+      ) as unknown as {
+        content: { content: Array<{ file_id: string }> };
+      };
+      expect(toolResult.content.content[0].file_id).toEqual(expect.any(String));
+    });
+
     it('returns a fabricated create call on /notes.md when a schema-less text-editor tool is offered (no custom tools)', async () => {
       const fake = new FakeAnthropicClient();
       fake.allowUnqueuedFallback = true;
@@ -358,6 +427,29 @@ describe('FakeAnthropicClient', () => {
       const result = await fake.uploadFile(Buffer.from('bytes'), 'image/png');
 
       expect(result).toEqual({ id: 'file_queued_2' });
+    });
+
+    it('returns a canned result from downloadFile() instead of throwing once enabled', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const result = await fake.downloadFile('file_123');
+
+      expect(result).toMatchObject({
+        mediaType: 'application/octet-stream',
+        filename: 'fake-output.bin',
+      });
+    });
+
+    it('returns a canned skill id from registerSkill() instead of throwing once enabled', async () => {
+      const fake = new FakeAnthropicClient();
+      fake.allowUnqueuedFallback = true;
+
+      const result = await fake.registerSkill([
+        { filename: 'SKILL.md', content: Buffer.from('') },
+      ]);
+
+      expect(result).toEqual({ id: 'skill_fake_unqueued' });
     });
 
     it('yields a fabricated tool_use stream as the fallback when tools are offered and no tool_result exists yet', async () => {
