@@ -237,12 +237,12 @@ export class AgentPlayground {
         while (boundaryIndex !== -1) {
           const frame = buffer.slice(0, boundaryIndex);
           buffer = buffer.slice(boundaryIndex + 2);
-          this.handleStreamEvent(parseSseFrame(frame), body, streamEventsBuffer);
+          await this.handleStreamEvent(parseSseFrame(frame), body, streamEventsBuffer, startedAt);
           boundaryIndex = buffer.indexOf('\n\n');
         }
       }
       await this.waitOutMinRunDuration(startedAt);
-      if (!this.result()) {
+      if (this.isRunning()) {
         this.errorMessage.set('The streaming request failed. Please try again.');
         this.isRunning.set(false);
       }
@@ -253,17 +253,19 @@ export class AgentPlayground {
     }
   }
 
-  private handleStreamEvent(
+  private async handleStreamEvent(
     parsed: ParsedSseEvent | null,
     requestBody: RunRequestBody,
     streamEventsBuffer: unknown[],
-  ): void {
+    startedAt: number,
+  ): Promise<void> {
     if (!parsed) {
       return;
     }
 
     if (parsed.event === 'turn_complete') {
       const envelope = parsed.data as AgentPlaygroundEnvelope;
+      await this.waitOutMinRunDuration(startedAt);
       this.applyEnvelope(envelope);
       return;
     }
@@ -271,6 +273,7 @@ export class AgentPlayground {
     if (parsed.event === 'error') {
       const { error } = parsed.data as Record<string, unknown>;
       const { message } = (error ?? {}) as Record<string, unknown>;
+      await this.waitOutMinRunDuration(startedAt);
       this.errorMessage.set(typeof message === 'string' ? message : 'The streaming request failed.');
       this.isRunning.set(false);
       return;

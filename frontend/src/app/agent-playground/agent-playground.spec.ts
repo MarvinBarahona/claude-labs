@@ -6,6 +6,54 @@ import { AgentPlayground } from './agent-playground';
 // The component holds isRunning (and its skeletons) for at least this long — see MIN_RUN_MS.
 const MIN_RUN_MS = 500;
 
+function flushMicrotasks(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function waitMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function sseFrame(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+/** A ReadableStreamDefaultReader-like stub whose chunks are fed in by the test, one at a time. */
+function createControllableReader() {
+  const encoder = new TextEncoder();
+  interface Chunk {
+    value?: Uint8Array;
+    done: boolean;
+  }
+  const queue: Chunk[] = [];
+  const waiters: ((chunk: Chunk) => void)[] = [];
+
+  function deliver(chunk: Chunk): void {
+    const waiter = waiters.shift();
+    if (waiter) {
+      waiter(chunk);
+    } else {
+      queue.push(chunk);
+    }
+  }
+
+  return {
+    reader: {
+      read: (): Promise<Chunk> =>
+        new Promise((resolve) => {
+          const next = queue.shift();
+          if (next) {
+            resolve(next);
+          } else {
+            waiters.push(resolve);
+          }
+        }),
+    },
+    push: (text: string) => deliver({ value: encoder.encode(text), done: false }),
+    finish: () => deliver({ done: true }),
+  };
+}
+
 describe('AgentPlayground', () => {
   async function createFixture() {
     await TestBed.configureTestingModule({
@@ -156,5 +204,87 @@ describe('AgentPlayground', () => {
     fixture.detectChanges();
 
     expect(el.querySelector('[role="alert"]')?.textContent).toContain('failed');
+  });
+
+  it('runs (streaming), rendering tool activity live and holding the skeleton until MIN_RUN_MS has elapsed after turn_complete', async () => {
+    const { fixture, el } = await createFixture();
+    const { reader, push, finish } = createControllableReader();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      body: { getReader: () => reader },
+    } as unknown as Response);
+
+    const toggle = el.querySelector('[aria-label="Stream response"]') as HTMLInputElement;
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    runButton(el).click();
+    await flushMicrotasks();
+    fixture.detectChanges();
+
+    expect(fetch).toHaveBeenCalledWith('/api/agent-playground/run', expect.objectContaining({ method: 'POST' }));
+    expect(el.querySelector('[data-testid="tool-activity-skeleton"]')).toBeTruthy();
+
+    push(sseFrame('tool_call_start', { name: 'list_files', input: {} }));
+    await flushMicrotasks();
+    fixture.detectChanges();
+
+    const runningItems = el.querySelectorAll('[data-testid="tool-activity-list"] li');
+    expect(runningItems.length).toBe(1);
+    expect(runningItems[0].textContent).toContain('running');
+
+    push(
+      sseFrame('tool_call_result', {
+        name: 'list_files',
+        result: [{ path: 'README.md' }],
+        isError: false,
+      }),
+    );
+    await flushMicrotasks();
+    fixture.detectChanges();
+
+    const doneItems = el.querySelectorAll('[data-testid="tool-activity-list"] li');
+    expect(doneItems[0].textContent).toContain('done');
+
+    push(sseFrame('turn_complete', envelope()));
+    finish();
+
+    // Regression coverage: turn_complete must be held back until MIN_RUN_MS has elapsed, same as every other streaming lab.
+    await flushMicrotasks();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="final-answer-skeleton"]')).toBeTruthy();
+
+    await waitMs(MIN_RUN_MS + 100);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="final-answer-skeleton"]')).toBeFalsy();
+    expect(el.querySelector('[data-testid="final-answer"]')?.textContent).toContain(
+      'This repo is a reference app.',
+    );
+  });
+
+  it('surfaces a visible error when the stream sends a terminal error event', async () => {
+    const { fixture, el } = await createFixture();
+    const { reader, push, finish } = createControllableReader();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      body: { getReader: () => reader },
+    } as unknown as Response);
+
+    const toggle = el.querySelector('[aria-label="Stream response"]') as HTMLInputElement;
+    toggle.checked = true;
+    toggle.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    runButton(el).click();
+    await flushMicrotasks();
+
+    push(sseFrame('error', { error: { message: 'Upstream overloaded', source: 'anthropic' } }));
+    finish();
+    await waitMs(MIN_RUN_MS + 100);
+    fixture.detectChanges();
+
+    const alert = el.querySelector('[role="alert"]');
+    expect(alert).toBeTruthy();
+    expect(alert?.textContent).toContain('Upstream overloaded');
   });
 });
