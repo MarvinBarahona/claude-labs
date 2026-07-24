@@ -19,7 +19,6 @@ import { ContentBlockBuilderService } from '../shared/content-block-builder/cont
 import { WikimediaClient, WikimediaImage } from './wikimedia-client';
 import { RunDto } from './dto/run.dto';
 
-const DEFAULT_MAX_TOKENS = 4096;
 /** The dimension the Messages API caps the longer side of an image down to once a 2nd image is attached to the same request. */
 const DIMENSION_CAP_THRESHOLD_PX = 2000;
 /** Needed on the Messages call itself (not just the upload) whenever a request references an uploaded `file_id`. */
@@ -139,7 +138,7 @@ export class VisionLabService {
 
     return {
       model: this.modelConfig.getModel('default'),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       messages: [{ role: 'user', content }],
     };
   }

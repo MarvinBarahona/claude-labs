@@ -17,7 +17,6 @@ const SKILLS_BETA = 'skills-2025-10-02';
 /** Required alongside `SKILLS_BETA` whenever code execution is combined with a container skill. */
 const CODE_EXECUTION_SKILLS_BETA = 'code-execution-2025-08-25';
 const CODE_EXECUTION_TOOL_TYPE = 'code_execution_20260521';
-const DEFAULT_MAX_TOKENS = 4096;
 /** The skill's own name — the signal `wasSkillInvoked()` looks for in an executed bash command, since no dedicated content block marks a skill invocation. */
 const SKILL_NAME = 'spreadsheet-export';
 const SKILL_DIR = join(__dirname, 'skills', 'spreadsheet-export');
@@ -107,7 +106,7 @@ export class DataCodeSandboxService {
 
     const params = {
       model: this.modelConfig.getModel('default'),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       tools: [{ type: CODE_EXECUTION_TOOL_TYPE, name: 'code_execution' }],
       ...(container ? { container } : {}),
       messages: [

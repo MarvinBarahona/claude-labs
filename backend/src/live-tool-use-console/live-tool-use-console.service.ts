@@ -15,9 +15,6 @@ import { GithubClient } from '../shared/github-provider/github-client';
 import { OpenMeteoClient } from './open-meteo-client';
 import { TurnDto } from './dto/turn.dto';
 
-/** No env-configurable default elsewhere in the repo to defer to. */
-const DEFAULT_MAX_TOKENS = 4096;
-
 /** Keeps the console demonstrating the tool-use loop rather than drifting into a general-purpose chat interface. */
 const SYSTEM_PROMPT =
   "You can only discuss two things: the weather (via the get_weather tool) and this app's " +
@@ -278,7 +275,7 @@ export class LiveToolUseConsoleService {
   private buildMessageParams(dto: TurnDto): AnthropicMessageParams {
     return {
       model: this.modelConfig.getModel(dto.modelChoice),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: dto.question }],
       tools: TOOLS,

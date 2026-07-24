@@ -13,9 +13,6 @@ import { GithubIssue } from '../shared/github-provider/github-provider.types';
 import { CachingLayerService } from '../shared/caching-layer/caching-layer.service';
 import { RunDto } from './dto/run.dto';
 
-/** No env-configurable default elsewhere in the repo to defer to. */
-const DEFAULT_MAX_TOKENS = 4096;
-
 /** One iteration = draft → refine → grade. */
 const MAX_ITERATIONS = 3;
 
@@ -209,7 +206,7 @@ export class WorkflowGalleryService {
   ): Promise<IssueCategory> {
     const params: AnthropicMessageParams = {
       model: this.modelConfig.getModel('classification'),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       system: systemPrompt,
       messages: [
         {
@@ -240,7 +237,7 @@ export class WorkflowGalleryService {
     const params = this.cachingLayer.markBreakpoints(
       {
         model: this.modelConfig.getModel('default'),
-        max_tokens: DEFAULT_MAX_TOKENS,
+        max_tokens: this.modelConfig.getDefaultMaxTokens(),
         system: systemPrompt,
         messages: [{ role: 'user', content: userContent }],
       },
@@ -274,7 +271,7 @@ export class WorkflowGalleryService {
     const params = this.cachingLayer.markBreakpoints(
       {
         model: this.modelConfig.getModel('default'),
-        max_tokens: DEFAULT_MAX_TOKENS,
+        max_tokens: this.modelConfig.getDefaultMaxTokens(),
         system: systemPrompt,
         messages: [
           { role: 'user', content: draftUserContent },
@@ -303,7 +300,7 @@ export class WorkflowGalleryService {
     const params = this.cachingLayer.markBreakpoints(
       {
         model: this.modelConfig.getModel('default'),
-        max_tokens: DEFAULT_MAX_TOKENS,
+        max_tokens: this.modelConfig.getDefaultMaxTokens(),
         system: systemPrompt,
         messages: [
           {

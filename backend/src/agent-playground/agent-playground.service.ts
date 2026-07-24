@@ -16,9 +16,6 @@ import { GithubClient } from '../shared/github-provider/github-client';
 import { DeepwikiConnectorService } from '../shared/deepwiki-connector/deepwiki-connector.service';
 import { RunDto } from './dto/run.dto';
 
-/** No env-configurable default elsewhere in the repo to defer to. */
-const DEFAULT_MAX_TOKENS = 4096;
-
 /** Backend-executed (custom) tool calls only — an mcp_tool_use never counts toward this, since it resolves inline and never advances the loop. */
 const ITERATION_CAP = 10;
 
@@ -444,7 +441,7 @@ export class AgentPlaygroundService {
     const deepwiki = this.deepwikiConnector.buildRequestFragment();
     return {
       model: this.modelConfig.getModel('default'),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       system: buildSystemPrompt(this.appConfig.githubTargetRepo),
       messages: [{ role: 'user', content: 'Begin your investigation.' }],
       tools: [...CUSTOM_TOOLS, ...deepwiki.tools],

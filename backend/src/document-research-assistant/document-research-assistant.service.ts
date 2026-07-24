@@ -19,7 +19,6 @@ import { ArxivClient } from './arxiv-client';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { AskDto } from './dto/ask.dto';
 
-const DEFAULT_MAX_TOKENS = 4096;
 const NOTES_PATH = '/notes.md';
 /** Needed on the Messages call itself (not just the upload) whenever a request references an uploaded `file_id`. */
 const FILES_API_BETA = 'files-api-2025-04-14';
@@ -332,7 +331,7 @@ export class DocumentResearchAssistantService {
 
     const params: AnthropicMessageParams = {
       model: this.modelConfig.getModel('default'),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       system: SYSTEM_PROMPT,
       tools: [TEXT_EDITOR_TOOL],
       messages: [firstMessage, ...restMessages, ...newQuestionMessages],

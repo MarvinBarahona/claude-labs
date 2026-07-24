@@ -61,6 +61,7 @@ describe('AgentPlaygroundService', () => {
     fakeGithub = new FakeGithubClient();
     const modelConfigStub: Partial<ModelConfigService> = {
       getModel: jest.fn((tier: ModelTier) => MODEL_MAP[tier]),
+      getDefaultMaxTokens: jest.fn(() => 4096),
     };
     const appConfigStub: Partial<AppConfigService> = {
       githubTargetRepo: 'angular/angular',

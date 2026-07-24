@@ -12,9 +12,6 @@ import { TurnEnvelope } from '../shared/envelope-builder/envelope-builder.types'
 import { StreamResponseBuilderService } from '../shared/stream-response-builder/stream-response-builder.service';
 import { SendMessageDto } from './dto/send-message.dto';
 
-/** No env-configurable default elsewhere in the repo to defer to. */
-const DEFAULT_MAX_TOKENS = 4096;
-
 /** One frame of the `/messages-console/turn` SSE stream, already shaped for the controller to serialize verbatim. */
 export type MessagesConsoleStreamFrame =
   | { kind: 'stream-event'; event: AnthropicStreamEvent }
@@ -62,7 +59,7 @@ export class MessagesConsoleService {
   private buildMessageParams(dto: SendMessageDto): AnthropicMessageParams {
     const params: AnthropicMessageParams = {
       model: this.resolveModel(dto.modelChoice),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       messages: dto.messages.map((message) => ({
         role: message.role,
         content: message.text,

@@ -55,6 +55,7 @@ describe('VisionLabService', () => {
     fakeWikimedia = new FakeWikimediaClient();
     const modelConfigStub: Partial<ModelConfigService> = {
       getModel: jest.fn((tier: ModelTier) => MODEL_MAP[tier]),
+      getDefaultMaxTokens: jest.fn(() => 4096),
     };
 
     const moduleRef = await Test.createTestingModule({

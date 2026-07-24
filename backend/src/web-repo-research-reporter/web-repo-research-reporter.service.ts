@@ -12,8 +12,6 @@ import { TurnEnvelope } from '../shared/envelope-builder/envelope-builder.types'
 import { DeepwikiConnectorService } from '../shared/deepwiki-connector/deepwiki-connector.service';
 import { ResearchQuestionDto } from './dto/research-question.dto';
 
-/** No env-configurable default elsewhere in the repo to defer to. */
-const DEFAULT_MAX_TOKENS = 4096;
 const DEFAULT_MAX_SEARCHES = 5;
 
 const RESEARCH_BRIEF_SCHEMA = {
@@ -70,7 +68,7 @@ export class WebRepoResearchReporterService {
 
     const params = {
       model: this.modelConfig.getModel('default'),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       system:
         `You are researching the GitHub repository ${repo} and its ecosystem. ` +
         `Use the web search tool for current, external information and the DeepWiki ` +

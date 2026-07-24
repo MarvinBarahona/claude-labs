@@ -11,9 +11,6 @@ import { GithubClient } from '../shared/github-provider/github-client';
 import { GithubIssue } from '../shared/github-provider/github-provider.types';
 import { RunDto } from './dto/run.dto';
 
-/** No env-configurable default elsewhere in the repo to defer to. */
-const DEFAULT_MAX_TOKENS = 4096;
-
 export type ThinkingRunLabel =
   'thinking-off' | 'thinking-medium' | 'thinking-high';
 
@@ -109,7 +106,7 @@ export class ExtendedThinkingBenchService {
   ): AnthropicMessageParams {
     const base: AnthropicMessageParams = {
       model: this.modelConfig.getModel('default'),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       messages: [{ role: 'user', content: prompt }],
     };
 

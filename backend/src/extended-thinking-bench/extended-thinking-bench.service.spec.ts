@@ -75,7 +75,10 @@ describe('ExtendedThinkingBenchService', () => {
     fakeAnthropic = new FakeAnthropicClient();
     fakeGithub = new FakeGithubClient().setIssues([TEST_ISSUE]);
     getModel = jest.fn((tier: ModelTier) => MODEL_MAP[tier]);
-    const modelConfigStub: Partial<ModelConfigService> = { getModel };
+    const modelConfigStub: Partial<ModelConfigService> = {
+      getModel,
+      getDefaultMaxTokens: jest.fn(() => 4096),
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [

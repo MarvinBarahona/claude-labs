@@ -10,9 +10,6 @@ import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-buil
 import { TurnEnvelope } from '../shared/envelope-builder/envelope-builder.types';
 import { StructuredDemoDto } from './dto/structured-demo.dto';
 
-/** No env-configurable default elsewhere in the repo to defer to. */
-const DEFAULT_MAX_TOKENS = 4096;
-
 const STRUCTURED_OUTPUT_SCHEMA = {
   type: 'object',
   properties: {
@@ -45,7 +42,7 @@ export class StructuredOutputConsoleService {
   async run(dto: StructuredDemoDto): Promise<StructuredEnvelope> {
     const params: AnthropicMessageParams = {
       model: this.modelConfig.getModel(dto.modelChoice),
-      max_tokens: DEFAULT_MAX_TOKENS,
+      max_tokens: this.modelConfig.getDefaultMaxTokens(),
       messages: [{ role: 'user', content: dto.input }],
       output_config: {
         format: { type: 'json_schema', schema: STRUCTURED_OUTPUT_SCHEMA },

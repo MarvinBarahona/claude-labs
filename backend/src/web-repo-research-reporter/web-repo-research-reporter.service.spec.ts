@@ -48,6 +48,7 @@ describe('WebRepoResearchReporterService', () => {
     fakeClient = new FakeAnthropicClient();
     const modelConfigStub: Partial<ModelConfigService> = {
       getModel: jest.fn(() => 'claude-sonnet-5'),
+      getDefaultMaxTokens: jest.fn(() => 4096),
     };
     const appConfigStub: Partial<AppConfigService> = {
       githubTargetRepo: 'angular/angular',

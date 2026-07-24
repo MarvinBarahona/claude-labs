@@ -41,6 +41,11 @@ describe('ModelConfigService', () => {
     expect(service.getThinkingEffort()).toBe('medium');
   });
 
+  it('returns the shared default max_tokens', async () => {
+    const service = await buildService();
+    expect(service.getDefaultMaxTokens()).toBe(4096);
+  });
+
   it('reflects a changed tier mapping without any per-consumer edit', async () => {
     const overriddenConfig: Partial<AppConfigService> = {
       ...configStub,
