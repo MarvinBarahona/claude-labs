@@ -1,11 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, map, of, switchMap, tap, timer } from 'rxjs';
+import { catchError, map, of, switchMap, tap } from 'rxjs';
 import { DocsPanel } from '../shared/docs-panel/docs-panel';
 import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
+import { NO_CALL_YET } from '../shared/inspector-panel/inspector-call';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { Skeleton } from '../shared/skeleton/skeleton';
+import { extractErrorMessage } from '../shared/http-error/extract-error-message';
+import { raceWithMinDuration, waitOutMinDuration } from '../shared/min-duration/min-duration';
+import { readSseStream } from '../shared/sse/sse';
+import type { ParsedSseEvent } from '../shared/sse/sse';
 
 type DeliveryMode = 'files-api' | 'base64';
 type ImageCount = 1 | 2 | 3 | 4;
@@ -42,51 +47,8 @@ interface RunEnvelope {
   readonly dimensionCapApplied: boolean;
 }
 
-interface ParsedSseEvent {
-  readonly event: string;
-  readonly data: unknown;
-}
-
 type RunOutcome = { ok: true; envelope: RunEnvelope } | { ok: false; message: string };
 
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err instanceof HttpErrorResponse) {
-    const body = err.error;
-    if (body && typeof body === 'object') {
-      const errorField = (body as Record<string, unknown>)['error'];
-      if (errorField && typeof errorField === 'object') {
-        const message = (errorField as Record<string, unknown>)['message'];
-        if (typeof message === 'string' && message) {
-          return message;
-        }
-      }
-    }
-  }
-  return fallback;
-}
-
-/** Parses one `event: <type>\ndata: <json>` SSE frame (blank-line-terminated) into a typed event. */
-function parseSseFrame(frame: string): ParsedSseEvent | null {
-  let eventType = 'message';
-  const dataLines: string[] = [];
-  for (const line of frame.split('\n')) {
-    if (line.startsWith('event:')) {
-      eventType = line.slice('event:'.length).trim();
-    } else if (line.startsWith('data:')) {
-      dataLines.push(line.slice('data:'.length).trim());
-    }
-  }
-  if (dataLines.length === 0) {
-    return null;
-  }
-  try {
-    return { event: eventType, data: JSON.parse(dataLines.join('\n')) };
-  } catch {
-    return null;
-  }
-}
-
-const NO_CALL_YET: InspectorCall = { request: null };
 /** Fake mode answers near-instantly, which would otherwise make the gallery/answer skeleton flash by unreadably. */
 const MIN_RUN_MS = 500;
 
@@ -128,16 +90,15 @@ export class VisionLab {
         if (!body) {
           return of(null);
         }
-        return forkJoin([
+        return raceWithMinDuration(
           this.http.post<RunEnvelope>('/api/vision-lab/run', body).pipe(
             map((envelope): RunOutcome => ({ ok: true, envelope })),
             catchError((err) =>
               of<RunOutcome>({ ok: false, message: extractErrorMessage(err, 'The request failed. Please try again.') }),
             ),
           ),
-          timer(MIN_RUN_MS),
-        ]).pipe(
-          map(([outcome]) => outcome),
+          MIN_RUN_MS,
+        ).pipe(
           tap((outcome) => {
             if (outcome.ok) {
               this.applyEnvelope(outcome.envelope);
@@ -223,14 +184,6 @@ export class VisionLab {
     this.streamingAnswerText.set('');
   }
 
-  /** Resolves once at least MIN_RUN_MS has passed since `startedAt` — awaited just before any isRunning-clearing transition, so a near-instant fake-mode run still holds its skeleton for a readable moment. */
-  private async waitOutMinRunDuration(startedAt: number): Promise<void> {
-    const remaining = MIN_RUN_MS - (Date.now() - startedAt);
-    if (remaining > 0) {
-      await new Promise((resolve) => setTimeout(resolve, remaining));
-    }
-  }
-
   private async runStreaming(body: RunRequestBody): Promise<void> {
     const startedAt = Date.now();
     const streamEventsBuffer: unknown[] = [];
@@ -243,45 +196,24 @@ export class VisionLab {
         body: JSON.stringify(body),
       });
 
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let done = false;
-
-      while (!done) {
-        const chunk = await reader.read();
-        done = chunk.done;
-        if (chunk.value) {
-          buffer += decoder.decode(chunk.value, { stream: !done });
-        }
-
-        let boundaryIndex = buffer.indexOf('\n\n');
-        while (boundaryIndex !== -1) {
-          const frame = buffer.slice(0, boundaryIndex);
-          buffer = buffer.slice(boundaryIndex + 2);
-          await this.handleStreamEvent(parseSseFrame(frame), body, streamEventsBuffer, startedAt);
-          boundaryIndex = buffer.indexOf('\n\n');
-        }
-      }
+      await readSseStream(response, (parsed) =>
+        this.handleStreamEvent(parsed, body, streamEventsBuffer, startedAt),
+      );
     } catch {
-      await this.waitOutMinRunDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_RUN_MS);
       this.failRun('The streaming request failed. Please try again.');
     }
   }
 
   private async handleStreamEvent(
-    parsed: ParsedSseEvent | null,
+    parsed: ParsedSseEvent,
     requestBody: RunRequestBody,
     streamEventsBuffer: unknown[],
     startedAt: number,
   ): Promise<void> {
-    if (!parsed) {
-      return;
-    }
-
     if (parsed.event === 'turn_complete') {
       const envelope = parsed.data as RunEnvelope;
-      await this.waitOutMinRunDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_RUN_MS);
       this.applyEnvelope(envelope, streamEventsBuffer);
       return;
     }
@@ -289,7 +221,7 @@ export class VisionLab {
     if (parsed.event === 'error') {
       const { error } = parsed.data as Record<string, unknown>;
       const { message } = (error ?? {}) as Record<string, unknown>;
-      await this.waitOutMinRunDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_RUN_MS);
       this.failRun(typeof message === 'string' ? message : 'The streaming request failed.');
       return;
     }

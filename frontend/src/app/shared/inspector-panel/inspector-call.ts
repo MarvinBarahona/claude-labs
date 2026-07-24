@@ -1,8 +1,4 @@
-/**
- * The data shape every lab feeds the inspector panel. A lab's backend response
- * payload just needs to be shaped consistently enough to populate this — the
- * component itself never special-cases a particular lab or Claude API call type.
- */
+/** The data shape every lab feeds the inspector panel — a lab's backend response just needs to be shaped consistently enough to populate this. */
 export interface InspectorCall {
   /** The raw request body sent to the Claude API, as-is. */
   readonly request: unknown;
@@ -22,3 +18,6 @@ export interface InspectorUsage {
   readonly cacheCreationInputTokens?: number;
   readonly cacheReadInputTokens?: number;
 }
+
+/** The inspector's initial state before any call has been made — shared so every lab starts from the same empty value. */
+export const NO_CALL_YET: InspectorCall = { request: null };

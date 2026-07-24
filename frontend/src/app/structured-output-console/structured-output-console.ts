@@ -4,9 +4,11 @@ import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, switchMap, tap } from 'rxjs';
 import { DocsPanel } from '../shared/docs-panel/docs-panel';
 import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
+import { NO_CALL_YET } from '../shared/inspector-panel/inspector-call';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { ModelPicker } from '../shared/model-picker/model-picker';
 import type { ModelChoice } from '../shared/model-picker/model-picker';
+import { extractErrorMessage } from '../shared/http-error/extract-error-message';
 
 interface StructuredRequestBody {
   readonly modelChoice: ModelChoice;
@@ -26,8 +28,6 @@ interface StructuredEnvelope {
   readonly stopReason: string | null;
   readonly parsed: StructuredParsed;
 }
-
-const NO_CALL_YET: InspectorCall = { request: null };
 
 @Component({
   selector: 'app-structured-output-console',
@@ -55,8 +55,8 @@ export class StructuredOutputConsole {
         }
         return this.http.post<StructuredEnvelope>('/api/structured-output-console/run', body).pipe(
           tap((envelope) => this.applyEnvelope(envelope)),
-          catchError(() => {
-            this.error.set('The request failed. Please try again.');
+          catchError((err) => {
+            this.error.set(extractErrorMessage(err, 'The request failed. Please try again.'));
             return of(null);
           }),
         );

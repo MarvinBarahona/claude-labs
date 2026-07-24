@@ -185,13 +185,11 @@ describe('LiveToolUseConsole', () => {
       'It is 18°C and cloudy in Berlin.',
     );
 
-    // The calls array round-trips into the inspector panel's rendered JSON — assert on the count
-    // (one prior call here) and its content showing up in the rendered output.
+    // The calls array round-trips into the inspector panel's rendered JSON (one prior call here).
     expect(el.textContent).toContain('get_weather');
     expect(el.textContent).toContain('Berlin');
 
-    // Non-streaming has no live per-tool feed — the resolved tool_use/tool_result pair from
-    // `calls` renders as an already-`done` activity entry once the full envelope lands.
+    // Non-streaming renders the resolved tool_use/tool_result pair as an already-`done` entry.
     const activityItems = el.querySelectorAll('[data-testid="tool-activity-list"] li');
     expect(activityItems.length).toBe(1);
     expect(activityItems[0].textContent).toContain('get_weather');
@@ -282,7 +280,7 @@ describe('LiveToolUseConsole', () => {
 
     const alert = el.querySelector('[role="alert"]');
     expect(alert).toBeTruthy();
-    expect(alert?.textContent).toContain('failed');
+    expect(alert?.textContent).toContain('Server error');
   });
 
   it('produces a tool-activity entry that starts running and ends done, and accumulates answer text from raw deltas (streaming)', async () => {

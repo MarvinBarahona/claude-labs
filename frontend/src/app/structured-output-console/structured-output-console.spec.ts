@@ -100,6 +100,6 @@ describe('StructuredOutputConsole', () => {
 
     const alert = el.querySelector('[role="alert"]');
     expect(alert).toBeTruthy();
-    expect(alert?.textContent).toContain('failed');
+    expect(alert?.textContent).toContain('Server error');
   });
 });

@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, map, of, switchMap, tap, timer } from 'rxjs';
+import { catchError, map, of, switchMap, tap } from 'rxjs';
 import { DocsPanel } from '../shared/docs-panel/docs-panel';
 import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
+import { NO_CALL_YET } from '../shared/inspector-panel/inspector-call';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { Skeleton } from '../shared/skeleton/skeleton';
 import { ChatTranscript } from '../shared/chat-transcript/chat-transcript';
@@ -11,6 +12,15 @@ import type { ChatTranscriptTurn } from '../shared/chat-transcript/chat-transcri
 import { renderMarkdown } from '../shared/markdown/render-markdown';
 import { MarkdownPipe } from '../shared/markdown/markdown.pipe';
 import { ParagraphsForTurnPipe } from './paragraphs-for-turn.pipe';
+import {
+  deriveToolActivityFromCalls,
+  findLastRunningIndex,
+} from '../shared/anthropic-content/anthropic-content';
+import type { CallPair, ToolActivityEntry } from '../shared/anthropic-content/anthropic-content';
+import { extractErrorMessage } from '../shared/http-error/extract-error-message';
+import { raceWithMinDuration, waitOutMinDuration } from '../shared/min-duration/min-duration';
+import { readSseStream } from '../shared/sse/sse';
+import type { ParsedSseEvent } from '../shared/sse/sse';
 
 type DeliveryMode = 'files-api' | 'base64';
 
@@ -49,11 +59,6 @@ interface AskRequestBody {
   readonly stream: boolean;
 }
 
-interface CallPair {
-  readonly request: unknown;
-  readonly response: unknown;
-}
-
 interface TurnEnvelope {
   readonly request: unknown;
   readonly response: unknown;
@@ -75,25 +80,6 @@ export interface TranscriptTurn {
   readonly question: string;
   // null while the turn's answer hasn't landed yet (non-streaming: in flight; streaming: before turn_complete).
   readonly paragraphs: readonly AnswerParagraph[] | null;
-}
-
-interface ParsedSseEvent {
-  readonly event: string;
-  readonly data: unknown;
-}
-
-interface ToolActivityEntry {
-  readonly name: string;
-  readonly status: 'running' | 'done';
-  readonly input?: unknown;
-  readonly result?: unknown;
-  readonly isError?: boolean;
-}
-
-interface ToolUseBlock {
-  readonly id: string;
-  readonly name: string;
-  readonly input: unknown;
 }
 
 type SessionOutcome = { ok: true; session: SessionResponse } | { ok: false; message: string };
@@ -128,131 +114,6 @@ function buildAnswerParagraphs(response: unknown, citations: readonly Citation[]
   return paragraphs;
 }
 
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err instanceof HttpErrorResponse) {
-    const body = err.error;
-    if (body && typeof body === 'object') {
-      const errorField = (body as Record<string, unknown>)['error'];
-      if (errorField && typeof errorField === 'object') {
-        const message = (errorField as Record<string, unknown>)['message'];
-        if (typeof message === 'string' && message) {
-          return message;
-        }
-      }
-    }
-  }
-  return fallback;
-}
-
-function extractToolUses(response: unknown): readonly ToolUseBlock[] {
-  if (typeof response !== 'object' || response === null) {
-    return [];
-  }
-  const { content } = response as Record<string, unknown>;
-  if (!Array.isArray(content)) {
-    return [];
-  }
-  const uses: ToolUseBlock[] = [];
-  for (const block of content) {
-    if (typeof block !== 'object' || block === null) {
-      continue;
-    }
-    const { type, id, name, input } = block as Record<string, unknown>;
-    if (type === 'tool_use' && typeof id === 'string' && typeof name === 'string') {
-      uses.push({ id, name, input });
-    }
-  }
-  return uses;
-}
-
-function extractToolResults(request: unknown): Map<string, { result: unknown; isError: boolean }> {
-  const results = new Map<string, { result: unknown; isError: boolean }>();
-  if (typeof request !== 'object' || request === null) {
-    return results;
-  }
-  const { messages } = request as Record<string, unknown>;
-  if (!Array.isArray(messages)) {
-    return results;
-  }
-  for (const message of messages) {
-    if (typeof message !== 'object' || message === null) {
-      continue;
-    }
-    const { content } = message as Record<string, unknown>;
-    if (!Array.isArray(content)) {
-      continue;
-    }
-    for (const block of content) {
-      if (typeof block !== 'object' || block === null) {
-        continue;
-      }
-      const record = block as Record<string, unknown>;
-      const toolUseId = record['tool_use_id'];
-      if (record['type'] === 'tool_result' && typeof toolUseId === 'string') {
-        results.set(toolUseId, { result: record['content'], isError: Boolean(record['is_error']) });
-      }
-    }
-  }
-  return results;
-}
-
-/** Derives already-`done` tool-activity entries from a completed turn's calls — used for a non-streaming turn's one-pass render, and to normalize the streaming path's live-built list once it completes. */
-function deriveToolActivityFromCalls(calls: readonly CallPair[] | undefined, finalCall: CallPair): readonly ToolActivityEntry[] {
-  const sequence = [...(calls ?? []), finalCall];
-  const entries: ToolActivityEntry[] = [];
-  for (let i = 0; i < sequence.length; i++) {
-    const uses = extractToolUses(sequence[i].response);
-    if (uses.length === 0) {
-      continue;
-    }
-    const nextRequest = sequence[i + 1]?.request;
-    const results = nextRequest !== undefined ? extractToolResults(nextRequest) : new Map<string, { result: unknown; isError: boolean }>();
-    for (const use of uses) {
-      const resolved = results.get(use.id);
-      entries.push({
-        name: use.name,
-        status: resolved ? 'done' : 'running',
-        input: use.input,
-        result: resolved?.result,
-        isError: resolved?.isError,
-      });
-    }
-  }
-  return entries;
-}
-
-/** Parses one `event: <type>\ndata: <json>` SSE frame (blank-line-terminated) into a typed event. */
-function parseSseFrame(frame: string): ParsedSseEvent | null {
-  let eventType = 'message';
-  const dataLines: string[] = [];
-  for (const line of frame.split('\n')) {
-    if (line.startsWith('event:')) {
-      eventType = line.slice('event:'.length).trim();
-    } else if (line.startsWith('data:')) {
-      dataLines.push(line.slice('data:'.length).trim());
-    }
-  }
-  if (dataLines.length === 0) {
-    return null;
-  }
-  try {
-    return { event: eventType, data: JSON.parse(dataLines.join('\n')) };
-  } catch {
-    return null;
-  }
-}
-
-function findLastRunningIndex(activity: readonly ToolActivityEntry[], name: string): number {
-  for (let i = activity.length - 1; i >= 0; i--) {
-    if (activity[i].name === name && activity[i].status === 'running') {
-      return i;
-    }
-  }
-  return -1;
-}
-
-const NO_CALL_YET: InspectorCall = { request: null };
-
 @Component({
   selector: 'app-document-research-assistant',
   imports: [DocsPanel, InspectorPanel, Skeleton, ChatTranscript, MarkdownPipe, ParagraphsForTurnPipe],
@@ -277,7 +138,7 @@ export class DocumentResearchAssistant {
         if (!body) {
           return of(null);
         }
-        return forkJoin([
+        return raceWithMinDuration(
           this.http.post<SessionResponse>('/api/document-research-assistant/session', body).pipe(
             map((session): SessionOutcome => ({ ok: true, session })),
             catchError((err) =>
@@ -287,9 +148,8 @@ export class DocumentResearchAssistant {
               }),
             ),
           ),
-          timer(MIN_SESSION_MS),
-        ]).pipe(
-          map(([outcome]) => outcome),
+          MIN_SESSION_MS,
+        ).pipe(
           tap((outcome) => {
             if (outcome.ok) {
               this.session.set(outcome.session);
@@ -337,16 +197,15 @@ export class DocumentResearchAssistant {
         if (!body || !sessionId) {
           return of(null);
         }
-        return forkJoin([
+        return raceWithMinDuration(
           this.http.post<TurnEnvelope>(`/api/document-research-assistant/session/${sessionId}/ask`, body).pipe(
             map((envelope): TurnOutcome => ({ ok: true, envelope })),
             catchError((err) =>
               of<TurnOutcome>({ ok: false, message: extractErrorMessage(err, 'The request failed. Please try again.') }),
             ),
           ),
-          timer(MIN_ASKING_MS),
-        ]).pipe(
-          map(([outcome]) => outcome),
+          MIN_ASKING_MS,
+        ).pipe(
           tap((outcome) => {
             if (outcome.ok) {
               this.applyTurnEnvelope(outcome.envelope);
@@ -441,14 +300,6 @@ export class DocumentResearchAssistant {
     this.isAsking.set(false);
   }
 
-  /** Resolves once at least MIN_ASKING_MS has passed since `startedAt` — awaited just before any isAsking-clearing transition, so a near-instant fake-mode turn still holds its skeleton for a readable moment. */
-  private async waitOutMinAskingDuration(startedAt: number): Promise<void> {
-    const remaining = MIN_ASKING_MS - (Date.now() - startedAt);
-    if (remaining > 0) {
-      await new Promise((resolve) => setTimeout(resolve, remaining));
-    }
-  }
-
   private async askStreaming(sessionId: string, body: AskRequestBody): Promise<void> {
     const startedAt = Date.now();
     this.inspectorCall.set({ request: body, streamEvents: [] });
@@ -461,45 +312,24 @@ export class DocumentResearchAssistant {
         body: JSON.stringify(body),
       });
 
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let done = false;
-
-      while (!done) {
-        const chunk = await reader.read();
-        done = chunk.done;
-        if (chunk.value) {
-          buffer += decoder.decode(chunk.value, { stream: !done });
-        }
-
-        let boundaryIndex = buffer.indexOf('\n\n');
-        while (boundaryIndex !== -1) {
-          const frame = buffer.slice(0, boundaryIndex);
-          buffer = buffer.slice(boundaryIndex + 2);
-          await this.handleStreamEvent(parseSseFrame(frame), body, streamEventsBuffer, startedAt);
-          boundaryIndex = buffer.indexOf('\n\n');
-        }
-      }
+      await readSseStream(response, (parsed) =>
+        this.handleStreamEvent(parsed, body, streamEventsBuffer, startedAt),
+      );
     } catch {
-      await this.waitOutMinAskingDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_ASKING_MS);
       this.failLastTurn('The streaming request failed. Please try again.');
     }
   }
 
   private async handleStreamEvent(
-    parsed: ParsedSseEvent | null,
+    parsed: ParsedSseEvent,
     requestBody: AskRequestBody,
     streamEventsBuffer: unknown[],
     startedAt: number,
   ): Promise<void> {
-    if (!parsed) {
-      return;
-    }
-
     if (parsed.event === 'turn_complete') {
       const envelope = parsed.data as TurnEnvelope;
-      await this.waitOutMinAskingDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_ASKING_MS);
       this.applyTurnEnvelope(envelope);
       return;
     }
@@ -507,7 +337,7 @@ export class DocumentResearchAssistant {
     if (parsed.event === 'error') {
       const { error } = parsed.data as Record<string, unknown>;
       const { message } = (error ?? {}) as Record<string, unknown>;
-      await this.waitOutMinAskingDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_ASKING_MS);
       this.failLastTurn(typeof message === 'string' ? message : 'The streaming request failed.');
       return;
     }

@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, map, of, switchMap, tap, timer } from 'rxjs';
+import { catchError, map, of, switchMap, tap } from 'rxjs';
 import { DocsPanel } from '../shared/docs-panel/docs-panel';
 import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
+import { NO_CALL_YET } from '../shared/inspector-panel/inspector-call';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { Skeleton } from '../shared/skeleton/skeleton';
+import { extractErrorMessage } from '../shared/http-error/extract-error-message';
+import { raceWithMinDuration } from '../shared/min-duration/min-duration';
 
 interface WorkflowGalleryIssue {
   readonly number: number;
@@ -53,9 +56,7 @@ interface RunResult {
   readonly passed: boolean;
 }
 
-type RunOutcome = { ok: true; envelope: WorkflowGalleryEnvelope } | { ok: false };
-
-const NO_CALL_YET: InspectorCall = { request: null };
+type RunOutcome = { ok: true; envelope: WorkflowGalleryEnvelope } | { ok: false; message: string };
 
 // Fake-mode responses are near-instant — hold the skeleton for at least this long to stay readable.
 const MIN_RUN_MS = 500;
@@ -101,19 +102,23 @@ export class WorkflowGallery {
         if (!body) {
           return of(null);
         }
-        return forkJoin([
+        return raceWithMinDuration(
           this.http.post<WorkflowGalleryEnvelope>('/api/workflow-gallery/run', body).pipe(
             map((envelope): RunOutcome => ({ ok: true, envelope })),
-            catchError(() => of<RunOutcome>({ ok: false })),
+            catchError((err) =>
+              of<RunOutcome>({
+                ok: false,
+                message: extractErrorMessage(err, 'The request failed. Please try again.'),
+              }),
+            ),
           ),
-          timer(MIN_RUN_MS),
-        ]).pipe(
-          map(([outcome]) => outcome),
+          MIN_RUN_MS,
+        ).pipe(
           tap((outcome) => {
             if (outcome.ok) {
               this.applyEnvelope(outcome.envelope);
             } else {
-              this.error.set('The request failed. Please try again.');
+              this.error.set(outcome.message);
               this.isRunning.set(false);
             }
           }),

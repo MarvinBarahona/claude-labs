@@ -378,7 +378,7 @@ describe('MessagesConsole', () => {
 
     const alert = el.querySelector('[role="alert"]');
     expect(alert).toBeTruthy();
-    expect(alert?.textContent).toContain('failed');
+    expect(alert?.textContent).toContain('Server error');
     // The failed turn shouldn't remain stuck in the transcript with a permanent skeleton.
     expect(el.querySelector('[data-testid="answer-skeleton"]')).toBeFalsy();
   });

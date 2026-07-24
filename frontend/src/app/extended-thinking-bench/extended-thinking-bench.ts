@@ -1,11 +1,14 @@
 import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, map, of, switchMap, tap, timer } from 'rxjs';
+import { catchError, map, of, switchMap, tap } from 'rxjs';
 import { DocsPanel } from '../shared/docs-panel/docs-panel';
 import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
+import { NO_CALL_YET } from '../shared/inspector-panel/inspector-call';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { Skeleton } from '../shared/skeleton/skeleton';
+import { extractErrorMessage } from '../shared/http-error/extract-error-message';
+import { raceWithMinDuration } from '../shared/min-duration/min-duration';
 
 type ThinkingRunLabel = 'thinking-off' | 'thinking-medium' | 'thinking-high';
 
@@ -54,23 +57,6 @@ const COLUMN_HEADINGS: Readonly<Record<ThinkingRunLabel, string>> = {
 
 type RunOutcome = { ok: true; body: RunResponseBody } | { ok: false; message: string };
 
-function extractErrorMessage(err: unknown, fallback: string): string {
-  if (err instanceof HttpErrorResponse) {
-    const body = err.error;
-    if (body && typeof body === 'object') {
-      const errorField = (body as Record<string, unknown>)['error'];
-      if (errorField && typeof errorField === 'object') {
-        const message = (errorField as Record<string, unknown>)['message'];
-        if (typeof message === 'string' && message) {
-          return message;
-        }
-      }
-    }
-  }
-  return fallback;
-}
-
-const NO_CALL_YET: InspectorCall = { request: null };
 // Fake-mode responses are near-instant — hold the skeleton for at least this long to stay readable.
 const MIN_RUN_MS = 500;
 
@@ -125,7 +111,7 @@ export class ExtendedThinkingBench {
         if (!body) {
           return of(null);
         }
-        return forkJoin([
+        return raceWithMinDuration(
           this.http.post<RunResponseBody>('/api/extended-thinking-bench/run', body).pipe(
             map((responseBody): RunOutcome => ({ ok: true, body: responseBody })),
             catchError((err) =>
@@ -135,9 +121,8 @@ export class ExtendedThinkingBench {
               }),
             ),
           ),
-          timer(MIN_RUN_MS),
-        ]).pipe(
-          map(([outcome]) => outcome),
+          MIN_RUN_MS,
+        ).pipe(
           tap((outcome) => {
             if (outcome.ok) {
               this.applyResult(outcome.body);

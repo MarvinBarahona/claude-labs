@@ -1,13 +1,24 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, map, of, switchMap, tap, timer } from 'rxjs';
+import { catchError, map, of, switchMap, tap } from 'rxjs';
 import { DocsPanel } from '../shared/docs-panel/docs-panel';
 import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
+import { NO_CALL_YET } from '../shared/inspector-panel/inspector-call';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { ModelPicker } from '../shared/model-picker/model-picker';
 import type { ModelChoice } from '../shared/model-picker/model-picker';
 import { Skeleton } from '../shared/skeleton/skeleton';
+import {
+  deriveToolActivityFromCalls,
+  extractResponseText,
+  findLastRunningIndex,
+} from '../shared/anthropic-content/anthropic-content';
+import type { CallPair, ToolActivityEntry } from '../shared/anthropic-content/anthropic-content';
+import { extractErrorMessage } from '../shared/http-error/extract-error-message';
+import { raceWithMinDuration, waitOutMinDuration } from '../shared/min-duration/min-duration';
+import { readSseStream } from '../shared/sse/sse';
+import type { ParsedSseEvent } from '../shared/sse/sse';
 
 interface LiveToolUseConsoleConfig {
   readonly targetRepo: string;
@@ -19,11 +30,6 @@ interface TurnRequestBody {
   readonly stream: boolean;
 }
 
-interface CallPair {
-  readonly request: unknown;
-  readonly response: unknown;
-}
-
 interface TurnEnvelope {
   readonly request: unknown;
   readonly response: unknown;
@@ -32,155 +38,10 @@ interface TurnEnvelope {
   readonly stopReason: string | null;
 }
 
-interface ParsedSseEvent {
-  readonly event: string;
-  readonly data: unknown;
-}
+type TurnOutcome = { ok: true; envelope: TurnEnvelope } | { ok: false; message: string };
 
-interface ToolActivityEntry {
-  readonly name: string;
-  readonly status: 'running' | 'done';
-  readonly input?: unknown;
-  readonly result?: unknown;
-  readonly isError?: boolean;
-}
-
-interface ToolUseBlock {
-  readonly id: string;
-  readonly name: string;
-  readonly input: unknown;
-}
-
-type TurnOutcome = { ok: true; envelope: TurnEnvelope } | { ok: false };
-
-// The fake-mode backend answers near-instantly, which otherwise makes the Answer/Tool Activity
-// skeletons flash by too fast to read as a loading state — hold isAsking for at least this long.
+// Fake-mode responses are near-instant, which would otherwise make the Answer/Tool Activity skeletons flash by unreadably.
 const MIN_ASKING_MS = 500;
-
-function extractResponseText(response: unknown): string {
-  if (typeof response !== 'object' || response === null) {
-    return '';
-  }
-  const { content } = response as Record<string, unknown>;
-  if (!Array.isArray(content)) {
-    return '';
-  }
-  let text = '';
-  for (const block of content) {
-    if (typeof block !== 'object' || block === null) {
-      continue;
-    }
-    const { type, text: blockText } = block as Record<string, unknown>;
-    if (type === 'text' && typeof blockText === 'string') {
-      text += blockText;
-    }
-  }
-  return text;
-}
-
-function extractToolUses(response: unknown): readonly ToolUseBlock[] {
-  if (typeof response !== 'object' || response === null) {
-    return [];
-  }
-  const { content } = response as Record<string, unknown>;
-  if (!Array.isArray(content)) {
-    return [];
-  }
-  const uses: ToolUseBlock[] = [];
-  for (const block of content) {
-    if (typeof block !== 'object' || block === null) {
-      continue;
-    }
-    const { type, id, name, input } = block as Record<string, unknown>;
-    if (type === 'tool_use' && typeof id === 'string' && typeof name === 'string') {
-      uses.push({ id, name, input });
-    }
-  }
-  return uses;
-}
-
-function extractToolResults(request: unknown): Map<string, { result: unknown; isError: boolean }> {
-  const results = new Map<string, { result: unknown; isError: boolean }>();
-  if (typeof request !== 'object' || request === null) {
-    return results;
-  }
-  const { messages } = request as Record<string, unknown>;
-  if (!Array.isArray(messages)) {
-    return results;
-  }
-  for (const message of messages) {
-    if (typeof message !== 'object' || message === null) {
-      continue;
-    }
-    const { content } = message as Record<string, unknown>;
-    if (!Array.isArray(content)) {
-      continue;
-    }
-    for (const block of content) {
-      if (typeof block !== 'object' || block === null) {
-        continue;
-      }
-      const record = block as Record<string, unknown>;
-      const toolUseId = record['tool_use_id'];
-      if (record['type'] === 'tool_result' && typeof toolUseId === 'string') {
-        results.set(toolUseId, { result: record['content'], isError: Boolean(record['is_error']) });
-      }
-    }
-  }
-  return results;
-}
-
-/**
- * Non-streaming has no live per-tool feed to observe — once the full envelope lands, every
- * tool_use/tool_result pair across the whole turn is already resolved, so they're rendered as
- * already-`done` activity entries in one pass.
- */
-function deriveToolActivityFromCalls(calls: readonly CallPair[] | undefined, finalCall: CallPair): readonly ToolActivityEntry[] {
-  const sequence = [...(calls ?? []), finalCall];
-  const entries: ToolActivityEntry[] = [];
-  for (let i = 0; i < sequence.length; i++) {
-    const uses = extractToolUses(sequence[i].response);
-    if (uses.length === 0) {
-      continue;
-    }
-    const nextRequest = sequence[i + 1]?.request;
-    const results = nextRequest !== undefined ? extractToolResults(nextRequest) : new Map<string, { result: unknown; isError: boolean }>();
-    for (const use of uses) {
-      const resolved = results.get(use.id);
-      entries.push({
-        name: use.name,
-        status: resolved ? 'done' : 'running',
-        input: use.input,
-        result: resolved?.result,
-        isError: resolved?.isError,
-      });
-    }
-  }
-  return entries;
-}
-
-/** Parses one `event: <type>\ndata: <json>` SSE frame (blank-line-terminated) into a typed event. */
-function parseSseFrame(frame: string): ParsedSseEvent | null {
-  let eventType = 'message';
-  const dataLines: string[] = [];
-  for (const line of frame.split('\n')) {
-    if (line.startsWith('event:')) {
-      eventType = line.slice('event:'.length).trim();
-    } else if (line.startsWith('data:')) {
-      dataLines.push(line.slice('data:'.length).trim());
-    }
-  }
-  if (dataLines.length === 0) {
-    return null;
-  }
-  try {
-    return { event: eventType, data: JSON.parse(dataLines.join('\n')) };
-  } catch {
-    return null;
-  }
-}
-
-const NO_CALL_YET: InspectorCall = { request: null };
 
 @Component({
   selector: 'app-live-tool-use-console',
@@ -207,8 +68,7 @@ export class LiveToolUseConsole {
     return targetRepo ? `Ask about the weather or the ${targetRepo} repo…` : 'Ask about the weather or a repo…';
   });
 
-  // True from the moment Ask is clicked until the turn resolves (success or error) — drives the
-  // Answer/Tool Activity skeletons so a second-onward ask doesn't blank those sections while it loads.
+  // True from Ask until the turn resolves — drives the Answer/Tool Activity skeletons so a second-onward ask doesn't blank those sections while it loads.
   protected readonly isAsking = signal(false);
 
   protected readonly answerText = signal('');
@@ -216,8 +76,7 @@ export class LiveToolUseConsole {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly inspectorCall = signal<InspectorCall>(NO_CALL_YET);
 
-  // Non-streaming ask: same trigger-signal → switchMap → toSignal() shape as MessagesConsole,
-  // raced against a minimum-duration timer (see MIN_ASKING_MS) so the response is never applied sooner.
+  // Non-streaming ask: trigger-signal → switchMap → toSignal(), raced against MIN_ASKING_MS.
   private readonly turnTrigger = signal<TurnRequestBody | null>(null);
   private readonly turnResult = toSignal(
     toObservable(this.turnTrigger).pipe(
@@ -225,19 +84,23 @@ export class LiveToolUseConsole {
         if (!body) {
           return of(null);
         }
-        return forkJoin([
+        return raceWithMinDuration(
           this.http.post<TurnEnvelope>('/api/live-tool-use-console/turn', body).pipe(
             map((envelope): TurnOutcome => ({ ok: true, envelope })),
-            catchError(() => of<TurnOutcome>({ ok: false })),
+            catchError((err) =>
+              of<TurnOutcome>({
+                ok: false,
+                message: extractErrorMessage(err, 'The request failed. Please try again.'),
+              }),
+            ),
           ),
-          timer(MIN_ASKING_MS),
-        ]).pipe(
-          map(([outcome]) => outcome),
+          MIN_ASKING_MS,
+        ).pipe(
           tap((outcome) => {
             if (outcome.ok) {
               this.applyTurnEnvelope(outcome.envelope);
             } else {
-              this.errorMessage.set('The request failed. Please try again.');
+              this.errorMessage.set(outcome.message);
               this.isAsking.set(false);
             }
           }),
@@ -299,14 +162,6 @@ export class LiveToolUseConsole {
     this.isAsking.set(false);
   }
 
-  /** Resolves once at least MIN_ASKING_MS has passed since `startedAt` — awaited just before any isAsking-clearing transition, so a near-instant fake-mode turn still holds its skeleton for a readable moment. */
-  private async waitOutMinAskingDuration(startedAt: number): Promise<void> {
-    const remaining = MIN_ASKING_MS - (Date.now() - startedAt);
-    if (remaining > 0) {
-      await new Promise((resolve) => setTimeout(resolve, remaining));
-    }
-  }
-
   private async askStreaming(body: TurnRequestBody): Promise<void> {
     const startedAt = Date.now();
     this.inspectorCall.set({ request: body, streamEvents: [] });
@@ -319,46 +174,25 @@ export class LiveToolUseConsole {
         body: JSON.stringify(body),
       });
 
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let done = false;
-
-      while (!done) {
-        const chunk = await reader.read();
-        done = chunk.done;
-        if (chunk.value) {
-          buffer += decoder.decode(chunk.value, { stream: !done });
-        }
-
-        let boundaryIndex = buffer.indexOf('\n\n');
-        while (boundaryIndex !== -1) {
-          const frame = buffer.slice(0, boundaryIndex);
-          buffer = buffer.slice(boundaryIndex + 2);
-          await this.handleStreamEvent(parseSseFrame(frame), body, streamEventsBuffer, startedAt);
-          boundaryIndex = buffer.indexOf('\n\n');
-        }
-      }
+      await readSseStream(response, (parsed) =>
+        this.handleStreamEvent(parsed, body, streamEventsBuffer, startedAt),
+      );
     } catch {
-      await this.waitOutMinAskingDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_ASKING_MS);
       this.errorMessage.set('The streaming request failed. Please try again.');
       this.isAsking.set(false);
     }
   }
 
   private async handleStreamEvent(
-    parsed: ParsedSseEvent | null,
+    parsed: ParsedSseEvent,
     requestBody: TurnRequestBody,
     streamEventsBuffer: unknown[],
     startedAt: number,
   ): Promise<void> {
-    if (!parsed) {
-      return;
-    }
-
     if (parsed.event === 'turn_complete') {
       const envelope = parsed.data as TurnEnvelope;
-      await this.waitOutMinAskingDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_ASKING_MS);
       this.applyTurnEnvelope(envelope);
       return;
     }
@@ -366,7 +200,7 @@ export class LiveToolUseConsole {
     if (parsed.event === 'error') {
       const { error } = parsed.data as Record<string, unknown>;
       const { message } = (error ?? {}) as Record<string, unknown>;
-      await this.waitOutMinAskingDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_ASKING_MS);
       this.errorMessage.set(typeof message === 'string' ? message : 'The streaming request failed.');
       this.isAsking.set(false);
       return;
@@ -409,13 +243,4 @@ export class LiveToolUseConsole {
       }
     }
   }
-}
-
-function findLastRunningIndex(activity: readonly ToolActivityEntry[], name: string): number {
-  for (let i = activity.length - 1; i >= 0; i--) {
-    if (activity[i].name === name && activity[i].status === 'running') {
-      return i;
-    }
-  }
-  return -1;
 }

@@ -1,21 +1,22 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { catchError, forkJoin, map, of, switchMap, tap, timer } from 'rxjs';
+import { catchError, map, of, switchMap, tap } from 'rxjs';
 import { DocsPanel } from '../shared/docs-panel/docs-panel';
 import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
+import { NO_CALL_YET } from '../shared/inspector-panel/inspector-call';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { Skeleton } from '../shared/skeleton/skeleton';
+import type { CallPair } from '../shared/anthropic-content/anthropic-content';
+import { extractErrorMessage } from '../shared/http-error/extract-error-message';
+import { raceWithMinDuration, waitOutMinDuration } from '../shared/min-duration/min-duration';
+import { readSseStream } from '../shared/sse/sse';
+import type { ParsedSseEvent } from '../shared/sse/sse';
 
 type ToolName = 'list_files' | 'read_file' | 'search' | 'ask_deepwiki';
 
 interface RunRequestBody {
   readonly stream: boolean;
-}
-
-interface CallPair {
-  readonly request: unknown;
-  readonly response: unknown;
 }
 
 interface ToolActivityEntry {
@@ -52,12 +53,7 @@ interface RunResult {
   readonly callCount: number;
 }
 
-interface ParsedSseEvent {
-  readonly event: string;
-  readonly data: unknown;
-}
-
-type RunOutcome = { ok: true; envelope: AgentPlaygroundEnvelope } | { ok: false };
+type RunOutcome = { ok: true; envelope: AgentPlaygroundEnvelope } | { ok: false; message: string };
 
 // Fake-mode responses are near-instant — hold the skeleton for at least this long to stay readable.
 const MIN_RUN_MS = 500;
@@ -89,28 +85,14 @@ function toDisplayActivity(
   }));
 }
 
-/** Parses one `event: <type>\ndata: <json>` SSE frame (blank-line-terminated) into a typed event. */
-function parseSseFrame(frame: string): ParsedSseEvent | null {
-  let eventType = 'message';
-  const dataLines: string[] = [];
-  for (const line of frame.split('\n')) {
-    if (line.startsWith('event:')) {
-      eventType = line.slice('event:'.length).trim();
-    } else if (line.startsWith('data:')) {
-      dataLines.push(line.slice('data:'.length).trim());
+function findLastRunningIndex(activity: readonly DisplayToolActivityEntry[], tool: string): number {
+  for (let i = activity.length - 1; i >= 0; i--) {
+    if (activity[i].tool === tool && activity[i].status === 'running') {
+      return i;
     }
   }
-  if (dataLines.length === 0) {
-    return null;
-  }
-  try {
-    return { event: eventType, data: JSON.parse(dataLines.join('\n')) };
-  } catch {
-    return null;
-  }
+  return -1;
 }
-
-const NO_CALL_YET: InspectorCall = { request: null };
 
 @Component({
   selector: 'app-agent-playground',
@@ -142,19 +124,23 @@ export class AgentPlayground {
         if (!body) {
           return of(null);
         }
-        return forkJoin([
+        return raceWithMinDuration(
           this.http.post<AgentPlaygroundEnvelope>('/api/agent-playground/run', body).pipe(
             map((envelope): RunOutcome => ({ ok: true, envelope })),
-            catchError(() => of<RunOutcome>({ ok: false })),
+            catchError((err) =>
+              of<RunOutcome>({
+                ok: false,
+                message: extractErrorMessage(err, 'The request failed. Please try again.'),
+              }),
+            ),
           ),
-          timer(MIN_RUN_MS),
-        ]).pipe(
-          map(([outcome]) => outcome),
+          MIN_RUN_MS,
+        ).pipe(
           tap((outcome) => {
             if (outcome.ok) {
               this.applyEnvelope(outcome.envelope);
             } else {
-              this.errorMessage.set('The request failed. Please try again.');
+              this.errorMessage.set(outcome.message);
               this.isRunning.set(false);
             }
           }),
@@ -201,14 +187,6 @@ export class AgentPlayground {
     this.isRunning.set(false);
   }
 
-  /** Resolves once at least MIN_RUN_MS has passed since `startedAt`, so a near-instant fake-mode run still holds its skeleton for a readable moment. */
-  private async waitOutMinRunDuration(startedAt: number): Promise<void> {
-    const remaining = MIN_RUN_MS - (Date.now() - startedAt);
-    if (remaining > 0) {
-      await new Promise((resolve) => setTimeout(resolve, remaining));
-    }
-  }
-
   private async runStreaming(body: RunRequestBody): Promise<void> {
     const startedAt = Date.now();
     this.inspectorCall.set({ request: body, streamEvents: [] });
@@ -221,51 +199,31 @@ export class AgentPlayground {
         body: JSON.stringify(body),
       });
 
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let done = false;
-
-      while (!done) {
-        const chunk = await reader.read();
-        done = chunk.done;
-        if (chunk.value) {
-          buffer += decoder.decode(chunk.value, { stream: !done });
-        }
-
-        let boundaryIndex = buffer.indexOf('\n\n');
-        while (boundaryIndex !== -1) {
-          const frame = buffer.slice(0, boundaryIndex);
-          buffer = buffer.slice(boundaryIndex + 2);
-          await this.handleStreamEvent(parseSseFrame(frame), body, streamEventsBuffer, startedAt);
-          boundaryIndex = buffer.indexOf('\n\n');
-        }
-      }
-      await this.waitOutMinRunDuration(startedAt);
+      await readSseStream(response, (parsed) =>
+        this.handleStreamEvent(parsed, body, streamEventsBuffer, startedAt),
+      );
+      await waitOutMinDuration(startedAt, MIN_RUN_MS);
+      // Only a stream that never delivered turn_complete or a terminal error event falls through to here — isRunning is still true.
       if (this.isRunning()) {
         this.errorMessage.set('The streaming request failed. Please try again.');
         this.isRunning.set(false);
       }
     } catch {
-      await this.waitOutMinRunDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_RUN_MS);
       this.errorMessage.set('The streaming request failed. Please try again.');
       this.isRunning.set(false);
     }
   }
 
   private async handleStreamEvent(
-    parsed: ParsedSseEvent | null,
+    parsed: ParsedSseEvent,
     requestBody: RunRequestBody,
     streamEventsBuffer: unknown[],
     startedAt: number,
   ): Promise<void> {
-    if (!parsed) {
-      return;
-    }
-
     if (parsed.event === 'turn_complete') {
       const envelope = parsed.data as AgentPlaygroundEnvelope;
-      await this.waitOutMinRunDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_RUN_MS);
       this.applyEnvelope(envelope);
       return;
     }
@@ -273,7 +231,7 @@ export class AgentPlayground {
     if (parsed.event === 'error') {
       const { error } = parsed.data as Record<string, unknown>;
       const { message } = (error ?? {}) as Record<string, unknown>;
-      await this.waitOutMinRunDuration(startedAt);
+      await waitOutMinDuration(startedAt, MIN_RUN_MS);
       this.errorMessage.set(typeof message === 'string' ? message : 'The streaming request failed.');
       this.isRunning.set(false);
       return;
@@ -309,13 +267,4 @@ export class AgentPlayground {
     streamEventsBuffer.push(parsed.data);
     this.inspectorCall.set({ request: requestBody, streamEvents: [...streamEventsBuffer] });
   }
-}
-
-function findLastRunningIndex(activity: readonly DisplayToolActivityEntry[], tool: string): number {
-  for (let i = activity.length - 1; i >= 0; i--) {
-    if (activity[i].tool === tool && activity[i].status === 'running') {
-      return i;
-    }
-  }
-  return -1;
 }
