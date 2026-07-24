@@ -1,3 +1,4 @@
+import nock from 'nock';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
@@ -5,6 +6,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { useNockFixtures } from '../src/testing/http-fixtures/nock-lifecycle';
 import {
+  ANTHROPIC_API_BASE_URL,
   mockAnthropicBetaMessagesCreate,
   mockAnthropicFilesUpload,
   mockAnthropicFilesRetrieveMetadata,
@@ -166,6 +168,66 @@ describe('DataCodeSandboxController (e2e)', () => {
     expect(requestBody.container).toEqual({
       skills: [{ type: 'custom', skill_id: 'skill_abc123', version: 'latest' }],
     });
+  });
+
+  it('sends code-execution-2025-08-25 alongside skills-2025-10-02 only when useSkill is true', async () => {
+    // No output file in either fixture, so the run never calls downloadFile() — keeps this test focused on the beta header alone.
+    const noOutputFileResponse = (): AnthropicMessage =>
+      fakeTextMessage('Done.', {
+        content: [
+          {
+            type: 'server_tool_use',
+            id: 'srvtoolu_1',
+            name: 'bash_code_execution',
+            input: { command: 'python analyze.py' },
+          },
+          {
+            type: 'bash_code_execution_tool_result',
+            tool_use_id: 'srvtoolu_1',
+            content: { stdout: 'ok', stderr: '', return_code: 0 },
+          },
+        ] as unknown as AnthropicMessage['content'],
+      });
+
+    mockDatasetFixtures();
+    mockAnthropicFilesUpload('file_dataset_1');
+    let betaHeaderWithoutSkill: string | undefined;
+    nock(ANTHROPIC_API_BASE_URL)
+      .post('/v1/messages')
+      .query({ beta: 'true' })
+      .reply(function replyWithoutSkill() {
+        betaHeaderWithoutSkill = this.req.headers['anthropic-beta'];
+        return [200, noOutputFileResponse()];
+      });
+
+    await request(app.getHttpServer())
+      .post('/data-code-sandbox/run')
+      .send({ prompt: 'Chart commit frequency by month.', useSkill: false })
+      .expect(200);
+
+    expect(betaHeaderWithoutSkill).toContain('files-api-2025-04-14');
+    expect(betaHeaderWithoutSkill).not.toContain('code-execution-2025-08-25');
+    expect(betaHeaderWithoutSkill).not.toContain('skills-2025-10-02');
+
+    mockDatasetFixtures();
+    mockAnthropicSkillsCreate('skill_abc123');
+    mockAnthropicFilesUpload('file_dataset_2');
+    let betaHeaderWithSkill: string | undefined;
+    nock(ANTHROPIC_API_BASE_URL)
+      .post('/v1/messages')
+      .query({ beta: 'true' })
+      .reply(function replyWithSkill() {
+        betaHeaderWithSkill = this.req.headers['anthropic-beta'];
+        return [200, noOutputFileResponse()];
+      });
+
+    await request(app.getHttpServer())
+      .post('/data-code-sandbox/run')
+      .send({ prompt: 'Export the data as a spreadsheet.', useSkill: true })
+      .expect(200);
+
+    expect(betaHeaderWithSkill).toContain('code-execution-2025-08-25');
+    expect(betaHeaderWithSkill).toContain('skills-2025-10-02');
   });
 
   it('returns a 502 with the shaped error body when the GitHub fetch fails', async () => {

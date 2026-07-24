@@ -14,6 +14,9 @@ import { RunDto } from './dto/run.dto';
 
 const FILES_API_BETA = 'files-api-2025-04-14';
 const SKILLS_BETA = 'skills-2025-10-02';
+/** Required alongside `SKILLS_BETA` whenever code execution is combined with a container skill. */
+const CODE_EXECUTION_SKILLS_BETA = 'code-execution-2025-08-25';
+const CODE_EXECUTION_TOOL_TYPE = 'code_execution_20260521';
 const DEFAULT_MAX_TOKENS = 4096;
 /** The skill's own name — the signal `wasSkillInvoked()` looks for in an executed bash command, since no dedicated content block marks a skill invocation. */
 const SKILL_NAME = 'spreadsheet-export';
@@ -96,7 +99,7 @@ export class DataCodeSandboxService {
       | undefined;
     if (dto.useSkill) {
       const skillId = await this.resolveSkillId();
-      betas.push(SKILLS_BETA);
+      betas.push(CODE_EXECUTION_SKILLS_BETA, SKILLS_BETA);
       container = {
         skills: [{ type: 'custom', skill_id: skillId, version: 'latest' }],
       };
@@ -105,7 +108,7 @@ export class DataCodeSandboxService {
     const params = {
       model: this.modelConfig.getModel('default'),
       max_tokens: DEFAULT_MAX_TOKENS,
-      tools: [{ type: 'code_execution_20250825', name: 'code_execution' }],
+      tools: [{ type: CODE_EXECUTION_TOOL_TYPE, name: 'code_execution' }],
       ...(container ? { container } : {}),
       messages: [
         {

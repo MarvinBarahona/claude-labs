@@ -301,7 +301,7 @@ describe('FakeAnthropicClient', () => {
 
       const message = await fake.createMessage({
         ...params,
-        tools: [{ type: 'code_execution_20250825', name: 'code_execution' }],
+        tools: [{ type: 'code_execution_20260521', name: 'code_execution' }],
         messages: [{ role: 'user', content: 'Chart something.' }],
       });
 

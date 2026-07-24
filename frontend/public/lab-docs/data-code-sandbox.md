@@ -15,7 +15,7 @@ and the sandbox reads it as a real file:
 ```json
 {
   "model": "claude-sonnet-5",
-  "tools": [{ "type": "code_execution_20250825", "name": "code_execution" }],
+  "tools": [{ "type": "code_execution_20260521", "name": "code_execution" }],
   "messages": [
     {
       "role": "user",
@@ -91,8 +91,10 @@ A custom skill needs registering once before it has a `skill_id` at all
 (`POST /v1/skills`, a separate call this lab makes lazily on its first use
 and then caches for the rest of the process's lifetime) — there's no way to
 point a request at a `SKILL.md` file path directly. Loading a skill also
-adds the `skills-2025-10-02` beta header, on top of the Files API one this
-lab always sends.
+adds two more beta headers on top of the Files API one this lab always
+sends: `skills-2025-10-02` for the Skills API itself, and
+`code-execution-2025-08-25`, which is required whenever code execution is
+combined with a container skill like this.
 
 ## Gotcha
 

@@ -110,6 +110,19 @@ describe('DataCodeSandboxService', () => {
     });
   });
 
+  it('offers the code_execution_20260521 tool', async () => {
+    fakeAnthropic
+      .queueFileUpload({ id: 'file_dataset_1' })
+      .queueMessage(fakeTextMessage('Here is the analysis.'));
+
+    await service.run(buildRunDto());
+
+    const [params] = fakeAnthropic.recordedCalls;
+    expect(params.tools).toEqual([
+      { type: 'code_execution_20260521', name: 'code_execution' },
+    ]);
+  });
+
   it('adds container.skills and the skills beta only when useSkill is true', async () => {
     fakeAnthropic
       .queueFileUpload({ id: 'file_dataset_1' })
