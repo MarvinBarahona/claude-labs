@@ -1,14 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
-
-interface ModeResponse {
-  fakeMode: boolean;
-  keyStatus?: 'valid' | 'invalid';
-}
-
-const UNKNOWN_MODE: ModeResponse = { fakeMode: false, keyStatus: 'valid' };
+import { AppModeService } from '../mode/app-mode.service';
 
 @Component({
   selector: 'app-key-health-banner',
@@ -16,12 +7,7 @@ const UNKNOWN_MODE: ModeResponse = { fakeMode: false, keyStatus: 'valid' };
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class KeyHealthBanner {
-  private readonly http = inject(HttpClient);
+  private readonly appMode = inject(AppModeService);
 
-  private readonly mode = toSignal(
-    this.http.get<ModeResponse>('/api/mode').pipe(catchError(() => of(UNKNOWN_MODE))),
-    { initialValue: UNKNOWN_MODE },
-  );
-
-  protected readonly keyInvalid = computed(() => this.mode().keyStatus === 'invalid');
+  protected readonly keyInvalid = computed(() => this.appMode.mode().keyStatus === 'invalid');
 }
