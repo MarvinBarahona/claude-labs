@@ -97,3 +97,10 @@ export function mockGithubNotFoundError(repoPath: string): nock.Scope {
     .get(`/repos/${repoPath}`)
     .reply(404, { message: 'Not Found' });
 }
+
+/** For flows that start with `getFileTree()` (e.g. the `list_files` tool), which hits this endpoint before `/issues`. */
+export function mockGithubRepoRateLimitError(repoPath: string): nock.Scope {
+  return nock(GITHUB_API_BASE_URL)
+    .get(`/repos/${repoPath}`)
+    .reply(403, { message: 'API rate limit exceeded' });
+}

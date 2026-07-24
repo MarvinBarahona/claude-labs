@@ -10,8 +10,8 @@ import {
   mockAnthropicBetaMessagesStream,
 } from '../src/testing/http-fixtures/anthropic.fixtures';
 import {
-  mockGithubRateLimitError,
   mockGithubRepo,
+  mockGithubRepoRateLimitError,
   mockGithubTree,
 } from '../src/testing/http-fixtures/github.fixtures';
 import {
@@ -122,7 +122,7 @@ describe('AgentPlaygroundController (e2e)', () => {
     mockAnthropicBetaMessagesCreate(
       fakeToolUseMessage([{ id: 'call_1', name: 'list_files', input: {} }]),
     );
-    mockGithubRateLimitError(REPO_PATH);
+    mockGithubRepoRateLimitError(REPO_PATH);
 
     const response = await request(app.getHttpServer())
       .post('/agent-playground/run')
@@ -171,7 +171,7 @@ describe('AgentPlaygroundController (e2e)', () => {
         { id: 'call_1', name: 'list_files', input: {} },
       ]),
     );
-    mockGithubRateLimitError(REPO_PATH);
+    mockGithubRepoRateLimitError(REPO_PATH);
 
     const response = await request(app.getHttpServer())
       .post('/agent-playground/run')
