@@ -14,7 +14,6 @@ describe('AppConfigModule wiring', () => {
     delete process.env.MODEL_DEFAULT;
     delete process.env.MODEL_CLASSIFICATION;
     delete process.env.MODEL_HARDEST_CALL;
-    delete process.env.THINKING_EFFORT_DEFAULT;
     delete process.env.FAKE_MODE;
     delete process.env.REPO_URL;
   });
@@ -64,7 +63,7 @@ describe('AppConfigModule wiring', () => {
     expect(config.githubToken).toBe('ghp_placeholder');
   });
 
-  it('falls back to the default model tier mapping and thinking effort when unset', async () => {
+  it('falls back to the default model tier mapping when unset', async () => {
     process.env.ANTHROPIC_API_KEY = 'placeholder';
 
     const moduleRef = await buildModule();
@@ -73,15 +72,13 @@ describe('AppConfigModule wiring', () => {
     expect(config.modelDefault).toBe('claude-sonnet-5');
     expect(config.modelClassification).toBe('claude-haiku-4-5');
     expect(config.modelHardestCall).toBe('claude-opus-4-8');
-    expect(config.thinkingEffortDefault).toBe('medium');
   });
 
-  it('reads the model tier mapping and thinking effort through AppConfigService when overridden', async () => {
+  it('reads the model tier mapping through AppConfigService when overridden', async () => {
     process.env.ANTHROPIC_API_KEY = 'placeholder';
     process.env.MODEL_DEFAULT = 'claude-sonnet-5-override';
     process.env.MODEL_CLASSIFICATION = 'claude-haiku-4-5-override';
     process.env.MODEL_HARDEST_CALL = 'claude-opus-4-8-override';
-    process.env.THINKING_EFFORT_DEFAULT = 'high';
 
     const moduleRef = await buildModule();
     const config = moduleRef.get(AppConfigService);
@@ -89,7 +86,6 @@ describe('AppConfigModule wiring', () => {
     expect(config.modelDefault).toBe('claude-sonnet-5-override');
     expect(config.modelClassification).toBe('claude-haiku-4-5-override');
     expect(config.modelHardestCall).toBe('claude-opus-4-8-override');
-    expect(config.thinkingEffortDefault).toBe('high');
   });
 
   it('defaults fakeMode to false and leaves repoUrl undefined when unset', async () => {

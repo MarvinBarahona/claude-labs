@@ -14,7 +14,7 @@ import { RunDto } from './dto/run.dto';
 export type ThinkingRunLabel =
   'thinking-off' | 'thinking-medium' | 'thinking-high';
 
-/** Fixed comparison set — deliberately hardcoded rather than going through ModelConfigService.getThinkingEffort(), which returns one configured default, not several levels to compare at once (see the plan's "A deliberate non-dependency"). */
+/** Fixed comparison set — this lab needs several effort levels side by side, not a single configured default. */
 const RUN_LABELS: ThinkingRunLabel[] = [
   'thinking-off',
   'thinking-medium',

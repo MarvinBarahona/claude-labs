@@ -20,21 +20,11 @@ describe('validateEnv', () => {
     expect(config.GITHUB_TOKEN).toBeUndefined();
   });
 
-  it('defaults the model tier mapping and thinking effort when unset', () => {
+  it('defaults the model tier mapping when unset', () => {
     const config = validateEnv({ ANTHROPIC_API_KEY: 'placeholder' });
     expect(config.MODEL_DEFAULT).toBe('claude-sonnet-5');
     expect(config.MODEL_CLASSIFICATION).toBe('claude-haiku-4-5');
     expect(config.MODEL_HARDEST_CALL).toBe('claude-opus-4-8');
-    expect(config.THINKING_EFFORT_DEFAULT).toBe('medium');
-  });
-
-  it('rejects an invalid THINKING_EFFORT_DEFAULT', () => {
-    expect(() =>
-      validateEnv({
-        ANTHROPIC_API_KEY: 'placeholder',
-        THINKING_EFFORT_DEFAULT: 'extreme',
-      }),
-    ).toThrow(/THINKING_EFFORT_DEFAULT/);
   });
 
   it('defaults FAKE_MODE to false and leaves REPO_URL undefined when unset', () => {
@@ -76,7 +66,6 @@ describe('validateEnv', () => {
       MODEL_DEFAULT: 'claude-sonnet-5-override',
       MODEL_CLASSIFICATION: 'claude-haiku-4-5-override',
       MODEL_HARDEST_CALL: 'claude-opus-4-8-override',
-      THINKING_EFFORT_DEFAULT: 'high',
       FAKE_MODE: 'true',
       REPO_URL: 'https://github.com/example/claude-labs',
     });
@@ -88,7 +77,6 @@ describe('validateEnv', () => {
       MODEL_DEFAULT: 'claude-sonnet-5-override',
       MODEL_CLASSIFICATION: 'claude-haiku-4-5-override',
       MODEL_HARDEST_CALL: 'claude-opus-4-8-override',
-      THINKING_EFFORT_DEFAULT: 'high',
       FAKE_MODE: true,
       REPO_URL: 'https://github.com/example/claude-labs',
     });

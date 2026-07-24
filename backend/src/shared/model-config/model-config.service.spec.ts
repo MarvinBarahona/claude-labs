@@ -7,7 +7,6 @@ describe('ModelConfigService', () => {
     modelDefault: 'claude-sonnet-5',
     modelClassification: 'claude-haiku-4-5',
     modelHardestCall: 'claude-opus-4-8',
-    thinkingEffortDefault: 'medium',
   };
 
   async function buildService(): Promise<ModelConfigService> {
@@ -34,11 +33,6 @@ describe('ModelConfigService', () => {
   it('returns Opus for the hardest-call tier', async () => {
     const service = await buildService();
     expect(service.getModel('hardest-call')).toBe('claude-opus-4-8');
-  });
-
-  it('returns a thinking effort level usable alongside thinking: { type: "adaptive" }', async () => {
-    const service = await buildService();
-    expect(service.getThinkingEffort()).toBe('medium');
   });
 
   it('returns the shared default max_tokens', async () => {

@@ -6,5 +6,3 @@ export const MODEL_TIERS = [
 ] as const;
 
 export type ModelTier = (typeof MODEL_TIERS)[number];
-
-export type ThinkingEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';

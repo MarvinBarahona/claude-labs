@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AppConfigService } from '../config/config.service';
-import { ModelTier, ThinkingEffort } from './model-config.types';
+import { ModelTier } from './model-config.types';
 
 /** Not env-configurable — there's no per-lab reason to vary it, unlike the model/effort knobs below. */
 const DEFAULT_MAX_TOKENS = 4096;
@@ -18,10 +18,6 @@ export class ModelConfigService {
       case 'hardest-call':
         return this.config.modelHardestCall;
     }
-  }
-
-  getThinkingEffort(): ThinkingEffort {
-    return this.config.thinkingEffortDefault;
   }
 
   getDefaultMaxTokens(): number {

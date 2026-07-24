@@ -30,10 +30,6 @@ export class AppConfigService {
     return this.configService.get('MODEL_HARDEST_CALL', { infer: true });
   }
 
-  get thinkingEffortDefault(): EnvConfig['THINKING_EFFORT_DEFAULT'] {
-    return this.configService.get('THINKING_EFFORT_DEFAULT', { infer: true });
-  }
-
   get fakeMode(): boolean {
     return this.configService.get('FAKE_MODE', { infer: true });
   }

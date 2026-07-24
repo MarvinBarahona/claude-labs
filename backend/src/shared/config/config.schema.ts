@@ -7,9 +7,6 @@ export const envSchema = z.object({
   MODEL_DEFAULT: z.string().min(1).default('claude-sonnet-5'),
   MODEL_CLASSIFICATION: z.string().min(1).default('claude-haiku-4-5'),
   MODEL_HARDEST_CALL: z.string().min(1).default('claude-opus-4-8'),
-  THINKING_EFFORT_DEFAULT: z
-    .enum(['low', 'medium', 'high', 'xhigh', 'max'])
-    .default('medium'),
   FAKE_MODE: z
     .enum(['true', 'false'])
     .default('false')

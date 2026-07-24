@@ -32,7 +32,7 @@ This route is deliberately non-streaming — the point is comparing 3 finished r
 
 `thinking.display` is always set to `"summarized"` on the two thinking-on runs — the default, `"omitted"`, still enables thinking but redacts the text, which would leave nothing to show as a reasoning trace. `reasoningTrace` is extracted by joining every `thinking`-typed content block's own `thinking` text; `thinking-off`'s response never has one, so its trace is always `null`.
 
-This feature deliberately does not reuse Workflow Gallery's own draft-stage prompt-building logic, and deliberately does not call `ModelConfigService.getThinkingEffort()` (which returns one configured default effort level, the opposite of what a side-by-side comparison of several fixed levels needs) — it writes its own prompt and hardcodes its own `medium`/`high` comparison set instead.
+This feature deliberately does not reuse Workflow Gallery's own draft-stage prompt-building logic — it writes its own prompt and hardcodes its own `medium`/`high` comparison set, since a side-by-side comparison needs several fixed effort levels at once rather than one configured default.
 
 Wired via `ExtendedThinkingBenchModule` (imports `ModelConfigModule`, `AnthropicClientModule`, `EnvelopeBuilderModule`, `GithubProviderModule`) into `AppModule`. Like Workflow Gallery, there's no per-number "get one issue" method on the shared `GithubClient`, so both routes fetch the open-issues list and find the target by number client-side.
 
