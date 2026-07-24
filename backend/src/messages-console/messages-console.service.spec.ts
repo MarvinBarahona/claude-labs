@@ -85,6 +85,27 @@ describe('MessagesConsoleService', () => {
       },
     );
 
+    it('includes `temperature` on the request when modelChoice is classification', async () => {
+      fakeClient.queueMessage(fakeTextMessage('hello'));
+
+      await service.createTurn(
+        buildDto({ modelChoice: 'classification', temperature: 0.3 }),
+      );
+
+      expect(fakeClient.recordedCalls[0].temperature).toBe(0.3);
+    });
+
+    it.each(['default', 'hardest-call'] as ModelTier[])(
+      'omits `temperature` for modelChoice %s even when provided, since only Haiku accepts it',
+      async (modelChoice) => {
+        fakeClient.queueMessage(fakeTextMessage('hello'));
+
+        await service.createTurn(buildDto({ modelChoice, temperature: 0.3 }));
+
+        expect(fakeClient.recordedCalls[0]).not.toHaveProperty('temperature');
+      },
+    );
+
     it('shapes the fake response into the envelope via EnvelopeBuilderService, with no `calls` array', async () => {
       const fakeResponse = fakeTextMessage('hello there', {
         stop_reason: 'end_turn',

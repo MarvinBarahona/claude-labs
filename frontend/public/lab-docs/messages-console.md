@@ -6,15 +6,14 @@ with extra fields added. This lab exercises the plain form.
 ## A basic Messages call
 
 A minimal call looks like this (this is the actual request the demo below
-sends, built from the model picker, system-prompt box, temperature slider,
-and running message list):
+sends, built from the model picker, system-prompt box, and running message
+list):
 
 ```json
 {
   "model": "claude-sonnet-5",
   "max_tokens": 4096,
   "system": "You are a terse assistant.",
-  "temperature": 0.7,
   "messages": [
     { "role": "user", "content": "What's the capital of France?" }
   ]
@@ -32,6 +31,17 @@ stopped — `end_turn`, `max_tokens`, etc.) and a `usage` object with
 `input_tokens`/`output_tokens`. Watch the inspector panel below the demo after
 sending a message — it shows the exact request and response JSON for whichever
 call ran last.
+
+## Temperature is Haiku-only
+
+Switching the model picker to Haiku reveals a temperature slider and adds a
+`"temperature"` field to the request above. That control only shows up for
+that one model on purpose: Claude Sonnet 5 rejects a non-default
+`temperature`, and Claude Opus 4.8 rejects the parameter outright — both
+return a 400. Only Haiku 4.5 still accepts it, so this demo never offers a
+knob that would break the call for whichever model happens to be selected. If
+you're adding a temperature control to your own app, check whether the model
+you're calling still supports it before wiring it up.
 
 ## Streaming
 

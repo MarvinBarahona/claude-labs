@@ -87,6 +87,14 @@ describe('MessagesConsole', () => {
     send.click();
   }
 
+  function selectModel(el: HTMLElement, label: string): void {
+    const radio = Array.from(el.querySelectorAll('input[type="radio"]')).find(
+      (r) => r.getAttribute('aria-label') === label,
+    ) as HTMLInputElement;
+    radio.checked = true;
+    radio.dispatchEvent(new Event('change'));
+  }
+
   it('shows all three model options labeled Sonnet/Haiku/Opus via the shared model picker', async () => {
     const { el } = await createFixture();
 
@@ -94,6 +102,64 @@ describe('MessagesConsole', () => {
       r.getAttribute('aria-label'),
     );
     expect(labels).toEqual(['Sonnet', 'Haiku', 'Opus']);
+  });
+
+  it('shows the temperature slider only when Haiku is selected, since only Haiku accepts it', async () => {
+    const { fixture, el } = await createFixture();
+
+    expect(el.querySelector('[aria-label="Temperature"]')).toBeFalsy();
+
+    selectModel(el, 'Haiku');
+    fixture.detectChanges();
+    expect(el.querySelector('[aria-label="Temperature"]')).toBeTruthy();
+
+    selectModel(el, 'Sonnet');
+    fixture.detectChanges();
+    expect(el.querySelector('[aria-label="Temperature"]')).toBeFalsy();
+  });
+
+  it('includes temperature in the request body only when Haiku is selected', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    selectModel(el, 'Haiku');
+    fixture.detectChanges();
+    typeMessage(el, 'Hello?');
+    fixture.detectChanges();
+    clickSend(el);
+    fixture.detectChanges();
+
+    const req = httpMock.expectOne('/api/messages-console/turn');
+    expect(req.request.body.temperature).toBe(0.7);
+    req.flush({
+      request: { model: 'claude-haiku-4-5' },
+      response: { content: [{ type: 'text', text: 'Hi there.' }] },
+      usage: { inputTokens: 1, outputTokens: 1 },
+      stopReason: 'end_turn',
+    });
+    await vi.advanceTimersByTimeAsync(MIN_TURN_MS);
+    fixture.detectChanges();
+  });
+
+  it('omits temperature from the request body when Sonnet (default) is selected', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    typeMessage(el, 'Hello?');
+    fixture.detectChanges();
+    clickSend(el);
+    fixture.detectChanges();
+
+    const req = httpMock.expectOne('/api/messages-console/turn');
+    expect(req.request.body).not.toHaveProperty('temperature');
+    req.flush({
+      request: { model: 'claude-sonnet-5' },
+      response: { content: [{ type: 'text', text: 'Hi there.' }] },
+      usage: { inputTokens: 1, outputTokens: 1 },
+      stopReason: 'end_turn',
+    });
+    await vi.advanceTimersByTimeAsync(MIN_TURN_MS);
+    fixture.detectChanges();
   });
 
   it('sends a message that renders right-aligned, and the assistant reply renders left-aligned once received', async () => {

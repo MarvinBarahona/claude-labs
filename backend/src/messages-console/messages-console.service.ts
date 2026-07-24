@@ -72,7 +72,8 @@ export class MessagesConsoleService {
     if (dto.systemPrompt) {
       params.system = dto.systemPrompt;
     }
-    if (dto.temperature !== undefined) {
+    // Only Haiku 4.5 (the `classification` tier) accepts `temperature` — Sonnet 5 rejects non-default values and Opus 4.8 rejects the parameter outright.
+    if (dto.temperature !== undefined && dto.modelChoice === 'classification') {
       params.temperature = dto.temperature;
     }
 

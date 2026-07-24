@@ -189,7 +189,7 @@ export class MessagesConsole {
     const body: TurnRequestBody = {
       modelChoice: this.modelChoice(),
       ...(systemPrompt ? { systemPrompt } : {}),
-      temperature: this.temperature(),
+      ...(this.modelChoice() === 'classification' ? { temperature: this.temperature() } : {}),
       messages: buildMessageHistory(this.turns()),
       stream: this.streamingEnabled(),
     };

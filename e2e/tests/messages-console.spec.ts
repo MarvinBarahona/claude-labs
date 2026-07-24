@@ -28,6 +28,19 @@ test('is reachable from the nav, nav/docs/banner render, and a non-streamed then
   const transcriptItems = page.locator('[data-testid="transcript-list"] li');
   const inspector = page.locator('app-inspector-panel');
 
+  await test.step('the temperature slider only appears when Haiku is selected, since only Haiku accepts it', async () => {
+    await expect(page.getByLabel('Temperature')).toBeHidden();
+
+    await page.getByRole('radio', { name: 'Haiku' }).check();
+    await expect(page.getByLabel('Temperature')).toBeVisible();
+
+    await page.getByRole('radio', { name: 'Sonnet' }).check();
+    await expect(page.getByLabel('Temperature')).toBeHidden();
+
+    await page.getByRole('radio', { name: 'Opus' }).check();
+    await expect(page.getByLabel('Temperature')).toBeHidden();
+  });
+
   await test.step('a non-streamed send renders the user message right-aligned, the reply left-aligned, and the inspector', async () => {
     await page.getByRole('radio', { name: 'Haiku' }).check();
     await page.getByLabel('System prompt').fill('You are a terse assistant.');
