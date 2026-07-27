@@ -321,7 +321,7 @@ Cover engineering rigor:
 3. [x] **Tools And Workflows**
    - Custom tools, tool loops, routing/chaining/parallelization/evaluator-optimizer.
    - Output: chapters 5-6.
-4. [ ] **Rich Inputs And Hosted Capabilities**
+4. [x] **Rich Inputs And Hosted Capabilities**
    - Files, documents, citations, caching, code execution, skills, web search, MCP, vision.
    - Output: chapters 7-10.
 5. [ ] **Advanced Reasoning And Agents**

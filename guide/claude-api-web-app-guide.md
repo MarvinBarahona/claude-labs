@@ -970,19 +970,476 @@ If the answers are mostly yes, a workflow will usually be more dependable than a
 
 ## 7. Files, Documents, Citations, and Caching
 
-_Drafting note: Document delivery, file state, citations, caching, and follow-up turns._
+Document features combine several concerns that are easy to conflate: moving bytes to Claude, representing a document in a message, grounding claims with citations, retaining conversation state, and avoiding repeated processing. Design each concern explicitly.
+
+### Choose a delivery method independently of document semantics
+
+A supported document can be included inline or uploaded once and referenced by `file_id`. Both approaches ultimately produce a document content block; the difference is how its source reaches the API.
+
+```ts
+type DocumentSource =
+  | { type: "base64"; media_type: "application/pdf"; data: string }
+  | { type: "file"; file_id: string };
+
+function documentBlock(source: DocumentSource, title: string) {
+  return {
+    type: "document" as const,
+    source,
+    title,
+    citations: { enabled: true },
+  };
+}
+```
+
+Inline base64 is simple for a one-off, modest file and works without separately managed file lifecycle. It enlarges every request and repeats transfer when reused. The Files API suits repeated use and code-execution inputs: upload once, retain the returned identifier, and reference it later. It introduces storage lifecycle, platform availability, beta/version requirements, and retention implications. Anthropic's [Files API guide](https://platform.claude.com/docs/en/build-with-claude/files) documents upload, reference, download, and delete behavior (accessed 2026-07-27).
+
+Treat delivery as backend policy, not a frontend serialization task. Validate media type, size, source ownership, and malware policy before upload. Store the original filename only as display metadata; never derive a filesystem path from it.
+
+```ts
+interface ContentBlockBuilder {
+  buildDocument(
+    file: AuthorizedFile,
+    mode: "inline" | "files-api",
+  ): Promise<{ block: DocumentBlock; uploadedFileId?: string }>;
+}
+```
+
+Cache uploaded identifiers by a stable content hash or application file record so a retry does not re-upload the same bytes. Record who owns the file, when it may be deleted, and whether the provider copy must be removed when the user deletes the source.
+
+### Put documents before the question
+
+For PDF analysis, place document blocks before the text instruction in the same user content array. This keeps the reusable prefix stable and follows Anthropic's [PDF guidance](https://platform.claude.com/docs/en/build-with-claude/pdf-support) (accessed 2026-07-27).
+
+```ts
+const firstQuestion = {
+  role: "user" as const,
+  content: [
+    documentBlock(source, safeTitle),
+    { type: "text" as const, text: question },
+  ],
+};
+```
+
+PDFs can contain text, tables, charts, and images, but limits and platform behavior vary. Validate current page, payload, encryption, and model constraints before accepting an upload. Convert unsupported office formats to a supported text or PDF representation, or analyze them through code execution when their tabular structure matters.
+
+### Enable citations as a data contract
+
+Setting `citations.enabled: true` on documents asks Claude to return exact supporting locations alongside text blocks. PDF citations use page ranges; plain text uses character ranges; custom content documents use block ranges. Citation location indices do not all share the same base or end-index convention, so preserve the citation `type` and normalize deliberately.
+
+Anthropic's [citations documentation](https://platform.claude.com/docs/en/build-with-claude/citations) explains the supported document types and location shapes (accessed 2026-07-27).
+
+```ts
+type CitationView = {
+  sourceId: string;
+  title: string | null;
+  quotedText: string;
+  locator:
+    | { kind: "pages"; start: number; endExclusive: number }
+    | { kind: "characters"; start: number; endExclusive: number }
+    | { kind: "blocks"; start: number; endExclusive: number };
+};
+```
+
+Do not treat a citation as proof that the claim is correct. It proves that the response points to supplied source text. Your UI should let users inspect the quoted passage and source location, distinguish sources clearly, and avoid inaccessible hover-only markers.
+
+Citations can produce several text blocks, each with its own supporting references. Preserve that association instead of flattening all citations into one undifferentiated bibliography. If product rendering needs a flat list, also retain a mapping from each displayed claim or paragraph to its citation identifiers.
+
+At the time of writing, citations and JSON structured outputs are incompatible because citations must interleave with text. If the product needs both grounded prose and typed fields, use separate calls or a workflow with a clear handoff rather than forcing them into one response.
+
+### Own multi-turn session state
+
+A document session typically stores:
+
+```ts
+interface DocumentSession {
+  id: string;
+  ownerId: string;
+  sourceRecordId: string;
+  providerFileId?: string;
+  history: ConversationMessage[];
+  createdAt: Date;
+  expiresAt: Date;
+}
+```
+
+On the first question, attach the document and question. On later questions, send the accepted history required for continuity. The backend—not the browser—authorizes the session and decides which document identifier and prior messages belong to it.
+
+Store a resendable form of assistant content. Provider response blocks can contain metadata that is output-only or unsuitable for a later request. Build an explicit `toConversationHistory(response)` transformation, test every supported block type, and retain citations separately for display if the request format does not accept the response annotation unchanged.
+
+In-memory maps are acceptable for a local demonstration, but production sessions need expiration, tenant isolation, concurrency control, and a durable store when multiple instances or restarts matter. Two simultaneous questions against one conversation require serialization or version checks to prevent lost history.
+
+### Cache the stable document prefix
+
+Prompt caching is useful when the same long document or instructions appear across follow-ups. Put `cache_control` at the end of the reusable prefix and resend that identical prefix on subsequent requests. A breakpoint is a request instruction, not a permanent flag stored at the provider.
+
+```ts
+const cachedDocument = {
+  ...documentBlock(source, safeTitle),
+  cache_control: { type: "ephemeral" as const },
+};
+```
+
+The cache processes content in request order; changes before a breakpoint invalidate reuse after that point. Keep timestamps, the current question, and other variable data after the cached prefix. Anthropic's [prompt-caching guide](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) documents supported TTLs, minimum cacheable prefixes, and usage fields; these details vary by model and platform, so do not hard-code assumptions without current verification (accessed 2026-07-27).
+
+Use response usage to distinguish cache creation from cache reads. A configured breakpoint can still produce neither—for example, when the prefix is below the applicable minimum. Measure observed behavior rather than reporting “cached” merely because the request contained `cache_control`.
+
+A stable Files API identifier helps keep request bytes and cache prefixes stable, but file reuse and prompt caching solve different problems: the former avoids uploading bytes again; the latter avoids reprocessing an eligible prompt prefix.
+
+### Failure modes and testing
+
+Handle unsupported type, oversized or encrypted file, failed upload, stale file identifier, provider deletion, extraction failure, session expiry, cache miss, uncitable scan, and a response without usable text. A citation-free answer can be either a valid outcome or a product failure depending on the promise made to users; encode that decision.
+
+Unit tests should cover inline and uploaded sources, upload reuse, document-before-question ordering, citation enablement and normalization, history sanitization, cache-control placement, first versus follow-up requests, delivery-mode changes, session authorization, and expiration. Integration tests should intercept file upload and Messages calls. Frontend tests should render multiple sources and citation types accessibly. Browser tests should ask at least one follow-up to prove session and cache behavior rather than testing only the initial upload.
+
+Production telemetry should include source type, page/byte count, upload reuse, cache read/write tokens, citation count, session age, and failure class while excluding document contents by default.
 
 ## 8. Code Execution and Generated Artifacts
 
-_Drafting note: Dataset upload, sandboxed execution, inspection, downloads, and artifact UI._
+Code execution is useful when a task is better solved by computation than by prose: analyze a dataset, create a chart, transform files, or verify a calculation. Claude writes and runs code inside an Anthropic-managed container, and the response records tool activity and generated files.
+
+This is a server-executed tool. Your backend enables it and interprets its response blocks; it does not run the generated command locally and does not implement a client `tool_result` loop.
+
+### Move data into the container explicitly
+
+A sandbox should not depend on reaching your database or private network. Assemble the smallest authorized dataset on the backend, serialize it to a suitable format, upload it, and attach it with a `container_upload` block.
+
+```ts
+const dataset = Buffer.from(JSON.stringify({ rows: authorizedRows }));
+const uploaded = await claude.uploadFile({
+  bytes: dataset,
+  mediaType: "application/json",
+  filename: "dataset.json",
+});
+
+const request: ClaudeRequest = {
+  model: modelPolicy.forFeature("data-analysis"),
+  max_tokens: 4_000,
+  tools: [{ type: CURRENT_CODE_EXECUTION_TOOL, name: "code_execution" }],
+  messages: [
+    {
+      role: "user",
+      content: [
+        { type: "container_upload", file_id: uploaded.id },
+        { type: "text", text: analysisPrompt },
+      ],
+    },
+  ],
+};
+```
+
+The exact dated tool type and model compatibility are versioned capabilities. Resolve them in backend configuration and validate against Anthropic's current [code execution documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool) rather than copying a dated identifier throughout feature code (accessed 2026-07-27).
+
+Upload data, not credentials. Remove fields the analysis does not require, enforce row and byte limits, and document retention. The Files API is the transport boundary for container inputs and generated outputs; a `document` block intended for Claude to read is not interchangeable with a `container_upload` intended to place a file in the execution environment.
+
+### Treat tool activity as a typed response
+
+A code-execution response can contain explanatory text, server tool-use blocks, execution-result blocks, and output-file references. Parse by block type and pair results using their identifiers rather than relying on array positions.
+
+```ts
+interface ExecutionRecord {
+  command: string;
+  stdout: string;
+  stderr: string;
+  returnCode: number;
+}
+
+interface GeneratedArtifact {
+  fileId: string;
+  filename: string;
+  mediaType: string;
+  sizeBytes: number;
+}
+```
+
+Preserve stdout and stderr separately. A nonempty stderr stream does not always mean the command failed, and an empty stdout does not mean nothing happened. Use the reported return code and result error shape. Bound how much execution output enters your product response or logs; command output can be large and can contain input data.
+
+Code execution may involve several internal steps inside one Messages API call. Keep the distinction between “one API call” and “one executed command” in telemetry.
+
+### Download generated artifacts through the backend
+
+Output references are not user downloads by themselves. The backend should retrieve each allowed file, validate metadata and size, and expose it through an application-owned download route or object store.
+
+```ts
+for (const ref of extractOutputFileReferences(response)) {
+  const file = await claude.downloadFile(ref.fileId);
+  validateGeneratedFile(file);
+  await artifacts.store({
+    ownerId: currentUser.id,
+    sourceTurnId: turnId,
+    filename: sanitizeFilename(file.filename),
+    mediaType: file.mediaType,
+    bytes: file.bytes,
+  });
+}
+```
+
+Avoid embedding large base64 files in a JSON response. A short-lived, authorized download URL scales better and permits malware scanning, content-disposition controls, quotas, and deletion. Render supported images or charts inline only after checking the media type; offer all other files as explicit downloads.
+
+Generated files are untrusted output. Spreadsheet formulas, HTML, archives, and documents can carry active content. Scan or transform them according to product risk, never serve them from a privileged origin without appropriate headers, and do not trust filename extensions over inspected content.
+
+### Add Skills when repetition justifies them
+
+An Agent Skill packages reusable instructions and helper files for the code-execution container. It can standardize a spreadsheet export, report template, or domain-specific transformation. Skills are not needed for a one-off prompt; use them when a maintained capability should be available across many turns.
+
+At a high level:
+
+1. package a `SKILL.md` and required helper files;
+2. register or reference the skill and retain its identifier;
+3. attach that identifier in the request's container configuration; and
+4. enable code execution and required feature headers.
+
+Anthropic's [Agent Skills guide](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) documents current prerequisites and prebuilt/custom skill behavior (accessed 2026-07-27).
+
+Register custom skills during deployment or through a durable provisioning path, not once per application process without persistence. Version skill contents and record the version used by each turn. Making a skill available does not guarantee Claude used it; infer use only from documented execution evidence, and label heuristic detection as such.
+
+A skill is executable supply-chain material. Review helper scripts, pin dependencies where possible, restrict who can publish updates, and test the packaged files in the same runtime shape used in production.
+
+### Design the user experience around a job
+
+Code execution is slower and more failure-prone than a short message. Show distinct states for uploading, analyzing, running code, preparing artifacts, and completion when the backend can report them. Provide cancellation semantics honestly: stopping UI updates is not the same as terminating provider execution.
+
+A useful result view separates:
+
+- the answer or interpretation;
+- commands/code, collapsed by default when aimed at non-developers;
+- stdout, stderr, and return status for debugging audiences; and
+- generated artifacts with filename, type, size, preview, and download action.
+
+Never make a generated chart the only accessible representation of its findings. Include text or a data table, useful alt text, and keyboard-accessible downloads.
+
+### Failure modes and verification
+
+Handle source-data failure, upload failure, unsupported tool/model combination, container timeout, command failure, missing result pair, output too large, failed download, unsafe artifact, and partial success where analysis text exists but artifact creation failed. Decide whether partial artifacts are retained and make that status visible.
+
+Unit tests should verify dataset minimization and serialization, upload and `container_upload` shape, tool selection, block pairing, stdout/stderr mapping, file extraction, size/type policy, download authorization, and optional skill attachment. Integration tests should intercept Files and Messages endpoints and include a realistic generated-file round trip. Frontend tests should cover no-code, failed-code, multiple-command, image-preview, and generic-download states. Browser tests should use deterministic fixtures rather than execute arbitrary live code.
+
+Production telemetry should track upload size, tool version, container duration, command count, return codes, artifact count/bytes, download outcomes, and skill version—without logging dataset contents or generated files by default.
 
 ## 9. Web Search and MCP Connectors
 
-_Drafting note: Hosted tools, MCP, backend tools, structured results, and in-response failures._
+Web search and the MCP connector let Claude reach information through server-executed tools. Your backend declares the tools and reads their activity from the response, while Anthropic executes the tool calls within the Messages request. This differs from a custom tool, where your application must execute a function and return `tool_result` blocks.
+
+### Choose the execution boundary first
+
+Use hosted web search when the product needs current public-web information and Anthropic's search behavior fits the trust and cost model. Use an MCP connector when an existing remote MCP server exposes the needed data or actions through a standard tool interface. Use a custom backend tool when access must pass through application-specific authorization, private infrastructure, transactional code, or a result contract you control.
+
+The fact that a tool is server-executed does not make it automatically safe. Your backend still chooses which tool versions, domains, MCP servers, and individual operations are available.
+
+### Configure web search as bounded research
+
+```ts
+const webSearchTool = {
+  type: CURRENT_WEB_SEARCH_TOOL,
+  name: "web_search",
+  max_uses: 5,
+  allowed_domains: ["standards.example.org", "docs.example.com"],
+};
+```
+
+Use `max_uses` to bound search work and latency. Apply `allowed_domains` when the feature promises research from an approved corpus; use `blocked_domains` for narrower exclusions, but not both in one request. Domain policy should be ASCII-normalized and reviewed against organization-level restrictions.
+
+Tool versions have meaningful differences, including dynamic filtering and response-inclusion behavior. Select one centrally and review its model, retention, and caller compatibility. Anthropic's [web search tool guide](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool) and [server-tools guide](https://platform.claude.com/docs/en/agents-and-tools/tool-use/server-tools) describe the current options and result/error blocks (accessed 2026-07-27).
+
+A `max_uses_exceeded` result is an in-response tool error, not necessarily an HTTP failure. Decide whether the model can still produce a useful partial answer and tell users when the research budget limited coverage.
+
+### Connect MCP servers with least privilege
+
+For the Messages API, an MCP request declares a named remote server and adds an `mcp_toolset` referring to that name.
+
+```ts
+const request: ClaudeRequest = {
+  model,
+  max_tokens: 3_000,
+  mcp_servers: [
+    {
+      type: "url",
+      name: "knowledge",
+      url: config.approvedMcpUrl,
+      authorization_token: resolvedToken,
+    },
+  ],
+  tools: [
+    webSearchTool,
+    {
+      type: "mcp_toolset",
+      mcp_server_name: "knowledge",
+      default_config: { enabled: false },
+      configs: {
+        search_docs: { enabled: true },
+        read_doc: { enabled: true },
+      },
+    },
+  ],
+  messages: [{ role: "user", content: question }],
+};
+```
+
+Keep MCP credentials in backend configuration or a secrets system and never return them in traces. Allowlist required operations instead of enabling everything a server may add later. Separate read-only research from write-capable MCP tools, and require application or human confirmation for consequential actions.
+
+MCP is also a trust boundary. The remote operator controls tool descriptions, results, availability, and possibly newly exposed tools. Review the server, pin or govern its URL, restrict egress and tools, set timeouts, and treat returned content as untrusted. Anthropic's [Messages API MCP connector documentation](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector) covers server and toolset configuration (accessed 2026-07-27).
+
+### Read server-tool activity from content blocks
+
+A typical response can interleave:
+
+- `server_tool_use` and a matching web-search result;
+- `mcp_tool_use` and an MCP result;
+- final text; and
+- citations or structured content where compatible.
+
+Do not create a client-tool loop merely because tool activity appears. Completed server tools include their results in the provider-managed turn. However, mixed client and server tool calls require care: a waiting client `tool_use` can defer a server result until your next request. Handle stop reasons and unmatched result identifiers according to the current server-tool continuation contract.
+
+```ts
+const searchesPerformed = response.content.filter(
+  (block) => block.type === "server_tool_use" && block.name === "web_search",
+).length;
+
+const mcpCallsPerformed = response.content.filter(
+  (block) => block.type === "mcp_tool_use",
+).length;
+```
+
+Counts are useful operational metadata, not proof of research quality. Preserve result error blocks and surface partial coverage. An MCP-side failure or search-limit error may appear inside an otherwise successful HTTP response.
+
+### Combine research with a product contract
+
+For a machine-rendered brief, structured output can constrain the final answer while server tools gather evidence, subject to current feature compatibility.
+
+```ts
+const briefSchema = {
+  type: "object",
+  properties: {
+    summary: { type: "string" },
+    findings: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          claim: { type: "string" },
+          sourceUrl: { type: "string" },
+        },
+        required: ["claim", "sourceUrl"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["summary", "findings"],
+  additionalProperties: false,
+} as const;
+```
+
+A source URL generated into JSON is not equivalent to an API citation. Validate URL schemes, render external links safely, and consider a prose-with-native-citations call when verifiable claim-to-source grounding matters more than a strict JSON shape. As noted earlier, native citations and JSON structured outputs are currently incompatible.
+
+For high-stakes research, define source quality rules, date expectations, conflict handling, and a user-visible “insufficient evidence” outcome. Search breadth is not a substitute for evaluation.
+
+### Handle continuation, errors, and streaming
+
+Server-side tool loops can return a pause stop reason. Continue only under an application cap, preserving the required assistant content and tool definitions. Distinguish:
+
+- request/transport failure;
+- server-tool result error;
+- MCP connection or authentication failure;
+- research cap reached;
+- partial answer with failed sources; and
+- valid answer with no tool use.
+
+When streaming, forward user-meaningful search/MCP activity without exposing credentials or sensitive arguments. Accumulate every supported provider block and wait for the terminal envelope before treating the brief as canonical.
+
+### Test and operate research connectors
+
+Unit tests should assert the selected tool versions, search caps, domain policy, MCP URL/name mapping, allowlisted tools, secret exclusion, structured schema, activity counters, result errors, pause handling, and no unnecessary custom-tool loop. Integration tests should intercept the Messages request and use fixtures containing successful and failed web/MCP result blocks. Frontend tests should render safe external links, activity counts, partial-result warnings, and no-result states.
+
+Production telemetry should include tool version, searches and MCP calls, domains contacted when available, result-error types, pause continuations, latency, and usage. Monitor remote MCP schema changes and tool additions as dependency changes, not ordinary runtime noise.
 
 ## 10. Vision Features
 
-_Drafting note: Image blocks, comparison, delivery, limits, previews, and result handling._
+Vision features send one or more images as typed content blocks alongside a text instruction. Useful products are narrower than “describe this image”: compare two versions, extract visible attributes for review, explain a chart, inspect damage, or answer questions about a screenshot.
+
+### Build image inputs on the backend
+
+Claude accepts supported images through base64, URL, or Files API references, depending on platform. As with documents, keep source fetching and authorization on the backend.
+
+```ts
+type ImageSource =
+  | { type: "base64"; media_type: ImageMediaType; data: string }
+  | { type: "url"; url: string }
+  | { type: "file"; file_id: string };
+
+function imageBlock(source: ImageSource) {
+  return { type: "image" as const, source };
+}
+```
+
+For user uploads or private images, fetch or receive bytes through an application-controlled path, verify the actual media type, decode dimensions, strip unnecessary metadata when policy requires it, and reject unsupported or oversized files before calling Claude. Do not let the model or browser turn an arbitrary URL into unrestricted backend fetching; apply SSRF protections and an allowlist where remote URLs are accepted.
+
+Inline base64 is convenient for a one-off image. Files API references reduce repeated payload size in multi-turn conversations. URL sources avoid transfer through your service only when the image is safely and reliably public. Anthropic's [vision guide](https://platform.claude.com/docs/en/build-with-claude/vision) documents current source types, formats, limits, and cost behavior (accessed 2026-07-27).
+
+### Put images before the instruction
+
+Place images before the question when practical. For several images, add short stable labels so the prompt and response can refer to them unambiguously.
+
+```ts
+const content = images.flatMap((image, index) => [
+  { type: "text" as const, text: `Image ${index + 1}:` },
+  imageBlock(image.source),
+]);
+
+content.push({
+  type: "text",
+  text: "Compare the visible layout changes. Report only differences you can observe.",
+});
+```
+
+Retain an application-side mapping from label to source record. Do not rely on filenames or ordering reconstructed from the model response. In the UI, show the same labeled thumbnails next to the result so users can verify which inputs were analyzed.
+
+### Design comparison as one joint request
+
+When the task depends on relationships among images, send them in one request. Separate calls followed by text aggregation lose direct visual comparison and can produce incompatible descriptions. Ask for the exact comparison axes needed by the product—layout, color, visible text, missing components—rather than an unrestricted narrative.
+
+Structured output can help when code consumes detected fields, but schema validity does not guarantee visual accuracy. For coordinates, preserve the dimensions of the image Claude actually sees and follow the current resizing guidance; coordinates against a resized image do not automatically map to the original.
+
+### Enforce current limits before the API
+
+Image count, dimensions, encoded size, request size, model resolution, and partner-platform limits can all apply. These values evolve. Keep them in validated configuration sourced from current provider documentation, and return a user-correctable validation error before upload or inference.
+
+As of the access date, Anthropic documents an 8000-by-8000 maximum per image and a stricter per-image rule for API requests containing more than 20 images; it recommends keeping dimensions at or below 2000 pixels to remain portable across platforms for many-image requests. Recheck before release rather than treating these numbers as permanent.
+
+Large images may be downscaled before inference, affecting small text and coordinates. Pre-resize when full resolution is unnecessary, and inspect the actual transformed image in tests. Compression reduces payload latency but can damage OCR and fine detail.
+
+```ts
+interface PreparedImage {
+  sourceRecordId: string;
+  mediaType: ImageMediaType;
+  width: number;
+  height: number;
+  byteLength: number;
+  source: ImageSource;
+}
+```
+
+Expose derived metadata such as “resized before analysis” or “many-image limit applied” from your own preparation pipeline. The model response is not the authority for what bytes or dimensions were sent.
+
+### Render sources and uncertainty together
+
+A vision result should include source thumbnails, labels, the model answer, and relevant transformations. Preserve aspect ratio and provide useful alt text based on known source metadata rather than using the model answer as the image alternative.
+
+Vision is not precise measurement by default. Counting, fine spatial localization, tiny text, identity, synthetic-image detection, and specialized medical imagery have important limitations. Phrase the product promise accordingly, show uncertainty where it affects decisions, and require human verification for high-stakes outcomes.
+
+When streaming a prose answer, reuse the terminal-event contract from Chapter 3. Image upload and preprocessing occur before model deltas, so expose an explicit preparing state. A cancelled browser request should clean up temporary files according to policy even if provider work cannot be stopped immediately.
+
+### Security and privacy
+
+Images can contain faces, documents, location clues, screens, access tokens, and other sensitive information. Define collection purpose, retention, deletion, and human-access policy. Remove EXIF data when it is not required. Never log base64 image bodies, signed URLs, or extracted text by default.
+
+Treat visible text in images as untrusted input. A screenshot can contain prompt-injection instructions just as a web page can. Tool permissions and application policy must remain independent of anything Claude reads in an image.
+
+### Failure modes and testing
+
+Handle unsupported format, corrupt decode, animated input, excessive dimensions or bytes, too many images, source-fetch timeout, fewer images than the workflow requires, provider rejection, answer without text, and partial upload cleanup. Do not silently compare fewer images than the user selected; that changes the task.
+
+Unit tests should cover every source mode, content ordering and labels, media sniffing, dimension/count boundaries, preprocessing metadata, multi-image request shape, stop reasons, and streaming terminal behavior. Integration tests should intercept image fetch/upload and Messages calls without embedding sensitive fixtures. Frontend tests should render ordered thumbnails, preparation and analysis states, transformation warnings, accessible results, and failures. Browser tests should include one single-image task and one true comparison.
+
+Evaluate vision quality on a representative labeled set, including difficult lighting, blur, rotation, small text, and near-duplicate images. Production telemetry should record image count, dimensions, bytes, preparation transforms, model profile, latency, usage, and failure class while keeping image content out of ordinary logs.
 
 ## 11. Extended Thinking
 
