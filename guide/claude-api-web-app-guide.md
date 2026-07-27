@@ -335,11 +335,284 @@ Prompts, tool arguments, documents, and outputs may contain sensitive data. Defa
 
 ## 3. Foundations: Messages API in a Web Application
 
-_Drafting note: Messages, system prompts, model configuration, streaming, and terminal errors._
+The Messages API is the foundation beneath the richer patterns in this guide. It accepts conversational turns and returns the next assistant message. The API is stateless: your application supplies the relevant history on every request. That fact determines where conversation state lives, how it is authorized, and how its size is controlled.
+
+Anthropic's [Messages API reference](https://platform.claude.com/docs/en/api/messages/create) documents single-turn and stateless multi-turn requests. It also makes an easy-to-miss distinction: a system prompt belongs in the top-level `system` parameter, not in a message with a `system` role. (Accessed 2026-07-27.)
+
+### Start with an application endpoint
+
+Do not accept an arbitrary provider request from the browser. Define the choices your product supports and construct the Claude request on the backend.
+
+```ts
+interface SendTurnInput {
+  conversationId: string;
+  text: string;
+  stream: boolean;
+}
+
+async function buildRequest(input: SendTurnInput): Promise<ClaudeRequest> {
+  const history = await conversations.getAuthorizedHistory(
+    input.conversationId,
+    currentUser.id,
+  );
+
+  return {
+    model: modelPolicy.forFeature("support-assistant"),
+    max_tokens: 1_200,
+    system: SUPPORT_SYSTEM_PROMPT,
+    messages: [
+      ...history,
+      { role: "user", content: [{ type: "text", text: input.text }] },
+    ],
+  };
+}
+```
+
+The endpoint owns authorization, model configuration, token budgets, and the system prompt. The browser supplies user intent and interaction preferences—not arbitrary model identifiers, system instructions, or tool definitions unless those are intentionally user-configurable product features.
+
+### Treat history as server-validated state
+
+For a prototype, the browser can send the visible transcript. In a product, prefer a conversation identifier and backend-owned history when messages affect permissions, billing, auditability, or later actions. A client-supplied transcript can be edited, omit prior instructions, or include content the current user is not entitled to submit.
+
+Before every call:
+
+- authorize access to the conversation;
+- validate new content;
+- select only history required for the turn;
+- preserve content-block types needed by later tool or citation flows; and
+- enforce context and cost budgets through truncation, summarization, retrieval, or a combination.
+
+Do not flatten every assistant message to text if later turns need non-text blocks. Conversely, do not persist and resend all response metadata blindly. Store a deliberate conversational representation.
+
+### Centralize model configuration
+
+Model names and supported parameters change. Resolve a product-level choice such as `fast`, `balanced`, or `deep-analysis` through backend configuration rather than scattering identifiers across features.
+
+```ts
+const profile = modelProfiles.get("balanced");
+const request: ClaudeRequest = {
+  model: profile.model,
+  max_tokens: profile.maxTokens,
+  ...(profile.temperature === undefined
+    ? {}
+    : { temperature: profile.temperature }),
+  system,
+  messages,
+};
+```
+
+Only send parameters supported by the selected model and feature combination. Omitting an unsupported or unnecessary field is safer than forwarding a generic settings object. Record the resolved configuration in telemetry so a later model migration can be evaluated.
+
+### Implement the non-streaming path first
+
+The blocking path establishes request construction, response parsing, usage mapping, and error translation with the fewest moving parts.
+
+```ts
+async function completeTurn(input: SendTurnInput): Promise<TurnEnvelope<string>> {
+  const request = await buildRequest(input);
+  const response = await claude.createMessage(request);
+  const text = response.content
+    .filter((block): block is TextBlock => block.type === "text")
+    .map((block) => block.text)
+    .join("");
+
+  await conversations.appendCompletedTurn(input.conversationId, input.text, response);
+  return buildEnvelope(text, request, response);
+}
+```
+
+Never assume `content[0]` is text. Content is a typed block array, and later features introduce more block types. Decide whether multiple text blocks should be concatenated, rendered separately, or rejected for a particular contract. Inspect `stop_reason` before treating the result as complete; a token-limit stop is not a natural end.
+
+### Add streaming for user-perceived progress
+
+Streaming helps when users benefit from reading an answer as it arrives. It adds protocol and state complexity, so a short classification or extraction may be clearer as one atomic result.
+
+Claude streams Messages responses as Server-Sent Events. The sequence begins with `message_start`, opens each indexed content block, emits deltas, closes the block, reports message deltas, and ends with `message_stop`. Streams may contain `ping`, error, and future event types, so consumers must tolerate events they do not use. See Anthropic's [streaming guide](https://platform.claude.com/docs/en/build-with-claude/streaming) (accessed 2026-07-27).
+
+```ts
+async function streamTurn(input: SendTurnInput, writer: EventWriter) {
+  const request = await buildRequest(input);
+  const accumulator = new MessageAccumulator();
+
+  try {
+    for await (const event of claude.streamMessage(request)) {
+      accumulator.accept(event);
+      if (event.type === "content_block_delta" &&
+          event.delta.type === "text_delta") {
+        writer.send({ type: "text_delta", text: event.delta.text });
+      }
+      // Ignore unknown events for rendering, but retain them in an authorized trace.
+    }
+
+    const response = accumulator.finalMessage();
+    await conversations.appendCompletedTurn(input.conversationId, input.text, response);
+    writer.send({
+      type: "turn_complete",
+      envelope: buildEnvelope(extractText(response), request, response),
+    });
+  } catch (error) {
+    writer.send({ type: "turn_error", error: toPublicError(error) });
+  }
+}
+```
+
+The accumulator must reconstruct every supported content block and top-level delta, not only visible text. Official SDK accumulation helpers are a good choice when they fit the adapter. A public frontend contract should normally translate provider events into stable application events so it can also represent custom-tool activity and terminal outcomes.
+
+### Parse browser streams incrementally
+
+Network chunks do not align with SSE frames. One chunk can contain half an event or several events. Keep an unfinished buffer between reads, split only on complete frame delimiters, and parse `event:` and `data:` fields independently.
+
+```ts
+for await (const frame of decodeSseFrames(response.body)) {
+  const event = parseAppEvent(frame);
+  switch (event.type) {
+    case "text_delta":
+      provisionalText += event.text;
+      renderProvisional(provisionalText);
+      break;
+    case "turn_complete":
+      applyCanonicalResult(event.envelope);
+      break;
+    case "turn_error":
+      showRecoverableError(event.error);
+      break;
+  }
+}
+```
+
+Treat streamed text as provisional until `turn_complete`. The terminal envelope may include normalized content, citations, warnings, and final usage that cannot be known from deltas alone.
+
+### Failure modes and resilience
+
+Before streaming starts, failures can use non-2xx HTTP responses. After bytes have been sent, errors must travel through the stream. Anthropic can also emit an API error as an SSE event.
+
+Account for browser cancellation, proxy buffering and idle timeouts, a connection ending without a terminal event, duplicate submissions, persistence failure after generation, and unknown future events. Use an idempotency or client-turn identifier when a retry could duplicate transcript entries or side effects. Do not retry a partially streamed generation invisibly: a second answer may differ.
+
+### Testing the Messages foundation
+
+Unit tests should prove request construction, top-level system-prompt placement, model resolution, history ordering, content-block extraction, stop-reason handling, and provider-error translation. Integration tests should intercept the SDK HTTP call and verify normal responses, API errors, and streamed reconstruction. Frontend tests should split frames across arbitrary chunks, combine frames, cover unknown events, and assert that only completion commits the canonical answer. Browser tests should exercise pending, streaming, completed, cancelled, and failed states against deterministic responses.
+
+In production, measure time to first content, time to completion, cancellation rate, stop reasons, usage, and error class. These reveal different problems; total latency alone does not.
 
 ## 4. Structured Outputs
 
-_Drafting note: Schema constraints, parsing, validation, rendering, and malformed responses._
+Free text is appropriate when a person will interpret the answer. When application code needs fields, enums, arrays, or nested records, use structured output. Prompting Claude to “return JSON” is not the same guarantee: malformed JSON, missing fields, and inconsistent types remain possible.
+
+Claude's JSON outputs constrain the response with a schema supplied at `output_config.format`. This differs from strict tool use: JSON outputs constrain Claude's direct response, while `strict: true` constrains tool names and inputs. Anthropic documents both under [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) (accessed 2026-07-27).
+
+### Choose structured output when code owns the next step
+
+Good uses include extraction, classification, routing decisions, form suggestions, and machine-rendered reports. Prefer free text when structure would merely wrap one prose answer or encode an unstable product concept prematurely.
+
+A schema is an application contract. Keep it small, version it deliberately, and name fields for domain meaning rather than UI placement. Do not make every property optional “for flexibility”; that pushes ambiguity into every consumer.
+
+```ts
+const triageSchema = {
+  type: "object",
+  properties: {
+    summary: { type: "string" },
+    priority: { type: "string", enum: ["low", "normal", "urgent"] },
+    actionItems: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+  required: ["summary", "priority", "actionItems"],
+  additionalProperties: false,
+} as const;
+
+interface TriageResult {
+  summary: string;
+  priority: "low" | "normal" | "urgent";
+  actionItems: string[];
+}
+```
+
+`additionalProperties: false` keeps the provider contract aligned with the application type. Consult current documentation before using advanced schema features because structured outputs support JSON Schema with documented limitations.
+
+### Build, parse, and validate the request
+
+```ts
+async function triage(text: string): Promise<TurnEnvelope<TriageResult>> {
+  const request: ClaudeRequest = {
+    model: modelPolicy.forFeature("ticket-triage"),
+    max_tokens: 800,
+    system: "Extract ticket facts. Do not invent unsupported actions.",
+    messages: [{ role: "user", content: text }],
+    output_config: {
+      format: {
+        type: "json_schema",
+        schema: triageSchema,
+      },
+    },
+  };
+
+  const response = await claude.createMessage(request);
+  assertStructuredCompletion(response);
+  const textBlock = response.content.find(
+    (block): block is TextBlock => block.type === "text",
+  );
+  if (!textBlock) throw new InvalidModelResponse("Missing structured text block");
+
+  const parsed: unknown = JSON.parse(textBlock.text);
+  const result = validateTriageResult(parsed);
+  return buildEnvelope(result, request, response);
+}
+```
+
+Schema-constrained output strengthens the provider response, but runtime validation remains useful at your trust boundary. It protects against integration regressions, unsupported stop conditions, accidental calls without the schema, and later application changes. Generate the TypeScript type, schema, and validator from one source when your tooling supports it; otherwise test that they stay aligned.
+
+Some SDKs provide parsing helpers that derive or accept a runtime schema. They reduce boilerplate, but keep their use behind `ClaudeClient` so features stay testable and provider setup remains centralized.
+
+### Handle valid HTTP responses that are not valid results
+
+Schema compliance does not override every termination condition. Anthropic documents two important exceptions:
+
+- a safety refusal returns HTTP 200 with `stop_reason: "refusal"`, and its text may not match the requested schema;
+- a response stopped at `max_tokens` may contain incomplete JSON.
+
+Check the stop reason before parsing. Treat refusal as a product-level outcome with appropriate UI language, not a parser defect. Treat truncation as incomplete generation; retry only under an explicit cap and when a larger output budget is appropriate.
+
+```ts
+function assertStructuredCompletion(response: ClaudeMessage): void {
+  if (response.stop_reason === "refusal") {
+    throw new ModelRefusal(extractDisplayableText(response));
+  }
+  if (response.stop_reason === "max_tokens") {
+    throw new IncompleteModelResponse("Structured result reached its token limit");
+  }
+}
+```
+
+Keep distinct internal failures for absent text, JSON parsing, and runtime validation. They may share a safe user message, but separate telemetry codes make configuration bugs visible.
+
+### Render domain data, not JSON
+
+The frontend should consume `TriageResult`, not parse the provider response. Render fields using ordinary components: a priority badge, summary region, and action list. Define empty states for valid empty arrays. Preserve the original input on failure and make retry behavior explicit.
+
+Do not expose raw JSON as the primary interface unless the product is a developer tool. A structured-output feature succeeds when users see a stable domain object, not when they see that the model followed a schema.
+
+### Decide deliberately whether to stream
+
+Structured outputs can be streamed, but individual text deltas contain incomplete JSON. Do not repeatedly call `JSON.parse` on the growing string and treat parser errors as exceptional. Show a generating state and parse after completion, use an SDK-supported partial parser for a carefully designed progressive UI, or choose non-streaming when the result is small.
+
+For most forms and classifications, an atomic result is simpler and avoids fields appearing with values that later change. Streaming is more useful for large structured reports where progressive sections materially improve the experience.
+
+### Performance, caching, and compatibility
+
+Anthropic compiles schemas into grammars. The first request for a schema can add latency, while compiled grammars are cached; changing schema structure or the tool set can invalidate that cache. Structured output also adds formatting instructions to the prompt and affects input tokens. Measure cold and warm behavior separately.
+
+Do not place personal or sensitive values in property names, enums, constants, or patterns. Schemas are operational definitions and may be cached differently from message content. Put user data in messages, not dynamically generated schema labels.
+
+Compatibility matters. At the time of writing, Anthropic documents JSON outputs as incompatible with citations and message prefilling. Recheck before combining capabilities, and keep volatile support claims close to authoritative references rather than encoding them as timeless architecture.
+
+### Testing structured output
+
+Unit tests should assert the exact schema, selected model, token budget, domain mapping, and distinct paths for refusal, truncation, missing text, malformed JSON, and validation failure. Although constrained decoding should prevent ordinary schema violations, negative tests protect the adapter and fakes.
+
+Integration tests should intercept the real SDK request and verify the `output_config.format` wire shape. Frontend tests should render every enum and empty-list state, show safe errors, and never depend on raw provider blocks. Contract fixtures should include stop reason and usage so tests exercise the whole envelope.
+
+In production, track schema version, cold/warm latency, stop reason, validation outcome, and retry count. Evaluate semantic correctness separately from structural validity: a perfectly valid `priority: "urgent"` can still be the wrong classification.
 
 ## 5. Custom Backend Tools
 

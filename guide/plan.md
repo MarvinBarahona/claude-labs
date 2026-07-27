@@ -315,7 +315,7 @@ Cover engineering rigor:
    - Initialize `guide/claude-api-web-app-guide.md` with the complete heading structure and publication metadata before drafting chapters.
    - Define audience, thesis, terminology, and app architecture.
    - Output: intro plus architecture chapter.
-2. [ ] **Core Claude API Features**
+2. [x] **Core Claude API Features**
    - Messages, streaming, structured output.
    - Output: chapters 3-4 with portable snippets.
 3. [ ] **Tools And Workflows**
