@@ -339,7 +339,7 @@ Prompts, tool arguments, documents, and outputs may contain sensitive data. Defa
 
 The Messages API is the foundation beneath the richer patterns in this guide. It accepts conversational turns and returns the next assistant message. The API is stateless: your application supplies the relevant history on every request. That fact determines where conversation state lives, how it is authorized, and how its size is controlled.
 
-Anthropic's [Messages API reference](https://platform.claude.com/docs/en/api/messages/create) documents single-turn and stateless multi-turn requests. It also makes an easy-to-miss distinction: a system prompt belongs in the top-level `system` parameter, not in a message with a `system` role. (Accessed 2026-07-27.)
+Anthropic's [Messages API reference](https://platform.claude.com/docs/en/api/messages/create) documents single-turn and stateless multi-turn requests. It also makes an easy-to-miss distinction: your system prompt belongs in the top-level `system` parameter, not in the first message. Some current models additionally accept a `system`-role message later in the array, as an operator channel for instructions that arrive mid-conversation. Treat that as a model-specific capability to verify rather than as an alternative home for the system prompt itself. (Accessed 2026-07-27.)
 
 ### Start with an application endpoint
 
