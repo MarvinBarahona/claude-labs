@@ -488,7 +488,7 @@ Treat streamed text as provisional until `turn_complete`. The terminal envelope 
 Capture: Messages Console after a completed streamed second turn, with the streaming control enabled and the inspector's stream-events section expanded.
 Setup: Use fake mode. Set the system prompt to "You are a terse assistant.", send "Hello there", enable "Stream response", then send "Second message".
 Frame: Include the conversation's two turns, the enabled streaming control, and enough of the inspector to show deltas followed by turn_complete. Exclude the navigation, inline lab documentation, browser chrome, and any unrelated raw payload fields.
-File: guide/assets/streaming-provisional-to-terminal.png
+File: assets/streaming-provisional-to-terminal.png (relative to this document, which lives in guide/)
 Alt: Two-turn message interface beside an event trace that ends with turn_complete after streamed text deltas.
 Caption: Figure 1. A development view makes provisional streaming and the terminal application event visible; a production interface would normally hide the raw trace.
 Purpose: Show the transferable distinction between incremental display state and the canonical terminal result.
@@ -787,7 +787,7 @@ Expose a user-safe label rather than raw arguments when inputs may be sensitive.
 Capture: Live Tool-Use Console after a completed streamed repository-statistics question, with Tool Activity and the inspector's multi-call history visible.
 Setup: Use fake mode. Enable "Stream response", ask "What are the latest repo stats?", and wait for the final answer.
 Frame: Include the question/answer, resolved tool-activity item, and the inspector portion showing the tool-use call followed by the final call. Exclude the navigation, inline lab documentation, browser chrome, configured repository name if it is sensitive, and verbose payload fields not needed to see ordering.
-File: guide/assets/custom-tool-loop-and-trace.png
+File: assets/custom-tool-loop-and-trace.png (relative to this document, which lives in guide/)
 Alt: Tool-use interface showing a resolved backend tool activity and an ordered two-call trace ending in an answer.
 Caption: Figure 2. The product can expose safe activity while protected tooling retains the complete tool-use and tool-result trajectory.
 Purpose: Illustrate the separation between user-safe progress, backend execution, and an immutable multi-call trace.
@@ -994,7 +994,7 @@ If the answers are mostly yes, a workflow will usually be more dependable than a
 Capture: Workflow Gallery after the fake-mode issue finishes, showing the route, final draft, criterion results, iteration count, and pass state.
 Setup: Use fake mode. Open Workflow Gallery, keep the automatically selected issue, select Run, and wait for completion.
 Frame: Include only the interactive result panel from the issue selector through the grading and iteration summary. Exclude navigation, inline lab documentation, browser chrome, and the raw inspector payload.
-File: guide/assets/fixed-workflow-result.png
+File: assets/fixed-workflow-result.png (relative to this document, which lives in guide/)
 Alt: Workflow result displaying a routed category, refined draft, three grading criteria, iteration count, and final pass state.
 Caption: Figure 3. A fixed workflow exposes stage outcomes and termination criteria instead of presenting a multi-call pipeline as one opaque answer.
 Purpose: Show how routing, chaining, parallel evaluation, and a capped optimizer become legible product state.
@@ -1082,7 +1082,7 @@ At the time of writing, citations and JSON structured outputs are incompatible b
 Capture: Document Research Assistant after a cited first answer, with one citation disclosure open and the running-notes panel visible.
 Setup: Use fake mode. Start a session with arXiv ID 2301.00234, ask "What is this paper about?", wait for completion, then activate one citation marker to reveal its quoted text and page range.
 Frame: Include the paper title, question and answer, open citation disclosure, and notes panel. Exclude navigation, inline lab documentation, inspector payloads, browser chrome, and any source URL or metadata not needed for the citation relationship.
-File: guide/assets/cited-document-answer.png
+File: assets/cited-document-answer.png (relative to this document, which lives in guide/)
 Alt: Document question-answer interface with an answer citation expanded to show quoted source text and pages, alongside structured running notes.
 Caption: Figure 4. Citation UX keeps the supporting passage attached to the claim and available without relying on hover.
 Purpose: Demonstrate accessible claim-to-source inspection and the distinction between grounded prose and separately maintained structured state.

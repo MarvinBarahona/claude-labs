@@ -11,13 +11,13 @@ The story flow: start from a conventional web app architecture, introduce a back
 - Write the finished guide as `guide/claude-api-web-app-guide.md`.
 - Treat that file as the canonical publication source and keep it self-contained so it can be read directly in a Markdown viewer or converted to PDF without requiring this repository, its application, or its internal documentation.
 - Use repository examples only as evidence and inspiration. Reproduce all context needed to understand an example inside the guide, using portable snippets, diagrams, and explanations rather than links to local source files.
-- Keep images and other publication assets under `guide/assets/` and reference them with relative paths that work in both Markdown rendering and the PDF toolchain.
+- Keep images and other publication assets under `guide/assets/` and reference them from the guide with paths relative to the guide itself, such as `assets/example.png`. The guide lives in `guide/`, so a repo-root-relative `guide/assets/...` path would not resolve when the document is opened directly in a Markdown viewer.
 - Screenshots will be captured from the application manually. While drafting, leave a searchable `SCREENSHOT TODO` placeholder at the exact insertion point instead of inventing, embedding, or automatically generating an application screenshot.
 - Every screenshot placeholder must specify:
   - the application page, feature, and state to capture
   - any setup data or interaction required to reach that state
   - the UI region that should be visible and anything sensitive or irrelevant to exclude
-  - the proposed filename under `guide/assets/`
+  - the proposed filename, given as an `assets/`-relative path
   - draft alt text and caption
   - the transferable idea the screenshot supports
 - Keep a screenshot checklist in the guide's drafting notes or as Markdown comments near the placeholders so the captures can be produced and inserted in one manual pass.
@@ -308,6 +308,7 @@ Cover engineering rigor:
 
 - Add dated entries here when the plan changes during drafting.
 - 2026-07-27: Moved the plan to `guide/plan.md`, established `guide/` as the publication workspace, and added progress-tracking requirements.
+- 2026-07-27: Changed the asset reference convention from repo-root-relative `guide/assets/...` to guide-relative `assets/...`. The guide lives in `guide/`, so the old convention produced image paths that would not resolve when the document is opened directly. Assets still live under `guide/assets/`; only how the guide references them changed.
 
 ## Writing Sessions
 
@@ -341,7 +342,7 @@ Cover engineering rigor:
    - Align tone for senior engineers and remove extended explanations of foundational web-security or application-development facts.
    - Select screenshots only when they teach a transferable idea.
    - Add a `SCREENSHOT TODO` at each intended image location with capture state, framing, filename, alt text, caption, and teaching purpose for the user to fulfill manually.
-   - After screenshots are supplied, insert them with relative `guide/assets/` paths and retain accessible alt text and useful captions.
+   - After screenshots are supplied, insert them with relative `assets/` paths and retain accessible alt text and useful captions.
 9. [ ] **Technical And Publication Review**
    - Validate all code and request/response examples against the cited API documentation.
    - Verify that claims, limits, and model-specific behavior are cited and dated where they may change.
@@ -364,7 +365,7 @@ Cover engineering rigor:
   Capture: [page/feature and exact UI state]
   Setup: [data and interactions required]
   Frame: [what to include and exclude]
-  File: guide/assets/[descriptive-name].png
+  File: assets/[descriptive-name].png
   Alt: [draft accessible alternative text]
   Caption: [draft figure caption]
   Purpose: [transferable concept illustrated]
