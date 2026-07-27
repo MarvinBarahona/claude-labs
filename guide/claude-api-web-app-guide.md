@@ -1970,38 +1970,385 @@ Before calling a feature ready, confirm:
 
 ## Putting It Together
 
-_Drafting note: One representative end-to-end feature and a pattern decision guide._
+The preceding patterns are most useful when composed around one user outcome. Consider a support-response assistant for a complex customer case. An agent could be given broad access and told to “resolve the case,” but the useful steps are known well enough to build a controlled workflow.
+
+### Representative feature: grounded support response
+
+The user selects a case, adds a question, and requests a draft response. The product must use authorized account data and policy documents, show sources for policy claims, evaluate the draft, and require human review before anything is sent.
+
+```text
+Browser
+  |  case ID + instruction
+  v
+Backend authorization and validation
+  |-- load case metadata and document identifiers
+  |-- route case with structured output
+  |-- fetch account facts through application clients
+  |-- draft against citable policy documents
+  |-- evaluate draft with structured output
+  `-- return answer, citations, grades, usage, and trace ID
+  v
+Human review UI
+  |-- inspect sources and warnings
+  `-- edit or approve through a separate application action
+```
+
+The feature is a fixed workflow because routing, evidence gathering, drafting, grading, and approval are known stages. Claude supplies judgment inside those stages; it does not decide whether authorization or approval is required.
+
+### 1. Accept an application request
+
+```ts
+interface DraftSupportResponseInput {
+  caseId: string;
+  instruction: string;
+  stream: boolean;
+  clientTurnId: string;
+}
+```
+
+The browser does not supply account identifiers, model names, system prompts, policy file IDs, or tools. The backend authorizes the case, resolves tenant-scoped context, checks the idempotency identifier, and rejects empty or excessive input before any model call.
+
+The UI immediately renders a stable pending region. If streaming is enabled, it connects through a POST response-body stream and waits for application events rather than provider-specific UI logic.
+
+### 2. Route with structured output
+
+A small classification call selects `billing`, `technical`, `account`, or `other`. The schema is closed, runtime-validated, and paired with a safe fallback. Routing uses the least expensive model profile that meets an evaluated accuracy threshold.
+
+The route controls which data clients and policy corpus are eligible. It does not alter the user's permissions.
+
+### 3. Gather facts through deterministic code and narrow tools
+
+Known case metadata should be loaded with ordinary backend clients before drafting; no model call is needed to retrieve a record the application already knows it requires. If the draft sometimes needs optional facts, offer read-only custom tools such as `lookup_invoice` or `get_service_status`.
+
+Each tool derives tenant and user identity from backend context, validates model-supplied record identifiers, and returns minimized data. A missing optional record becomes an `is_error: true` tool result; an unavailable billing service fails the workflow. Tool calls, results, and retries are retained in the protected trace.
+
+### 4. Draft with grounded documents and citations
+
+The backend references approved policy documents by Files API identifier, places them before the drafting instruction, enables citations, and marks the stable document prefix for prompt caching.
+
+```ts
+const draftRequest: ClaudeRequest = {
+  model: profiles.get("support-drafting").model,
+  max_tokens: 2_000,
+  system: SUPPORT_DRAFTING_PROMPT,
+  tools: toolsForRoute(route),
+  messages: [
+    {
+      role: "user",
+      content: [
+        ...policyDocuments.map(cachedCitableDocumentBlock),
+        { type: "text", text: buildCaseInstruction(caseData, instruction) },
+      ],
+    },
+  ],
+};
+```
+
+The stream emits text deltas and safe tool-activity events. The browser labels them provisional. The terminal envelope contains the canonical draft, claim-to-source citations, usage, cache status, warnings, and a trace identifier.
+
+### 5. Evaluate in a separate structured call
+
+Native citations and JSON structured output are currently incompatible in one response, so evaluation is a separate call. It receives the completed draft plus the minimum evidence needed to grade tone, policy compliance, unsupported promises, and completeness.
+
+```ts
+interface DraftEvaluation {
+  passed: boolean;
+  criteria: Array<{
+    name: "tone" | "policy" | "groundedness" | "completeness";
+    passed: boolean;
+    feedback: string;
+  }>;
+}
+```
+
+Independent criteria can run in parallel when latency and rate limits permit. If the product supports automatic refinement, failed feedback enters one capped retry. Otherwise the UI shows feedback to the human reviewer. Cap exhaustion returns the latest draft with `passed: false`; it is not silently relabeled successful.
+
+### 6. Present review, not automatic action
+
+The UI renders the draft, source markers, quoted evidence, evaluation status, warnings, and an editable response field. It distinguishes generated text from case facts. Keyboard users can open and close citation details, and status is not conveyed by color alone.
+
+Sending the response is a separate authenticated endpoint. It accepts the reviewed text and a version/precondition for the case, not a conversational statement that the model considers approval. The send action is idempotent and audited.
+
+### 7. Observe the whole turn
+
+One correlation ID joins routing, optional tools, drafting, evaluation, cache behavior, and the final review result. Telemetry records stage latency, model/profile versions, usage, tool outcome, citation count, grading, retry count, and terminal status. Prompts, case contents, and policy text are excluded from ordinary logs.
+
+This trace supports both debugging and evaluation: teams can learn which routes are expensive, which criteria fail, where citations are absent, and whether users heavily edit drafts before sending.
+
+### Decision guide
+
+Choose the least autonomous pattern that satisfies the product contract:
+
+| Product need | Primary pattern | Add when needed | Avoid |
+|---|---|---|---|
+| A person reads one generated answer | Message | Streaming for long answers | Schema wrapping with no consumer |
+| Code consumes fields or a decision | Structured output | Runtime validation and semantic evaluation | Parsing informal prose |
+| Claude needs optional backend data/action | Custom tools | Tool loop, authorization, confirmation | Giving provider or browser direct privileged access |
+| The useful stages are known | Fixed workflow | Routing, chaining, parallel grading, capped refinement | Open-ended agent loop |
+| Grounded answers over supplied sources | Documents plus citations | Files API and prompt caching | Treating citations as correctness proof |
+| Current public research | Hosted web tools | Domain/search caps and source-quality rules | Unbounded search |
+| Computation or generated files | Code execution | File lifecycle, scanning, Skills | Running model-written code locally |
+| Unknown sequence of environment exploration | Bounded agent | Small tools, budgets, approval, durable jobs | Agents for a known pipeline |
+
+Several patterns can coexist, but each should keep its own contract. Structured routing does not authorize tools. Citations do not validate semantics. An evaluator does not replace human approval. An agent cap does not make unsafe tools safe.
+
+### Composition review questions
+
+Before implementation, ask:
+
+1. What exact user outcome closes the turn?
+2. Which steps are deterministic code, which need model judgment, and which are optional?
+3. Which data is authorized, citable, cacheable, or sensitive?
+4. Which failures are user-correctable, recoverable by Claude, or terminal?
+5. What is provisional during streaming, and what event commits canonical state?
+6. What bounds model calls, tools, time, context, cost, and side effects?
+7. Which result needs human review or explicit approval?
+8. How will tests script the trajectory and evaluations measure semantic quality?
+
+A strong design can answer all eight without referring to hidden prompt behavior.
 
 ## Production Readiness Checklist
 
-_Drafting note: Security, data, configuration, limits, resilience, telemetry, evaluation, accessibility, cost, latency, and rollout._
+Use this checklist as a release gate. Assign an owner and evidence link for each applicable item; “not applicable” should include a reason.
+
+### Product contract
+
+- [ ] The user outcome, non-goals, and completion criteria are written down.
+- [ ] The chosen pattern is the least autonomous one that meets the need.
+- [ ] Generated, retrieved, deterministic, provisional, and user-authored data are visually distinct.
+- [ ] Refusal, partial, empty, capped, cancelled, and failed outcomes have product copy and actions.
+- [ ] Human review and approval boundaries are explicit for consequential outputs.
+
+### Security and permissions
+
+- [ ] Credentials exist only on trusted backend infrastructure and use least-privilege scopes.
+- [ ] Tenant/user identity is derived from authenticated server context, never model arguments.
+- [ ] Every custom and MCP tool has an allowlist, runtime validation, authorization, timeout, and output limit.
+- [ ] Write actions have confirmation, idempotency, preconditions, and audit records.
+- [ ] Retrieved documents, pages, images, repository content, and tool results are treated as untrusted.
+- [ ] URL fetching has SSRF defenses; downloads and generated artifacts are authorized and safely served.
+- [ ] Prompt, Skill, MCP, dependency, and tool-definition changes receive supply-chain review.
+
+### Data handling and privacy
+
+- [ ] A data-flow inventory identifies what reaches Claude, other providers, logs, caches, files, and evaluators.
+- [ ] Only necessary fields and context are sent.
+- [ ] Provider/platform retention and residency behavior is verified for every enabled feature.
+- [ ] Upload, session, cache, transcript, trace, and artifact retention/deletion are defined.
+- [ ] Logs exclude secrets and content by default; any payload capture is redacted, access-controlled, and time-limited.
+- [ ] User deletion propagates to application and provider-managed files where required.
+- [ ] Sensitive or regulated data has legal/security approval and appropriate user notice.
+
+### Model and capability configuration
+
+- [ ] Model identifiers, tool versions, beta headers, reasoning profiles, and budgets are centrally configured.
+- [ ] Unsupported parameter combinations fail before the provider call.
+- [ ] Prompts, schemas, tools, Skills, and model profiles are versioned in telemetry.
+- [ ] Current provider documentation has been checked for model support, limits, retention, and compatibility.
+- [ ] A model migration can be evaluated and rolled back independently of application deployment.
+
+### Limits, cost, and latency
+
+- [ ] Input size, file/page/image limits, context, output tokens, tool calls, searches, workflow attempts, and agent iterations are bounded.
+- [ ] Wall-clock, concurrency, queue, and estimated-cost budgets are enforced.
+- [ ] Rate-limit behavior honors provider headers and avoids retry multiplication.
+- [ ] Expected and worst-case calls, tokens, tool charges, storage, and bandwidth have cost estimates.
+- [ ] Time-to-first-content and completion objectives are defined by interaction type.
+- [ ] Prompt caching, batching, streaming, or asynchronous jobs are used only where measurements justify them.
+- [ ] Capacity tests cover representative concurrency and burst patterns.
+
+### Resilience and failure behavior
+
+- [ ] Validation occurs before expensive or irreversible work.
+- [ ] Validation, provider, dependency, recoverable-tool, mid-stream, refusal, truncation, cap, and cancellation cases remain distinct.
+- [ ] Retries are bounded, jittered, idempotent, and limited to safe operations.
+- [ ] Streams have exactly one terminal completion or error and detect unexpected disconnects.
+- [ ] Long jobs have durable state, cancellation, checkpoints, and recovery where needed.
+- [ ] Degraded behavior exists for disabled models/tools or unavailable dependencies.
+- [ ] Rollback does not corrupt conversation, workflow, or side-effect state.
+
+### Observability and support
+
+- [ ] One correlation ID joins frontend, backend, model calls, tools, workflows, and external clients.
+- [ ] Telemetry records stop reason, usage, cache, retries, tool outcomes, caps, latency by stage, and provider request IDs.
+- [ ] Dashboards separate transport health, latency, cost, and semantic quality.
+- [ ] Alerts cover error/cap spikes, repeated tool calls, cost anomalies, queue growth, and quality regression.
+- [ ] Support staff can inspect a redacted trace under appropriate access controls.
+- [ ] Runbooks cover provider outage, rate limiting, credential failure, unsafe output, and rollback.
+
+### Quality and evaluation
+
+- [ ] A versioned representative evaluation set exists with difficult and adversarial slices.
+- [ ] Deterministic checks, human review, and calibrated graders are used according to task risk.
+- [ ] Release thresholds are declared before results are reviewed.
+- [ ] Evaluations measure semantic correctness, grounding, safety, tool behavior, latency, and cost.
+- [ ] Production feedback and user edits feed evaluation cases without violating privacy commitments.
+- [ ] Model, prompt, schema, tool, or data changes trigger the relevant evaluation suite.
+
+### Testing and delivery
+
+- [ ] Unit tests cover request construction, parsing, branches, caps, and error semantics.
+- [ ] Integration tests exercise real adapters with external HTTP intercepted and network disabled.
+- [ ] Frontend tests cover the full interaction state machine and arbitrary stream chunking.
+- [ ] Browser tests cover critical real-stack journeys in deterministic fake mode.
+- [ ] No automated application test uses a real credential.
+- [ ] Type checks, lint, builds, packaged assets, migrations, and production topology are verified.
+- [ ] Deployment health checks do not require a billable or state-changing model call.
+
+### Accessibility and user control
+
+- [ ] Loading, streaming, tool activity, completion, and errors are announced without excessive screen-reader noise.
+- [ ] Citations, downloads, approvals, and cancellation are keyboard accessible.
+- [ ] Status does not rely on color alone, and motion respects user preferences.
+- [ ] Charts and image-derived results have equivalent text or tabular representations.
+- [ ] Users can identify generated content, inspect sources, correct input, retry, cancel, and report a problem.
+- [ ] The interface does not imply certainty unsupported by the model or evidence.
+
+### Rollout
+
+- [ ] The feature can be enabled by cohort, tenant, or percentage.
+- [ ] Initial limits and permissions are conservative.
+- [ ] Rollback and kill switches exist for the model, each tool, and the whole feature.
+- [ ] Owners monitor launch metrics and sampled outputs during the rollout window.
+- [ ] Expansion criteria include quality, safety, cost, latency, and support load.
+- [ ] A post-launch review records decisions and converts observed successful agent paths into workflows where appropriate.
 
 ## Conclusion
 
-_To be drafted._
+A dependable Claude feature is a normal product system with one unusual component. The model can interpret ambiguous input, generate language, choose tools, and adapt to evidence; the application still owns identity, permissions, state, contracts, limits, side effects, failure semantics, and user experience.
+
+The durable design principles are straightforward:
+
+1. Start with the user workflow and its completion criteria.
+2. Keep the Claude boundary on the backend behind a narrow, testable adapter.
+3. Prefer the least autonomous pattern that fits: message, structured output, tool, workflow, then agent.
+4. Treat a user turn as a distributed operation with explicit progress and termination.
+5. Preserve typed content blocks, stop reasons, usage, and complete immutable call traces.
+6. Keep tool authority smaller than model flexibility, and distinguish recoverable tool errors from failed turns.
+7. Bound calls, tokens, time, context, cost, and side effects before execution.
+8. Test orchestration deterministically and evaluate model behavior semantically.
+9. Make sources, uncertainty, partial results, and human approval visible.
+10. Revisit every model- or tool-specific assumption as the platform evolves.
+
+A sensible adoption path mirrors the chapters: ship one well-bounded message feature, add streaming only where users benefit, introduce structured output for code-owned results, expose narrow read tools, compose known stages into workflows, and reserve agents for tasks whose path remains genuinely unknowable. At each step, add the corresponding tests, evaluation cases, telemetry, and rollback control before adding more autonomy.
+
+The best next experiment is rarely “make it more agentic.” It is usually to identify the largest remaining uncertainty—quality, data access, latency, user trust, or workflow fit—and build the smallest measured experiment that resolves it.
 
 ## References and Further Reading
 
-_Authoritative API references will be added and access-dated during technical review._
+The guide prioritizes official Anthropic sources for API behavior and marks volatile claims with access dates. All links below were accessed 2026-07-27.
+
+- [Messages API reference](https://platform.claude.com/docs/en/api/messages/create) — canonical request, content, system-prompt, and stateless conversation contract.
+- [Streaming Messages](https://platform.claude.com/docs/en/build-with-claude/streaming) — SSE event sequence, deltas, ping/error events, and accumulation guidance.
+- [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — JSON outputs, strict tools, schema limitations, invalid-output cases, and compatibility.
+- [Stop reasons and fallback](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons) — meanings and continuation behavior for completion, truncation, tool use, pause, and refusal.
+- [Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls) — client-tool lifecycle, result ordering, identifiers, and `is_error` semantics.
+- [Parallel tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use) — execution choices and the required grouping of parallel results.
+- [Server tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/server-tools) — hosted execution, mixed client/server turns, continuation, and domain controls.
+- [Files API](https://platform.claude.com/docs/en/build-with-claude/files) — file upload, reuse, container inputs, generated-file download, deletion, and retention considerations.
+- [PDF support](https://platform.claude.com/docs/en/build-with-claude/pdf-support) — supported PDF delivery, limits, visual processing, and optimization guidance.
+- [Citations](https://platform.claude.com/docs/en/build-with-claude/citations) — citable document types, location formats, token behavior, and feature compatibility.
+- [Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — cache boundaries, TTLs, eligibility, invalidation, and usage reporting.
+- [Code execution](https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool) — sandbox execution, uploaded inputs, result blocks, and generated files.
+- [Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) — prebuilt and custom Skills, container attachment, and current prerequisites.
+- [Web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool) — search versions, use caps, domain filtering, localization, and result errors.
+- [MCP connector](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector) — remote server configuration, toolsets, authorization, and MCP result behavior.
+- [Vision](https://platform.claude.com/docs/en/build-with-claude/vision) — image sources, ordering, formats, limits, resizing, cost, and known limitations.
+- [Extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) — model-specific thinking modes, blocks, budgets, tool-use continuity, and compatibility.
+- [Effort](https://platform.claude.com/docs/en/build-with-claude/effort) — response-wide effort controls and their interaction with adaptive thinking.
+- [Tool Runner](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner) — SDK-managed tool loops, error wrapping, iteration caps, and customization points.
+- [API errors](https://platform.claude.com/docs/en/api/errors) — HTTP errors, typed SDK exceptions, retry behavior, request identifiers, and payload limits.
+- [Rate limits](https://platform.claude.com/docs/en/api/rate-limits) — request/token limit semantics, `retry-after`, cache-aware accounting, and monitoring headers.
+- [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) — architectural distinction between workflows and agents and guidance on composing simple patterns.
+
+Model names, tool versions, limits, availability, beta headers, pricing, and retention can change. Recheck the relevant linked page during implementation and again before publication or release.
 
 ## Appendices
 
 ### Appendix A: Portable Request and Response Examples
 
-_To be drafted._
+Use these shapes as contract examples, not copy-paste production configuration. Select a current model and confirm supported parameters in the official documentation.
+
+```json
+{
+  "model": "<configured-model-id>",
+  "max_tokens": 512,
+  "system": "Answer from the supplied context. State when evidence is insufficient.",
+  "messages": [{ "role": "user", "content": "Summarize the refund policy." }]
+}
+```
+
+Preserve the response as typed content blocks plus metadata rather than flattening it immediately:
+
+```json
+{
+  "id": "msg_...",
+  "content": [{ "type": "text", "text": "..." }],
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 120, "output_tokens": 44 }
+}
+```
+
+For structured output, define the schema at the API boundary and validate the parsed value again before domain use. For client tools, return every `tool_result` with the matching `tool_use_id` in the next user message; group parallel results together.
 
 ### Appendix B: Error Taxonomy
 
-_To be drafted._
+| Error class | Detect at | Retry? | Public behavior |
+|---|---|---:|---|
+| Request validation | Backend boundary | No | Field-level correction |
+| Authentication/authorization | Backend and tool runtime | No | Reauthenticate or deny safely |
+| Provider rate limit/overload | API adapter | Yes, bounded | Preserve input; show delayed/retry state |
+| Recoverable tool result | Orchestrator | Model may adapt | Continue with visible degraded status |
+| Tool transport/runtime failure | Tool adapter | Only if safe | Fail or offer retry without duplicating effects |
+| Refusal | Stop reason/content | No automatic retry | Explain limitation and safe alternatives |
+| Output/context cap | Stop reason/budget | Only with explicit continuation policy | Mark partial result |
+| Stream interruption | Stream accumulator | Conditional | Retain confirmed content; expose retry |
+| Evaluation failure | Release/runtime quality gate | No blind retry | Quarantine, review, or fall back |
 
 ### Appendix C: Testing Matrix
 
-_To be drafted._
+| Capability | Unit | Integration | Frontend/browser | Evaluation |
+|---|---|---|---|---|
+| Messages | Request builder, parser | Adapter and error mapping | Submit/loading/result/error | Helpfulness and correctness |
+| Streaming | Event reducer, terminal rules | Arbitrary chunk boundaries | Cancel, reconnect, partial output | Final-output parity |
+| Structured output | Schema and domain validation | Invalid/refusal/capped cases | Render validation states | Field-level accuracy |
+| Client tools | Argument validation, loop caps | Tool-result round trips | Tool activity and approval | Tool choice and argument quality |
+| Workflows | Branch and state transitions | Checkpoint/recovery | Durable progress and retry | End-to-end task completion |
+| Agents | Budgets, permissions, termination | Multi-step trace replay | Inspect/cancel/approve | Success, safety, cost, and path quality |
 
 ### Appendix D: Capability Comparison
 
-_To be drafted if it adds durable value beyond the decision guide._
+| Pattern | Who controls the next step? | Typical calls | Best fit | Principal risk |
+|---|---|---:|---|---|
+| Message | Application/user | 1 | Drafting, Q&A, transformation | Treating prose as a contract |
+| Structured output | Application | 1 | Typed extraction and decisions | Schema-valid but wrong values |
+| Client tool loop | Model within app policy | 2+ | Dynamic access to private actions/data | Excess authority or unbounded loops |
+| Server tool | Model/provider within configuration | 1+ | Hosted search or execution | Provider-side cost and data exposure |
+| Workflow | Application state machine | Fixed/bounded | Known multi-stage business process | Hidden branch and recovery complexity |
+| Agent | Model within strict budgets | Variable | Open-ended tasks with unknown paths | Unpredictable actions, cost, and latency |
 
 ## Topical Index
 
-_To be assembled after section anchors stabilize._
+- [Agents](#chapter-9-agents)
+- [API errors](#chapter-12-production-hardening)
+- [Application contracts](#chapter-2-application-architecture-and-boundaries)
+- [Authorization](#chapter-10-security-privacy-and-data-governance)
+- [Citations](#chapter-6-documents-files-images-and-citations)
+- [Code execution](#chapter-7-hosted-tools-and-agent-skills)
+- [Content blocks](#chapter-3-messages-api-fundamentals)
+- [Error taxonomy](#appendix-b-error-taxonomy)
+- [Evaluations](#chapter-13-testing-and-evaluation)
+- [Files and documents](#chapter-6-documents-files-images-and-citations)
+- [Hosted tools and Skills](#chapter-7-hosted-tools-and-agent-skills)
+- [MCP](#chapter-8-mcp-and-remote-tool-integration)
+- [Messages](#chapter-3-messages-api-fundamentals)
+- [Observability](#chapter-11-observability-cost-and-performance)
+- [Prompt caching](#chapter-11-observability-cost-and-performance)
+- [Refusals and stop reasons](#chapter-3-messages-api-fundamentals)
+- [Streaming](#chapter-4-streaming-and-real-time-ux)
+- [Structured outputs](#chapter-5-structured-outputs-and-client-tools)
+- [Testing matrix](#appendix-c-testing-matrix)
+- [Thinking and effort](#chapter-3-messages-api-fundamentals)
+- [Tool use](#chapter-5-structured-outputs-and-client-tools)
+- [Vision](#chapter-6-documents-files-images-and-citations)
+- [Workflows](#chapter-9-agents)

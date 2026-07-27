@@ -28,42 +28,42 @@ The story flow: start from a conventional web app architecture, introduce a back
 
 The publication should wrap the technical chapters below in enough front matter, navigation, synthesis, and reference material to work as a standalone guide.
 
-1. [ ] **Title Page**
+1. [x] **Title Page**
    - Title, subtitle, intended audience, author/organization placeholder, version, and publication date.
-2. [ ] **Abstract**
+2. [x] **Abstract**
    - A concise description of the guide's problem, scope, and practical outcome.
-3. [ ] **Table Of Contents**
+3. [x] **Table Of Contents**
    - Linked Markdown contents with stable, PDF-friendly headings.
-4. [ ] **Introduction**
+4. [x] **Introduction**
    - Audience and assumed experience.
    - What readers will learn.
    - What the guide does and does not cover.
    - How the playground informed the guide without defining the product architecture.
-5. [ ] **How To Use This Guide**
+5. [x] **How To Use This Guide**
    - Suggested reading paths for architecture, implementation, testing, and feature research.
    - Conventions used for code, warnings, tradeoffs, and optional ideas.
-6. [ ] **Glossary**
+6. [x] **Glossary**
    - Define Claude/API terminology and overloaded application terms at first-use depth.
    - Include terms such as message, content block, tool use, tool result, hosted tool, custom tool, MCP, structured output, prompt caching, streaming event, workflow, and agent.
-7. [ ] **Core Guide**
+7. [x] **Core Guide**
    - The architecture and feature chapters in the Structure section below.
    - Each chapter should state the problem, decision criteria, implementation pattern, tradeoffs, failure modes, testing approach, and production considerations.
-8. [ ] **Putting It Together**
+8. [x] **Putting It Together**
    - Show how the patterns compose into a representative feature from request through UI, orchestration, tools/data, response, and telemetry.
    - Include a decision guide for choosing messages, structured output, tools, fixed workflows, or agents.
-9. [ ] **Production Readiness Checklist**
+9. [x] **Production Readiness Checklist**
    - Security boundaries, data handling, model configuration, limits, resilience, observability, evaluation, accessibility, cost, latency, and rollout.
-10. [ ] **Conclusion**
+10. [x] **Conclusion**
     - Summarize durable principles and identify sensible next experiments.
-11. [ ] **References And Further Reading**
+11. [x] **References And Further Reading**
     - Prefer authoritative sources and annotate why each reference is useful.
     - Record access dates for web references where appropriate.
-12. [ ] **Appendices**
+12. [x] **Appendices**
     - Portable request/response examples.
     - Error taxonomy.
     - Testing matrix.
     - Model/tool capability comparison where it adds lasting value.
-13. [ ] **Topical Index**
+13. [x] **Topical Index**
     - Add an alphabetical index of important concepts with links to their primary sections; keep this distinct from the table of contents.
 
 ## Structure
@@ -330,7 +330,7 @@ Cover engineering rigor:
 6. [x] **Testing And Hardening**
    - Test strategy, deterministic model substitutes, error handling, operational checklist.
    - Output: chapter 13.
-7. [ ] **Self-Contained Assembly**
+7. [x] **Self-Contained Assembly**
    - Assemble and reconcile all completed chapters in `guide/claude-api-web-app-guide.md` against the document framework.
    - Add the title page, abstract, table of contents, introduction, reading paths, glossary, synthesis chapter, conclusion, references, appendices, and topical index.
    - Replace dependencies on repo knowledge with inline context, portable examples, or publication assets.
