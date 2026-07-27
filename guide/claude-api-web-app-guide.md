@@ -616,11 +616,357 @@ In production, track schema version, cold/warm latency, stop reason, validation 
 
 ## 5. Custom Backend Tools
 
-_Drafting note: Tool definitions, immutable loops, failed tool results, traces, and activity events._
+A custom tool lets Claude request a capability that your backend owns: look up an order, search an internal catalog, calculate a quote, or propose an update. Claude chooses a tool and supplies arguments; your application validates authorization and input, executes ordinary code, and returns the result. The model never receives direct access to your function, network, database, or credentials.
+
+This boundary is the most important property of tool use. A `tool_use` block is a structured request, not permission to perform an action.
+
+### Define narrow, legible tools
+
+A tool definition needs a stable name, a precise description, and a JSON Schema for its input.
+
+```ts
+const tools = [
+  {
+    name: "lookup_order",
+    description:
+      "Retrieve shipment status for an order the current user is authorized to view.",
+    strict: true,
+    input_schema: {
+      type: "object",
+      properties: {
+        orderId: {
+          type: "string",
+          description: "Public order identifier, for example ORD-10482",
+        },
+      },
+      required: ["orderId"],
+      additionalProperties: false,
+    },
+  },
+] as const;
+```
+
+Describe what the tool does, when it applies, and what each argument means. Avoid one broad `execute_action` tool with a large union of behaviors; small tools are easier to authorize, test, observe, and remove. Use `strict: true` when schema-valid arguments matter, while still applying domain validation in your code.
+
+Tool names and schemas are not access control. Resolve the authenticated principal outside the model-generated arguments. For example, accept `orderId` from Claude but derive `customerId` from the server session. Never let the model choose a tenant, role, or unrestricted storage path merely because the field validates.
+
+### Close the tool-use loop
+
+When Claude calls a client tool, the response has `stop_reason: "tool_use"` and one or more `tool_use` blocks containing `id`, `name`, and `input`. Execute the recognized tools, then append two turns: the complete assistant response and one user message containing the matching `tool_result` blocks. Anthropic's [tool-call handling guide](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls) documents this lifecycle and message ordering (accessed 2026-07-27).
+
+```ts
+const MAX_TOOL_ROUNDS = 6;
+
+async function runToolTurn(initial: ClaudeRequest): Promise<TurnEnvelope<string>> {
+  let request = initial;
+  const calls: CallTrace[] = [];
+
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    const response = await claude.createMessage(request);
+    calls.push({ request, response });
+
+    if (response.stop_reason !== "tool_use") {
+      return {
+        ...buildEnvelope(extractText(response), request, response),
+        calls,
+      };
+    }
+
+    const requested = response.content.filter(isToolUseBlock);
+    if (requested.length === 0) {
+      throw new InvalidModelResponse("tool_use stop without a tool_use block");
+    }
+
+    const results = await executeToolBatch(requested);
+    request = {
+      ...request,
+      messages: [
+        ...request.messages,
+        { role: "assistant", content: response.content },
+        { role: "user", content: results },
+      ],
+    };
+  }
+
+  throw new ToolLoopLimitExceeded(MAX_TOOL_ROUNDS);
+}
+```
+
+The request is reassigned rather than mutated so every trace entry remains an accurate snapshot. A production loop also needs caps on rounds, total tool calls, wall-clock time, and possibly spend. Reaching a cap is a controlled incomplete outcome, not permission to continue indefinitely.
+
+Check every non-tool stop reason explicitly. `end_turn` can produce the final answer, while truncation, refusal, or other supported stop conditions need their own handling. A loop condition alone does not prove success.
+
+### Validate and dispatch through a registry
+
+Do not use dynamic property access or evaluate a tool name. Dispatch only through a closed registry whose entries combine validation, authorization, execution, and result shaping.
+
+```ts
+interface ToolContext {
+  userId: string;
+  requestId: string;
+  signal: AbortSignal;
+}
+
+const toolRegistry: ToolRegistry = {
+  lookup_order: {
+    parse: parseLookupOrderInput,
+    execute: async (input, context) => {
+      const order = await orders.findAuthorized(input.orderId, context.userId);
+      if (!order) throw new RecoverableToolError("Order was not found");
+      return { status: order.status, estimatedDelivery: order.eta };
+    },
+  },
+};
+```
+
+Reject unknown names, validate inputs at runtime, and apply timeouts. Minimize results before returning them to Claude: exclude secrets, internal identifiers, irrelevant records, and unrestricted error details. Tool outputs consume context and can disclose data just as surely as the original prompt.
+
+Tool-returned text is untrusted. A web page, email, repository file, or database record may contain instructions designed to redirect the model. Keep such material inside `tool_result` content, label its provenance, restrict tool authority independently, and never promote retrieved text into the system prompt.
+
+### Distinguish recoverable tool failures from failed turns
+
+A bad model-supplied identifier, an unavailable item, or a domain rule rejection often belongs in a `tool_result` with `is_error: true`. Claude can revise its arguments or explain the limitation.
+
+```ts
+function failedToolResult(id: string, error: RecoverableToolError) {
+  return {
+    type: "tool_result" as const,
+    tool_use_id: id,
+    is_error: true,
+    content: error.safeMessage,
+  };
+}
+```
+
+A credential failure, widespread dependency outage, corrupted configuration, or orchestration bug should generally fail the turn. Do not disguise infrastructure failures as successful tool content: doing so encourages Claude to reason from missing or misleading data.
+
+The distinction should follow domain semantics, not one blanket `catch`. Maintain a small error taxonomy and expose only safe, actionable detail to the model. Record the original error in protected telemetry.
+
+### Execute parallel calls only when safe
+
+One assistant response can contain several `tool_use` blocks. Independent, read-only calls can run concurrently; writes, shared-state operations, or dependent calls may require sequential execution. Anthropic's [parallel tool-use guidance](https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use) leaves execution order to the application but requires one result for every request, grouped into the next user message and matched by `tool_use_id` (accessed 2026-07-27).
+
+```ts
+async function executeToolBatch(blocks: ToolUseBlock[]) {
+  return Promise.all(blocks.map((block) => executeOneTool(block)));
+}
+```
+
+If a sequential batch stops after an earlier failure, still return `is_error: true` results for calls you deliberately skipped. For side effects, add confirmation, idempotency keys, precondition checks, and audit records. Consider separating read tools from propose/commit operations so Claude can plan without silently executing a consequential change.
+
+### Stream application activity, not invented model text
+
+A tool loop can span several Claude calls and periods with no text deltas. Emit application events around backend execution so users see meaningful progress.
+
+```ts
+writer.send({ type: "tool_started", name: block.name, callId: block.id });
+const result = await executeOneTool(block);
+writer.send({
+  type: "tool_finished",
+  name: block.name,
+  callId: block.id,
+  ok: result.is_error !== true,
+});
+```
+
+Expose a user-safe label rather than raw arguments when inputs may be sensitive. Preserve raw provider events and tool timing in authorized traces. The stream still ends with exactly one `turn_complete` or `turn_error` event representing the entire user-visible turn.
+
+### Test and operate custom tools
+
+Unit tests should cover tool definitions, registry dispatch, unknown names, argument validation, authorization, success, recoverable `is_error`, transport failure, multiple calls, immutable traces, stop-reason branches, and every cap. Verify that all results appear in one user message with the correct identifiers.
+
+Integration tests should intercept both Claude and external-service traffic, proving the exact assistant/tool-result history across multiple rounds. Frontend tests should render ordered activity and terminal failure without exposing sensitive arguments. Browser tests should use deterministic trajectories: no-tool answer, one successful tool, parallel tools, self-correction after a failed result, and cap exhaustion.
+
+In production, record tool name, duration, outcome class, round number, and correlation identifiers—not unrestricted arguments or results. Alert on rising error rates, repeated calls with the same arguments, cap exhaustion, and unexpected use of consequential tools.
 
 ## 6. Workflows Before Agents
 
-_Drafting note: Routing, chaining, parallelization, evaluator-optimizer, caps, and observability._
+A workflow is an application-directed sequence of model calls and ordinary code. The application decides which stages exist, what each stage receives, when work runs concurrently, and when the process stops. This predictability makes workflows the default for multi-step product features.
+
+Anthropic's [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) distinguishes workflows, whose paths are predefined in code, from agents, whose process and tool use are dynamically directed by the model. Its practical recommendation is to begin with the simplest pattern that works and add complexity only when it demonstrably improves outcomes. (Accessed 2026-07-27.)
+
+### Recognize the four reusable patterns
+
+**Routing** classifies an input and selects a specialized path. It works when categories are stable enough to define and different categories benefit from different prompts, models, data, or policies.
+
+**Chaining** feeds one stage into the next. It works when a task decomposes into ordered transformations, such as extract, draft, then refine. Each boundary creates an opportunity to validate or persist an intermediate artifact.
+
+**Parallelization** runs independent work concurrently and aggregates it. It works for independent retrieval, several evaluation criteria, or multiple candidate solutions. It does not help when calls share a hidden dependency or when their combined rate exceeds service limits.
+
+**Evaluator-optimizer** alternates generation and review until a quality threshold or cap is reached. It works when success criteria can be stated clearly and evaluator feedback can improve the next attempt.
+
+These patterns compose. A support workflow might route a request once, draft and refine a response in sequence, grade tone and policy in parallel, and retry the drafting chain only when a grader fails.
+
+### Model the workflow as typed stages
+
+Keep stage inputs and outputs explicit. Do not pass one growing bag of strings and provider responses through the pipeline.
+
+```ts
+interface RoutedRequest {
+  category: "billing" | "technical" | "account";
+  request: SupportRequest;
+}
+
+interface DraftCandidate {
+  text: string;
+  attempt: number;
+}
+
+interface Grade {
+  criterion: "accuracy" | "tone" | "policy";
+  passed: boolean;
+  feedback: string;
+}
+
+interface WorkflowResult {
+  route: RoutedRequest["category"];
+  answer: string;
+  grades: Grade[];
+  attempts: number;
+  passed: boolean;
+}
+```
+
+A workflow stage can use free text, structured output, tools, or ordinary deterministic code. Use structured output for routing and grading because downstream code owns those decisions. Use prose for a draft intended for a person. Use normal code for policy checks that do not need model judgment.
+
+### Route once, then keep the decision stable
+
+```ts
+async function route(request: SupportRequest): Promise<RoutedRequest> {
+  const result = await structuredMessage<RouteOutput>({
+    profile: "fast-classifier",
+    schema: routeSchema,
+    system: ROUTER_PROMPT,
+    input: request.text,
+  });
+  return { category: result.category, request };
+}
+```
+
+Validate the route against a closed set and define a safe fallback for low-confidence or unknown cases. Avoid asking the router to produce both a category and a full response if only the category determines the next path; mixed responsibilities make evaluation harder.
+
+Do not reroute unchanged input on every optimizer attempt. A stable route reduces cost and prevents the pipeline from oscillating between strategies. Reroute only when feedback or new data genuinely changes the classification problem.
+
+### Chain stages with explicit handoffs
+
+```ts
+async function draftAndRefine(
+  routed: RoutedRequest,
+  feedback: string[],
+  attempt: number,
+): Promise<DraftCandidate> {
+  const draft = await draftResponse(routed, feedback);
+  validateDraftExists(draft);
+  const refined = await refineResponse(routed, draft);
+  return { text: refined, attempt };
+}
+```
+
+Each stage should receive the minimum context needed and produce an inspectable artifact. Replaying the original context plus the draft is often clearer than asking a single conversation to remember implicit stage instructions. Persist an intermediate result when replay cost is high or recovery must resume after failure.
+
+Chaining increases latency and can amplify an early error. Add validation at stage boundaries and decide whether a downstream stage may repair, reject, or merely decorate the previous result. More stages are not automatically more accurate.
+
+### Parallelize independent evaluation
+
+```ts
+const criteria: Grade["criterion"][] = ["accuracy", "tone", "policy"];
+
+async function grade(candidate: DraftCandidate): Promise<Grade[]> {
+  return Promise.all(
+    criteria.map((criterion) => gradeCriterion(candidate.text, criterion)),
+  );
+}
+```
+
+Parallel grading lowers wall-clock latency relative to three sequential calls and isolates prompts by criterion. It also raises instantaneous concurrency and may encounter rate limits. Apply a concurrency limiter when the number of branches is data-dependent, and define whether one grader failure fails the workflow or returns an incomplete evaluation.
+
+Collect traces in deterministic logical order even when promises resolve in a different order. The easiest pattern is for each branch to return its result and call trace, then assemble them by criterion after `Promise.all`; avoid pushing into one shared array from concurrent callbacks if chronological ordering matters.
+
+### Bound the evaluator-optimizer loop
+
+```ts
+const MAX_ATTEMPTS = 3;
+
+async function runWorkflow(input: SupportRequest): Promise<WorkflowResult> {
+  const routed = await route(input);
+  let feedback: string[] = [];
+  let latest!: DraftCandidate;
+  let grades: Grade[] = [];
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    latest = await draftAndRefine(routed, feedback, attempt);
+    grades = await grade(latest);
+
+    if (grades.every((item) => item.passed)) {
+      return resultOf(routed, latest, grades, true);
+    }
+
+    feedback = grades
+      .filter((item) => !item.passed)
+      .map((item) => `${item.criterion}: ${item.feedback}`);
+  }
+
+  return resultOf(routed, latest, grades, false);
+}
+```
+
+A cap is part of the product contract. The final result must say whether it passed, how many attempts ran, and what feedback remains. Do not label the last attempt successful merely because the loop ended.
+
+Evaluator prompts need a specific rubric and structured response. Watch for evaluators that reward superficial keyword changes, disagree with human judgment, or approve their own preferred writing style rather than the product requirement. Calibrate against a human-reviewed set and track pass rates by criterion.
+
+### Preserve one trace across the whole turn
+
+A multi-stage workflow is still one user-visible turn. Give it one correlation identifier and record every call with a stage name, attempt, branch, request, response, usage, and duration.
+
+```ts
+interface WorkflowCall extends CallTrace {
+  stage: "route" | "draft" | "refine" | "grade";
+  attempt?: number;
+  branch?: string;
+  durationMs: number;
+}
+```
+
+The product response can expose route, final artifact, grades, attempt count, and pass state without exposing raw prompts. Protected development tooling can show the complete trace. Report total usage as the sum across calls; showing only the final grader's tokens materially understates cost.
+
+### Reuse stable prefixes deliberately
+
+Workflows often repeat the same source document, policy, or case context across stages and attempts. Keep that shared prefix byte-stable and place variable stage instructions after it so prompt caching can apply where supported. Changing tool definitions, schemas, or earlier content can invalidate reuse, so measure cache reads rather than assuming them.
+
+Caching reduces repeated input processing; it does not make unnecessary calls free. Routing once, limiting retries, choosing an appropriate model per stage, and running independent calls concurrently remain the larger architectural decisions.
+
+### Decide how workflows fail and resume
+
+Define failure semantics per stage:
+
+- invalid input fails before routing;
+- an unavailable required data source fails the workflow;
+- one optional parallel branch may yield a partial result if the contract permits it;
+- a transient model failure may retry under a small backoff budget;
+- a failed evaluator is not the same as an evaluator returning `passed: false`; and
+- cap exhaustion returns a completed-but-unapproved artifact, not a transport error.
+
+For long workflows, consider a durable job model rather than holding one request open. Persist stage completion and idempotency keys so a worker can resume without repeating completed side effects. A short, bounded pipeline can remain synchronous when infrastructure timeouts and user expectations allow it.
+
+### Test the graph, not only each prompt
+
+Unit-test every stage with deterministic model results, then test orchestration trajectories: each route, first-pass success, one feedback retry, conflicting graders, branch failure, retry exhaustion, and call ordering. Assert exact call counts so an accidental extra model call cannot silently change cost and latency.
+
+Integration tests should verify schemas, cache boundaries, model profiles, and external clients at the wire boundary. Frontend tests should render stage progress and clearly distinguish “completed and passed,” “completed at cap,” and “failed.” Browser tests need only a small set of deterministic representative trajectories.
+
+In production, record latency and usage per stage and for the whole workflow, route distribution, attempts, criterion pass rates, cache behavior, and terminal status. Compare those metrics with user outcomes. A workflow that passes its model evaluator but produces low user acceptance needs a better rubric or design, not simply more retries.
+
+### Workflow design checklist
+
+Before choosing an agent, ask:
+
+- Can the useful paths be enumerated?
+- Can each stage have a typed input, output, and success condition?
+- Can independent branches be identified safely?
+- Can retries use actionable feedback and a hard cap?
+- Can a human understand the full call trace?
+
+If the answers are mostly yes, a workflow will usually be more dependable than an open-ended agent.
 
 ## 7. Files, Documents, Citations, and Caching
 

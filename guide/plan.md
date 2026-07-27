@@ -318,7 +318,7 @@ Cover engineering rigor:
 2. [x] **Core Claude API Features**
    - Messages, streaming, structured output.
    - Output: chapters 3-4 with portable snippets.
-3. [ ] **Tools And Workflows**
+3. [x] **Tools And Workflows**
    - Custom tools, tool loops, routing/chaining/parallelization/evaluator-optimizer.
    - Output: chapters 5-6.
 4. [ ] **Rich Inputs And Hosted Capabilities**
