@@ -1769,7 +1769,204 @@ An agent earns its complexity when its freedom to choose steps produces measurab
 
 ## 13. Testing and Operational Hardening
 
-_Drafting note: Unit, integration, frontend, and browser tests; deterministic substitutes; errors; operations._
+AI features need ordinary software tests and model-behavior evaluations. These solve different problems. Tests prove that contracts, orchestration, permissions, and failure paths behave deterministically. Evaluations measure whether variable model outputs are useful, correct, grounded, and safe.
+
+### Build a layered verification strategy
+
+Use the smallest test level that can catch the intended regression:
+
+| Layer | Runs | External boundary | Best for |
+|---|---|---|---|
+| Backend unit | Feature/service code | Injected fakes | Request building, loops, routing, parsing, caps |
+| Backend integration | Real application HTTP pipeline | Intercepted provider/data HTTP | Routing, validation, DI, SDK wire shape, error mapping |
+| Frontend unit | Components and services | Mock application HTTP | Request shaping, rendering, stream parsing, accessibility |
+| Frontend integration | Frontend HTTP code plus running backend | Backend uses deterministic doubles | Real application contract and SSE transport |
+| Browser E2E | Real browser plus running stack | Whole stack uses deterministic doubles | Navigation, interaction, progressive UI, downloads |
+| Model evaluation | Evaluation harness | Controlled real model calls | Semantic quality, groundedness, safety, cost/quality tradeoffs |
+
+Do not duplicate every assertion at every level. Unit tests cover permutations and edge cases; integration tests cover representative wire contracts; browser tests cover a few critical journeys. Evaluations run on curated datasets under explicit budgets, not as ordinary unit tests.
+
+### Put every external system behind a seam
+
+Feature code should depend on interfaces for Claude and each external data source. A test fake records requests and returns queued responses.
+
+```ts
+class FakeClaudeClient implements ClaudeClient {
+  readonly requests: ClaudeRequest[] = [];
+  private readonly responses: ClaudeMessage[] = [];
+
+  queue(response: ClaudeMessage): void {
+    this.responses.push(structuredClone(response));
+  }
+
+  async createMessage(request: ClaudeRequest): Promise<ClaudeMessage> {
+    this.requests.push(structuredClone(request));
+    const response = this.responses.shift();
+    if (!response) throw new Error("No fake Claude response queued");
+    return structuredClone(response);
+  }
+}
+```
+
+Fail loudly when a unit test makes an unplanned call. A generic fallback can be useful in an interactive demo mode, but it should not hide missing setup in tests. Keep reusable message, stream, tool, citation, thinking, and artifact builders in one test-support module rather than inventing inconsistent mocks per feature.
+
+A fake is not evidence that the real adapter serializes correctly. That belongs in backend integration tests that run the actual SDK/client while intercepting outbound HTTP and returning provider-shaped fixtures. Disable external network access in those tests, permitting only loopback to the application under test. An unmatched request should fail rather than escape to the internet.
+
+### Keep automated tests credential-free
+
+No unit, integration, frontend, or browser test should require a real API key. Use placeholders only where startup configuration validates that a variable exists; ensure no real network route can consume them. CI secrets should not be needed for deterministic application tests.
+
+Real-model evaluations are a separate, explicitly invoked workload with their own credential, dataset, budget, retention policy, and result store. Never make a pull request's correctness depend on nondeterministic prose from a live model.
+
+An interactive fake/demo mode is also separate from test injection. Demo mode lets a running application behave plausibly without credentials. Tests bind fakes directly and script exact trajectories. Do not multiply every feature test across “fake mode” and “real mode” when shared binding and real-adapter tests already cover that switch.
+
+### Test requests as product contracts
+
+For each feature, assert the fields that encode a decision:
+
+- model profile, system prompt, and output budget;
+- message/content-block ordering;
+- structured schema or tool definitions;
+- thinking and effort profile;
+- file, citation, cache, MCP, or hosted-tool configuration;
+- omission of unsupported fields; and
+- authorization-derived context that must not come from the browser.
+
+Avoid asserting an entire large request snapshot when only one behavior matters; broad snapshots make intentional changes noisy and can obscure a dangerous field. Use focused structural assertions plus a small number of complete wire fixtures.
+
+For multi-call behavior, assert the exact sequence, not only the final answer. A workflow test should catch an accidental extra call; a tool-loop test should prove the assistant response and matching results are appended correctly; an agent test should prove caps stop execution before the forbidden next action.
+
+### Script trajectories, not exact prose
+
+A deterministic test describes the path Claude takes:
+
+```ts
+fake.queue(toolUseMessage("lookup_order", "toolu_1", { orderId: "ORD-7" }));
+fake.queue(textMessage("Your order ships tomorrow."));
+
+const result = await service.run(input);
+
+expect(fake.requests).toHaveLength(2);
+expect(lastUserContent(fake.requests[1])).toEqual([
+  expect.objectContaining({
+    type: "tool_result",
+    tool_use_id: "toolu_1",
+  }),
+]);
+expect(result.status).toBe("completed");
+```
+
+Cover meaningful trajectories: direct answer, one tool, parallel tools, recoverable error and self-correction, external failure, refusal, truncation, stream failure, cap exhaustion, approval pause, and cancellation. For workflows, cover every route and retry boundary. For structured output, cover semantically wrong but structurally valid data in evaluations, while tests cover parsing and validation mechanics.
+
+### Reconstruct streaming exhaustively
+
+A stream accumulator is shared infrastructure and deserves focused tests for every supported event and delta type. Verify indexed content blocks, partial JSON arguments, citations, thinking/signatures, usage merging, unknown events, error events, and missing terminal events.
+
+Network chunks do not equal SSE frames. Frontend parser tests must split every delimiter across chunks, combine several frames into one chunk, include multibyte UTF-8 boundaries, and end with leftover/incomplete data. Assert that provisional content does not become canonical without `turn_complete`.
+
+Use compile-time exhaustiveness for known event unions and a safe runtime policy for future event types. Provider documentation explicitly allows event types to expand; unknown progress events should not crash the UI, while an unknown event required for correct reconstruction should fail visibly in protected telemetry.
+
+### Test the application error taxonomy
+
+Use distinct cases and public contracts:
+
+| Failure | Transport | Retry owner | User outcome |
+|---|---|---|---|
+| Validation/authorization | HTTP 4xx before model call | User/application | Correct input or permission |
+| Claude API failure | HTTP 5xx mapping or stream error | Backend policy | Retry later or degraded path |
+| External data-source failure | HTTP 5xx mapping or stream error | Backend policy | Explain unavailable dependency |
+| Recoverable tool failure | `tool_result` with `is_error: true` | Claude within cap | Self-correct or explain limitation |
+| Mid-stream failure | Terminal application stream error | User/backend policy | Preserve partial display, do not commit it |
+| Model refusal or truncation | Successful HTTP with stop reason | Product policy | Explicit refused/incomplete state |
+| Workflow/agent cap | Successful controlled result | User/product | Incomplete result with cap reason |
+
+Public errors should be safe and actionable; internal logs retain the typed cause, stack, provider request ID, and correlation ID under access control. Do not return raw SDK messages indiscriminately because they can expose request details.
+
+Anthropic's [API error guide](https://platform.claude.com/docs/en/api/errors) documents typed SDK exceptions, error response shapes, and provider request IDs (accessed 2026-07-27). Capture the provider request ID whenever available so an incident can be correlated with support without logging full prompts.
+
+### Retry only operations that are safe to repeat
+
+The official SDK retries some connection, timeout, conflict, rate-limit, and server failures by default. Know the adapter's configured retry count before adding another retry layer; nested retries can multiply latency and load.
+
+Use exponential backoff with jitter for transient failures and honor `retry-after`. Anthropic's [rate-limit guide](https://platform.claude.com/docs/en/api/rate-limits) describes request/token limits, acceleration limits, and response headers (accessed 2026-07-27). Do not hard-code organization limits into feature code.
+
+Retry read-only calls more freely than side effects. Use idempotency keys, preconditions, and persisted operation state for custom tools that write. Never invisibly restart a response after partial text reached the user; the replacement can differ. Surface a retry action or resume from a documented checkpoint.
+
+### Test the frontend as a state machine
+
+For every AI interaction, cover:
+
+- initial and input-validation states;
+- queued/preparing state;
+- provisional streaming content;
+- tool or workflow activity;
+- canonical completion;
+- valid empty/partial result;
+- cancellation;
+- retriable and non-retriable errors; and
+- a second run that replaces or preserves prior results intentionally.
+
+Keep the result region mounted with shaped placeholders when removing it would cause layout jumps. Verify focus movement, live-region behavior, keyboard access to citations/downloads, color-independent status, and reduced-motion behavior. Tests should use semantic roles and product-facing labels rather than brittle DOM positions.
+
+### Keep browser tests narrow and realistic
+
+Browser E2E catches failures that isolated component tests cannot: routing, proxying, real fetch streaming, content security headers, focus, downloads, and integration between shared components. Run it against a fully started deterministic stack and assert the environment is fake before the suite begins.
+
+Give each major feature one representative happy path plus only browser-specific critical failures. Do not repeat every backend edge case through clicks. When a DOM change affects selectors or structure, inspect the browser spec as well as the component test; they are different consumers of the markup.
+
+### Add semantic evaluations
+
+Create a versioned evaluation record:
+
+```ts
+interface EvaluationCase {
+  id: string;
+  input: unknown;
+  expectedFacts?: string[];
+  rubric: string;
+  forbiddenBehaviors?: string[];
+  tags: string[];
+}
+```
+
+Use deterministic checks when possible: schema validation, exact citations, executable tests, numeric answers, required/forbidden tool calls, and policy rules. Add blinded human review or calibrated model grading for subjective qualities. A model grader should not be the sole judge of high-stakes correctness.
+
+Track prompt version, model identifier, reasoning profile, tool versions, dataset version, latency, usage, and outcome. Compare distributions and confidence intervals rather than one run. Maintain slices for difficult, multilingual, adversarial, long-context, and accessibility-relevant cases. Set release thresholds before looking at results.
+
+### Exercise security and privacy boundaries
+
+Tests should prove tenant isolation, authorization derived from server identity, file ownership, MCP/tool allowlists, side-effect confirmation, output sanitization, download authorization, secret redaction, and retention/deletion. Include indirect prompt injection in retrieved text, documents, images, and tool results. Verify that hostile content cannot expand tool authority.
+
+Run dependency, static-analysis, and secret-scanning tools alongside application tests. Treat Skills, MCP servers, prompt templates, schemas, and tool definitions as versioned supply-chain inputs requiring review.
+
+### Verify builds and production topology
+
+A passing unit suite does not prove compilation, lint, assets, or deployment packaging. Run the actual type check/build, lint, backend integration suite, frontend compilation, and browser suite used by CI. Verify non-code runtime assets such as Skill files and templates exist in the built artifact.
+
+Test the production path for proxy buffering, SSE timeouts, maximum request sizes, body parsing, download headers, cancellation propagation, and graceful shutdown. Load-test representative token and concurrency profiles with deterministic substitutes first; use carefully budgeted real-model tests only for provider-facing behavior.
+
+### Observe and roll out safely
+
+Correlate one user turn across model calls, tools, data sources, and streaming. Record model/profile, prompt and schema versions, stop reason, usage, cache behavior, latency by stage, retry count, tool outcomes, cap status, and provider request IDs. Keep prompt/content capture off by default or subject to explicit redaction, consent, access, and retention controls.
+
+Release behind a flag or limited cohort. Define rollback and degradation: disable a risky tool, switch to a simpler workflow, return a non-AI path, or queue work for later. Monitor quality signals alongside latency, errors, and cost. A technically healthy endpoint can still produce a poor product outcome.
+
+### Verification checklist for every AI feature
+
+Before calling a feature ready, confirm:
+
+- application contracts and stop reasons are explicit;
+- unit tests cover request decisions and all orchestration branches;
+- integration tests prove the real SDK wire shape without network access;
+- frontend tests cover the full interaction state machine;
+- browser tests cover the critical real transport journey;
+- no automated suite uses a real credential;
+- deterministic fakes fail on unscripted calls;
+- retries, timeouts, cancellation, and idempotency are defined;
+- semantic evaluations meet predeclared quality and safety thresholds;
+- security, privacy, accessibility, cost, and latency have owners;
+- observability excludes sensitive content by default; and
+- rollout, rollback, and dependency-change procedures exist.
 
 ## Putting It Together
 

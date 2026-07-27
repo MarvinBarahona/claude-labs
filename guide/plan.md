@@ -327,7 +327,7 @@ Cover engineering rigor:
 5. [x] **Advanced Reasoning And Agents**
    - Extended thinking and agentic loops.
    - Output: chapters 11-12.
-6. [ ] **Testing And Hardening**
+6. [x] **Testing And Hardening**
    - Test strategy, deterministic model substitutes, error handling, operational checklist.
    - Output: chapter 13.
 7. [ ] **Self-Contained Assembly**
