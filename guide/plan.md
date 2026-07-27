@@ -324,7 +324,7 @@ Cover engineering rigor:
 4. [x] **Rich Inputs And Hosted Capabilities**
    - Files, documents, citations, caching, code execution, skills, web search, MCP, vision.
    - Output: chapters 7-10.
-5. [ ] **Advanced Reasoning And Agents**
+5. [x] **Advanced Reasoning And Agents**
    - Extended thinking and agentic loops.
    - Output: chapters 11-12.
 6. [ ] **Testing And Hardening**

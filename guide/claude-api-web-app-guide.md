@@ -1443,11 +1443,329 @@ Evaluate vision quality on a representative labeled set, including difficult lig
 
 ## 11. Extended Thinking
 
-_Drafting note: Thinking configuration, comparisons, reasoning summaries, latency, usage, and quality._
+Thinking controls are useful when a task benefits from additional reasoning before the final answer: difficult analysis, planning, mathematics, coding, or decisions across competing constraints. They are not a universal quality switch. Extra reasoning can increase latency and cost without improving a simple task.
+
+### Select tasks before selecting settings
+
+Start with an evaluation set that contains genuinely difficult representative tasks. If a direct response already meets the product threshold, thinking adds complexity without user value. Good candidates have verifiable outcomes or reviewable rubrics; vague “seems smarter” comparisons are difficult to operationalize.
+
+Choose a product policy such as:
+
+- omit thinking for short extraction, rewriting, or routine classification;
+- enable adaptive thinking for complex requests where the model should decide whether reasoning is useful;
+- use higher effort only for a measured quality gain; and
+- reserve the most expensive setting for explicit high-value cases.
+
+Thinking and effort are related but distinct. On supported models, adaptive thinking controls whether and how the model reasons in thinking blocks, while `output_config.effort` influences work across the entire response, including answer text and tool calls. Anthropic's [effort guide](https://platform.claude.com/docs/en/build-with-claude/effort) documents current levels and model support (accessed 2026-07-27).
+
+### Resolve a version-aware reasoning profile
+
+Thinking support differs by model generation. Some current models recommend or require adaptive thinking; older models use manual token budgets; some models keep thinking on by default. Centralize these differences rather than letting feature code assemble arbitrary combinations.
+
+```ts
+type ReasoningProfile =
+  | { mode: "default" }
+  | {
+      mode: "adaptive";
+      effort: "low" | "medium" | "high";
+      display: "omitted" | "summarized";
+    }
+  | {
+      mode: "manual";
+      budgetTokens: number;
+      display: "omitted" | "summarized";
+    };
+
+function applyReasoningProfile(
+  request: ClaudeRequest,
+  profile: ReasoningProfile,
+  capabilities: ModelCapabilities,
+): ClaudeRequest {
+  return capabilities.buildReasoningRequest(request, profile);
+}
+```
+
+Do not infer support from a model name with scattered string checks. Maintain a tested capability table sourced from current provider documentation. Reject unsupported combinations before the network call and log the resolved profile.
+
+Anthropic's [thinking documentation](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) describes adaptive/manual modes, thinking blocks, tool-use continuity, and current compatibility (accessed 2026-07-27).
+
+### Compare one variable at a time
+
+A useful benchmark holds the model, task, prompt, data, tool set, and output budget constant while varying the reasoning profile.
+
+```ts
+const profiles = [
+  { label: "baseline", profile: { mode: "default" } },
+  {
+    label: "adaptive-medium",
+    profile: { mode: "adaptive", effort: "medium", display: "summarized" },
+  },
+  {
+    label: "adaptive-high",
+    profile: { mode: "adaptive", effort: "high", display: "summarized" },
+  },
+] satisfies BenchmarkProfile[];
+
+const runs = await Promise.all(
+  profiles.map((item) => runMeasured(task, item)),
+);
+```
+
+Parallel comparison reduces wall-clock time but changes load conditions. For rigorous latency measurement, repeat runs, randomize execution order or run sequentially under controlled conditions, and report distributions rather than one sample. Model output is nondeterministic; one side-by-side result is an illustration, not an evaluation.
+
+### Extract answers and thinking separately
+
+A response can contain thinking-related blocks followed by text blocks. Parse by type.
+
+```ts
+function summarizeRun(response: ClaudeMessage): RunResult {
+  const answer = response.content
+    .filter(isTextBlock)
+    .map((block) => block.text)
+    .join("");
+
+  const thinking = response.content
+    .filter(isThinkingBlock)
+    .map((block) => block.thinking)
+    .join("\n\n") || null;
+
+  return {
+    answer,
+    thinking,
+    usage: mapUsage(response.usage),
+    stopReason: response.stop_reason,
+  };
+}
+```
+
+Display configuration matters. An omitted setting can allow thinking while returning no readable thinking text; a summarized setting returns a presentation suitable for inspection where supported. Treat returned thinking as model output, not a complete audit trail or proof that the final answer is correct. Do not expose it automatically to end users: it can confuse, disclose sensitive prompt context, or create a false sense of certainty.
+
+For most products, show the final answer and perhaps a brief product-authored rationale or citations. Reserve thinking display for authorized evaluation, debugging, or an experience whose users understand its limitations.
+
+### Preserve thinking blocks during tool loops
+
+When thinking and client tools are combined, pass the latest assistant content back exactly as returned, including `thinking` and `redacted_thinking` blocks. Do not filter, reorder, edit, or reconstruct them. The API verifies these blocks and can reject modified histories.
+
+```ts
+request = {
+  ...request,
+  messages: [
+    ...request.messages,
+    { role: "assistant", content: response.content }, // unchanged
+    { role: "user", content: toolResults },
+  ],
+};
+```
+
+Keep one thinking mode for the whole assistant turn. Forced tool choices can be incompatible with thinking on supported models, so validate tool configuration as part of the model profile. Interleaved thinking behavior and required headers vary by model generation; use current capability metadata.
+
+### Measure the actual tradeoff
+
+For every profile, collect:
+
+- task-quality score and human acceptance;
+- total and first-content latency;
+- input, output, and reported thinking-token usage where available;
+- tool-call count and failed tool attempts;
+- stop reason and truncation;
+- estimated cost; and
+- variance across repeated runs.
+
+Higher effort can change tool selection and answer length, so comparing only “thinking tokens” misses part of the cost. Ensure `max_tokens` leaves room for both reasoning and the final answer on configurations where they share the output ceiling. A truncated high-effort run may look worse simply because the budget was not comparable.
+
+Quality needs task-specific measures: correctness for calculations, executable tests for code, rubric-based review for prose, groundedness for research, and downstream success for workflows. Blind pairwise review reduces bias when humans compare answers.
+
+### Build a comparison UI that informs decisions
+
+A useful internal bench shows each profile's final answer, returned thinking summary when enabled, latency, usage, stop reason, and evaluation score. Keep columns aligned and label missing thinking as “not returned,” not “no reasoning occurred.” Provide raw request/response inspection only to authorized users.
+
+Avoid declaring a winner from latency or token count alone. Show the quality/cost frontier and let the product team choose the lowest-cost profile that meets the acceptance threshold.
+
+### Failure modes and testing
+
+Handle unsupported mode/model combinations, invalid manual budgets, insufficient output budget, thinking omitted by configuration, redacted blocks, modified-history rejection, truncation, stream reconstruction, and one failed run in a comparison batch. Decide whether a partial comparison remains useful or the whole benchmark fails.
+
+Unit tests should assert exact profile-to-request mapping, model held constant, block extraction, unchanged thinking-block replay, usage mapping, and stop-reason handling. Integration tests should include realistic thinking and redacted-thinking fixtures. Frontend tests should distinguish disabled, omitted, summarized, failed, and truncated runs. Benchmark tests should use a frozen evaluation set and report repeatable aggregate statistics rather than assert exact model prose.
+
+In production, monitor reasoning profile, task class, latency, usage, tool calls, quality proxy, and user outcome. Re-evaluate profiles when models or defaults change; yesterday's high-effort advantage may become tomorrow's unnecessary cost.
 
 ## 12. Agents as a Deliberate Exception
 
-_Drafting note: Capped loops, abstract tools, action logs, completion, and cap behavior._
+An agent gives Claude a goal and a set of tools, then lets it choose the sequence of observations and actions. This flexibility is valuable when the useful path cannot be enumerated in advance. It is also why an agent should be a deliberate exception rather than the default implementation for every multi-step feature.
+
+### Establish that the path is genuinely unknown
+
+Use an agent when success may require exploring an environment, revising a plan after new evidence, or selecting an unpredictable number and order of tools. Repository investigation, open-ended incident diagnosis, and research across heterogeneous sources can fit.
+
+Prefer a fixed workflow when the stages, branches, or approval points are known. A workflow offers clearer latency, cost, evaluation, and failure behavior. Before building an agent, prototype the task with the message, structured-output, tool, and workflow patterns from earlier chapters.
+
+Anthropic's [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) recommends starting with simple composable patterns and adding autonomous behavior only when it improves outcomes (accessed 2026-07-27).
+
+### Give the agent an outcome, boundaries, and completion criteria
+
+A good agent system prompt defines:
+
+- the goal and what counts as a finished answer;
+- available data and tool semantics;
+- actions it must not take;
+- when to verify an observation;
+- when to ask for human input; and
+- how to report uncertainty or incomplete work.
+
+Do not encode access control only in prose. Tool implementations, credentials, tenant scope, and confirmation gates enforce the actual boundary.
+
+```ts
+const agentRequest: ClaudeRequest = {
+  model: modelPolicy.forFeature("repository-investigation"),
+  max_tokens: 4_000,
+  system: `Investigate the repository and explain its architecture.
+Use tools to inspect evidence before concluding.
+Cite the file paths that support important claims.
+If the available evidence is insufficient, say what remains unknown.`,
+  tools: [listFilesTool, searchPathsTool, readFileTool, knowledgeTool],
+  messages: [{ role: "user", content: goal }],
+};
+```
+
+A fixed goal is often safer than an unrestricted user goal for the first production version. Expand scope after evaluation shows which requests are useful and which permissions they require.
+
+### Offer small, composable tools
+
+Abstract tools let the agent form its own plan: list, search, read, inspect metadata, or request a narrow calculation. Avoid one tool that performs an entire hidden workflow; that gives the model little useful feedback and makes failures opaque.
+
+Each tool should have one clear effect, bounded output, runtime validation, authorization, timeout, and stable error semantics. Read-only tools are the safest starting point. For writes, separate propose, preview, and commit operations, and require confirmation at the application boundary.
+
+Tool results are observations, not instructions. Keep external and repository content in tool-result blocks and treat it as untrusted. An agent that can read adversarial content and call powerful tools needs stronger isolation than an ordinary chat feature.
+
+### Drive a capped loop
+
+The loop resembles custom tool use, but its purpose is open-ended progress toward a goal. Bound every resource that can grow.
+
+```ts
+const limits = {
+  maxModelCalls: 12,
+  maxCustomToolCalls: 20,
+  maxWallTimeMs: 90_000,
+  maxEstimatedCostUsd: 1.00,
+};
+
+async function runAgent(initial: ClaudeRequest): Promise<AgentResult> {
+  let request = initial;
+  const calls: AgentCall[] = [];
+  const activity: ToolActivity[] = [];
+  const startedAt = Date.now();
+  let customToolCalls = 0;
+
+  for (let modelCall = 1; modelCall <= limits.maxModelCalls; modelCall += 1) {
+    assertWithinTimeAndCost(startedAt, calls, limits);
+    const response = await claude.createMessage(request);
+    calls.push({ modelCall, request, response });
+
+    if (response.stop_reason !== "tool_use") {
+      return finalizeAgent(response, calls, activity, { limitReached: null });
+    }
+
+    const requested = response.content.filter(isClientToolUse);
+    if (customToolCalls + requested.length > limits.maxCustomToolCalls) {
+      return finalizeAgent(response, calls, activity, {
+        limitReached: "custom_tool_calls",
+      });
+    }
+
+    const results = await executeAndRecord(requested, activity);
+    customToolCalls += requested.length;
+    request = appendUnmodifiedAssistantAndResults(request, response, results);
+  }
+
+  return finalizeAgent(lastResponse(calls), calls, activity, {
+    limitReached: "model_calls",
+  });
+}
+```
+
+Define precisely what a cap counts. Model calls, client-tool executions, server-tool activity, and loop rounds are different. Check a budget before performing the action it limits, then return a truthful incomplete status. Do not present the last partial text as a normal successful answer merely because a loop ended.
+
+SDK tool runners can manage standard message history, execution, error wrapping, and iteration caps. Use one when its lifecycle matches your needs; retain a manual loop for custom approval, telemetry, mixed execution policy, or unusual recovery. Anthropic's [Tool Runner guide](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner) documents current behavior and `max_iterations` support (accessed 2026-07-27).
+
+### Handle custom and server tools by execution boundary
+
+An agent may combine backend-executed tools with web search, code execution, or MCP. Only unresolved client `tool_use` blocks require your backend to execute functions and append `tool_result` blocks. Completed server-tool blocks are observations within the provider response.
+
+Mixed turns and server-side pauses require stop-reason-aware continuation. Preserve the tools array and assistant content exactly where the API contract requires it. Count server-tool uses in activity and budgets even when they do not create an application-side loop iteration.
+
+```ts
+interface ToolActivity {
+  sequence: number;
+  modelCall: number;
+  execution: "client" | "server";
+  tool: string;
+  inputSummary: unknown;
+  outcome: "succeeded" | "recoverable-error" | "failed";
+  durationMs?: number;
+}
+```
+
+Use a stable sequence number rather than inferring activity order later from several block types. Redact or summarize arguments before returning activity to the browser.
+
+### Make environmental feedback visible
+
+Agents improve their plan through observations. Preserve each request, response, tool call, result, and recoverable error in a correlated trace. This reveals whether the agent gathered evidence, repeated itself, ignored an error, or concluded prematurely.
+
+Repeated inspection is not automatically waste. Re-reading a file after discovering new context can be verification; repeating the same call with the same input and no changed state can signal a loop. Detect exact and semantic repetition, expose it in internal telemetry, and consider terminating after a repeated-no-progress threshold.
+
+The product UI should show concise, user-safe activity such as “searched repository paths” or “read configuration file,” not hidden reasoning or raw private data. Users need enough feedback to understand progress, cancel, and review consequential actions.
+
+### Extract completion conservatively
+
+A final non-tool response can contain several text and non-text blocks. Inspect the stop reason, concatenate or render supported text blocks deliberately, and preserve citations and artifacts separately. Return explicit status:
+
+```ts
+interface AgentResult {
+  status: "completed" | "incomplete" | "failed" | "awaiting-approval";
+  finalAnswer: string | null;
+  limitReached: "model_calls" | "custom_tool_calls" | "time" | "cost" | null;
+  calls: AgentCall[];
+  activity: ToolActivity[];
+  usage: TurnUsage;
+}
+```
+
+A refusal, truncation, context limit, cap, cancellation, or approval pause is not ordinary completion. The UI should preserve useful partial work while stating why the run stopped and what the user can do next.
+
+### Put humans around consequential actions
+
+For side effects, let the agent prepare an action and pause before execution. Show the exact target and diff or payload, validate that it still applies, then require an authorized confirmation. Approval should be bound to that action version; changing arguments invalidates it.
+
+Use idempotency keys and preconditions for committed actions. Log who approved, what executed, and the result. Never allow a generic “approved” flag in conversation text to substitute for application authorization.
+
+### Manage context and long-running work
+
+Agent histories grow through tool definitions, observations, thinking blocks, and repeated turns. Set context thresholds and use supported context editing, compaction, retrieval, or a durable state summary. Never drop the latest assistant tool request or its required result pairing. Preserve thinking-related blocks unchanged where the selected model requires them.
+
+Long runs are better modeled as jobs with persisted checkpoints, cancellation, and resumable state than as one browser connection. Store only what is needed for continuation and audit, with explicit retention and redaction.
+
+### Test trajectories and adversarial behavior
+
+Unit tests should cover no-tool completion, each tool, several tools in one response, recoverable errors, unknown tools, mixed server/client activity, pause continuation, every stop reason, each budget, cancellation, repeated-no-progress detection, approval, immutable traces, and final-answer extraction.
+
+Integration tests should intercept multi-call Messages trajectories and real external-client boundaries. Browser tests should use deterministic fixtures for a successful investigation, cap exhaustion, and approval pause. Never rely on a live model to choose the exact same path in CI.
+
+Evaluation must measure outcome quality, evidence coverage, unnecessary calls, repeated actions, unsafe attempts, latency, cost, and human intervention. Include adversarial tool content, misleading files, missing data, dependency errors, and goals that should be refused. A capable happy path is insufficient evidence for production autonomy.
+
+### Operational checklist for an agent
+
+Before release, confirm that:
+
+- a fixed workflow cannot meet the requirement more simply;
+- every tool is least-privilege and independently authorized;
+- all model, tool, time, context, and cost budgets are enforced;
+- consequential actions require bound approval and idempotency;
+- all activity is traceable without leaking sensitive content;
+- partial and capped outcomes are visible and recoverable;
+- deterministic trajectory tests cover failures and attacks; and
+- quality and safety evaluations run continuously after model or tool changes.
+
+An agent earns its complexity when its freedom to choose steps produces measurable value. Otherwise, convert the observed successful trajectories into a simpler workflow.
 
 ## 13. Testing and Operational Hardening
 
