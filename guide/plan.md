@@ -309,6 +309,7 @@ Cover engineering rigor:
 - Add dated entries here when the plan changes during drafting.
 - 2026-07-27: Moved the plan to `guide/plan.md`, established `guide/` as the publication workspace, and added progress-tracking requirements.
 - 2026-07-27: Changed the asset reference convention from repo-root-relative `guide/assets/...` to guide-relative `assets/...`. The guide lives in `guide/`, so the old convention produced image paths that would not resolve when the document is opened directly. Assets still live under `guide/assets/`; only how the guide references them changed.
+- 2026-07-27: Moved "insert supplied screenshots" from session 8 to session 9. Session 8 is an editorial pass that can complete before any screenshot exists, and session 9 already owns resolving every `SCREENSHOT TODO` before publication. Keeping the insertion step in session 8 made its completed checkbox depend on work that cannot start until the captures are supplied.
 
 ## Writing Sessions
 
@@ -342,8 +343,8 @@ Cover engineering rigor:
    - Align tone for senior engineers and remove extended explanations of foundational web-security or application-development facts.
    - Select screenshots only when they teach a transferable idea.
    - Add a `SCREENSHOT TODO` at each intended image location with capture state, framing, filename, alt text, caption, and teaching purpose for the user to fulfill manually.
-   - After screenshots are supplied, insert them with relative `assets/` paths and retain accessible alt text and useful captions.
 9. [ ] **Technical And Publication Review**
+   - After screenshots are supplied, insert them with relative `assets/` paths and retain accessible alt text and useful captions.
    - Validate all code and request/response examples against the cited API documentation.
    - Verify that claims, limits, and model-specific behavior are cited and dated where they may change.
    - Test all internal links, table-of-contents links, references, and image paths.
