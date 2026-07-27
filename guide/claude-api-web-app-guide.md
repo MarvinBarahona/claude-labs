@@ -1127,7 +1127,7 @@ Use response usage to distinguish cache creation from cache reads. A configured 
 
 A stable Files API identifier helps keep request bytes and cache prefixes stable, but file reuse and prompt caching solve different problems: the former avoids uploading bytes again; the latter avoids reprocessing an eligible prompt prefix.
 
-### Failure modes and testing
+### Document failure modes and testing
 
 Handle unsupported type, oversized or encrypted file, failed upload, stale file identifier, provider deletion, extraction failure, session expiry, cache miss, uncitable scan, and a response without usable text. A citation-free answer can be either a valid outcome or a product failure depending on the promise made to users; encode that decision.
 
@@ -1475,7 +1475,7 @@ Images can contain faces, documents, location clues, screens, access tokens, and
 
 Treat visible text in images as untrusted input. A screenshot can contain prompt-injection instructions just as a web page can. Tool permissions and application policy must remain independent of anything Claude reads in an image.
 
-### Failure modes and testing
+### Vision failure modes and testing
 
 Handle unsupported format, corrupt decode, animated input, excessive dimensions or bytes, too many images, source-fetch timeout, fewer images than the workflow requires, provider rejection, answer without text, and partial upload cleanup. Do not silently compare fewer images than the user selected; that changes the task.
 
@@ -1623,7 +1623,7 @@ A useful internal bench shows each profile's final answer, returned thinking sum
 
 Avoid declaring a winner from latency or token count alone. Show the quality/cost frontier and let the product team choose the lowest-cost profile that meets the acceptance threshold.
 
-### Failure modes and testing
+### Reasoning failure modes and testing
 
 Handle unsupported mode/model combinations, invalid manual budgets, insufficient output budget, thinking omitted by configuration, redacted blocks, modified-history rejection, truncation, stream reconstruction, and one failed run in a comparison batch. Decide whether a partial comparison remains useful or the whole benchmark fails.
 
@@ -2386,7 +2386,7 @@ For structured output, define the schema at the API boundary and validate the pa
 - [Messages](#3-foundations-messages-api-in-a-web-application)
 - [Observability](#observability-without-accidental-disclosure)
 - [Prompt caching](#cache-the-stable-document-prefix)
-- [Refusals and stop reasons](#failure-modes-and-resilience)
+- [Refusals and stop reasons](#handle-valid-http-responses-that-are-not-valid-results)
 - [Skills](#add-skills-when-repetition-justifies-them)
 - [Streaming](#add-streaming-for-user-perceived-progress)
 - [Structured outputs](#4-structured-outputs)
