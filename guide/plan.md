@@ -334,7 +334,7 @@ Cover engineering rigor:
    - Assemble and reconcile all completed chapters in `guide/claude-api-web-app-guide.md` against the document framework.
    - Add the title page, abstract, table of contents, introduction, reading paths, glossary, synthesis chapter, conclusion, references, appendices, and topical index.
    - Replace dependencies on repo knowledge with inline context, portable examples, or publication assets.
-8. [ ] **Editorial Pass**
+8. [x] **Editorial Pass**
    - Remove repo-specific names and paths except where the playground is explicitly identified as an optional case study.
    - Generalize snippets and define every non-obvious term before relying on it.
    - Check chapter transitions, cross-links, heading hierarchy, terminology, and reading order.

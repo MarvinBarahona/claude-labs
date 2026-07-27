@@ -93,6 +93,8 @@ The examples use these conventions:
 
 **Hosted tool** — A capability executed within Anthropic's infrastructure, such as supported web search or code execution.
 
+**Server tool** — A tool executed by Anthropic as part of a Messages API request. In this guide, server tool is the API term; hosted tool is the broader architectural category.
+
 **MCP** — Model Context Protocol, a protocol for exposing external tools and information sources to models through a standard interface.
 
 **Message** — A role-bearing turn sent to or returned from the Messages API. A message contains one or more content blocks and operational metadata.
@@ -482,6 +484,16 @@ for await (const frame of decodeSseFrames(response.body)) {
 
 Treat streamed text as provisional until `turn_complete`. The terminal envelope may include normalized content, citations, warnings, and final usage that cannot be known from deltas alone.
 
+<!-- SCREENSHOT TODO
+Capture: Messages Console after a completed streamed second turn, with the streaming control enabled and the inspector's stream-events section expanded.
+Setup: Use fake mode. Set the system prompt to "You are a terse assistant.", send "Hello there", enable "Stream response", then send "Second message".
+Frame: Include the conversation's two turns, the enabled streaming control, and enough of the inspector to show deltas followed by turn_complete. Exclude the navigation, inline lab documentation, browser chrome, and any unrelated raw payload fields.
+File: guide/assets/streaming-provisional-to-terminal.png
+Alt: Two-turn message interface beside an event trace that ends with turn_complete after streamed text deltas.
+Caption: Figure 1. A development view makes provisional streaming and the terminal application event visible; a production interface would normally hide the raw trace.
+Purpose: Show the transferable distinction between incremental display state and the canonical terminal result.
+-->
+
 ### Failure modes and resilience
 
 Before streaming starts, failures can use non-2xx HTTP responses. After bytes have been sent, errors must travel through the stream. Anthropic can also emit an API error as an SSE event.
@@ -771,6 +783,16 @@ writer.send({
 
 Expose a user-safe label rather than raw arguments when inputs may be sensitive. Preserve raw provider events and tool timing in authorized traces. The stream still ends with exactly one `turn_complete` or `turn_error` event representing the entire user-visible turn.
 
+<!-- SCREENSHOT TODO
+Capture: Live Tool-Use Console after a completed streamed repository-statistics question, with Tool Activity and the inspector's multi-call history visible.
+Setup: Use fake mode. Enable "Stream response", ask "What are the latest repo stats?", and wait for the final answer.
+Frame: Include the question/answer, resolved tool-activity item, and the inspector portion showing the tool-use call followed by the final call. Exclude the navigation, inline lab documentation, browser chrome, configured repository name if it is sensitive, and verbose payload fields not needed to see ordering.
+File: guide/assets/custom-tool-loop-and-trace.png
+Alt: Tool-use interface showing a resolved backend tool activity and an ordered two-call trace ending in an answer.
+Caption: Figure 2. The product can expose safe activity while protected tooling retains the complete tool-use and tool-result trajectory.
+Purpose: Illustrate the separation between user-safe progress, backend execution, and an immutable multi-call trace.
+-->
+
 ### Test and operate custom tools
 
 Unit tests should cover tool definitions, registry dispatch, unknown names, argument validation, authorization, success, recoverable `is_error`, transport failure, multiple calls, immutable traces, stop-reason branches, and every cap. Verify that all results appear in one user message with the correct identifiers.
@@ -968,6 +990,16 @@ Before choosing an agent, ask:
 
 If the answers are mostly yes, a workflow will usually be more dependable than an open-ended agent.
 
+<!-- SCREENSHOT TODO
+Capture: Workflow Gallery after the fake-mode issue finishes, showing the route, final draft, criterion results, iteration count, and pass state.
+Setup: Use fake mode. Open Workflow Gallery, keep the automatically selected issue, select Run, and wait for completion.
+Frame: Include only the interactive result panel from the issue selector through the grading and iteration summary. Exclude navigation, inline lab documentation, browser chrome, and the raw inspector payload.
+File: guide/assets/fixed-workflow-result.png
+Alt: Workflow result displaying a routed category, refined draft, three grading criteria, iteration count, and final pass state.
+Caption: Figure 3. A fixed workflow exposes stage outcomes and termination criteria instead of presenting a multi-call pipeline as one opaque answer.
+Purpose: Show how routing, chaining, parallel evaluation, and a capped optimizer become legible product state.
+-->
+
 ## 7. Files, Documents, Citations, and Caching
 
 Document features combine several concerns that are easy to conflate: moving bytes to Claude, representing a document in a message, grounding claims with citations, retaining conversation state, and avoiding repeated processing. Design each concern explicitly.
@@ -1045,6 +1077,16 @@ Do not treat a citation as proof that the claim is correct. It proves that the r
 Citations can produce several text blocks, each with its own supporting references. Preserve that association instead of flattening all citations into one undifferentiated bibliography. If product rendering needs a flat list, also retain a mapping from each displayed claim or paragraph to its citation identifiers.
 
 At the time of writing, citations and JSON structured outputs are incompatible because citations must interleave with text. If the product needs both grounded prose and typed fields, use separate calls or a workflow with a clear handoff rather than forcing them into one response.
+
+<!-- SCREENSHOT TODO
+Capture: Document Research Assistant after a cited first answer, with one citation disclosure open and the running-notes panel visible.
+Setup: Use fake mode. Start a session with arXiv ID 2301.00234, ask "What is this paper about?", wait for completion, then activate one citation marker to reveal its quoted text and page range.
+Frame: Include the paper title, question and answer, open citation disclosure, and notes panel. Exclude navigation, inline lab documentation, inspector payloads, browser chrome, and any source URL or metadata not needed for the citation relationship.
+File: guide/assets/cited-document-answer.png
+Alt: Document question-answer interface with an answer citation expanded to show quoted source text and pages, alongside structured running notes.
+Caption: Figure 4. Citation UX keeps the supporting passage attached to the claim and available without relying on hover.
+Purpose: Demonstrate accessible claim-to-source inspection and the distinction between grounded prose and separately maintained structured state.
+-->
 
 ### Own multi-turn session state
 
@@ -2329,26 +2371,27 @@ For structured output, define the schema at the API boundary and validate the pa
 
 ## Topical Index
 
-- [Agents](#chapter-9-agents)
-- [API errors](#chapter-12-production-hardening)
-- [Application contracts](#chapter-2-application-architecture-and-boundaries)
-- [Authorization](#chapter-10-security-privacy-and-data-governance)
-- [Citations](#chapter-6-documents-files-images-and-citations)
-- [Code execution](#chapter-7-hosted-tools-and-agent-skills)
-- [Content blocks](#chapter-3-messages-api-fundamentals)
+- [Agents](#12-agents-as-a-deliberate-exception)
+- [API errors](#test-the-application-error-taxonomy)
+- [Application contracts](#expose-an-application-owned-turn-envelope)
+- [Authorization](#system-boundary)
+- [Citations](#enable-citations-as-a-data-contract)
+- [Code execution](#8-code-execution-and-generated-artifacts)
+- [Content blocks](#3-foundations-messages-api-in-a-web-application)
 - [Error taxonomy](#appendix-b-error-taxonomy)
-- [Evaluations](#chapter-13-testing-and-evaluation)
-- [Files and documents](#chapter-6-documents-files-images-and-citations)
-- [Hosted tools and Skills](#chapter-7-hosted-tools-and-agent-skills)
-- [MCP](#chapter-8-mcp-and-remote-tool-integration)
-- [Messages](#chapter-3-messages-api-fundamentals)
-- [Observability](#chapter-11-observability-cost-and-performance)
-- [Prompt caching](#chapter-11-observability-cost-and-performance)
-- [Refusals and stop reasons](#chapter-3-messages-api-fundamentals)
-- [Streaming](#chapter-4-streaming-and-real-time-ux)
-- [Structured outputs](#chapter-5-structured-outputs-and-client-tools)
+- [Evaluations](#add-semantic-evaluations)
+- [Files and documents](#7-files-documents-citations-and-caching)
+- [Hosted and server tools](#9-web-search-and-mcp-connectors)
+- [MCP](#connect-mcp-servers-with-least-privilege)
+- [Messages](#3-foundations-messages-api-in-a-web-application)
+- [Observability](#observability-without-accidental-disclosure)
+- [Prompt caching](#cache-the-stable-document-prefix)
+- [Refusals and stop reasons](#failure-modes-and-resilience)
+- [Skills](#add-skills-when-repetition-justifies-them)
+- [Streaming](#add-streaming-for-user-perceived-progress)
+- [Structured outputs](#4-structured-outputs)
 - [Testing matrix](#appendix-c-testing-matrix)
-- [Thinking and effort](#chapter-3-messages-api-fundamentals)
-- [Tool use](#chapter-5-structured-outputs-and-client-tools)
-- [Vision](#chapter-6-documents-files-images-and-citations)
-- [Workflows](#chapter-9-agents)
+- [Thinking and effort](#11-extended-thinking)
+- [Tool use](#5-custom-backend-tools)
+- [Vision](#10-vision-features)
+- [Workflows](#6-workflows-before-agents)
