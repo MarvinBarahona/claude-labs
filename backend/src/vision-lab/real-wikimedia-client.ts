@@ -5,6 +5,9 @@ import { WikimediaClient, WikimediaImage } from './wikimedia-client';
 
 const COMMONS_BASE_URL = 'https://commons.wikimedia.org';
 const FILE_NAMESPACE = 6;
+// Required by Wikimedia's User-Agent policy (https://meta.wikimedia.org/wiki/User-Agent_policy) — requests without one, or with axios's default, get a 403.
+const USER_AGENT =
+  'claude-labs/1.0 (https://github.com/MarvinBarahona/claude-labs)';
 
 interface CommonsImageInfo {
   url: string;
@@ -28,6 +31,7 @@ interface CommonsSearchResponse {
 export class RealWikimediaClient extends WikimediaClient {
   private readonly http: AxiosInstance = axios.create({
     baseURL: COMMONS_BASE_URL,
+    headers: { 'User-Agent': USER_AGENT },
   });
 
   async searchImages(query: string, count: number): Promise<WikimediaImage[]> {
@@ -56,7 +60,7 @@ export class RealWikimediaClient extends WikimediaClient {
       const images: WikimediaImage[] = [];
       for (const page of pages) {
         const info = page.imageinfo[0];
-        const { data: bytes } = await axios.get<ArrayBuffer>(info.url, {
+        const { data: bytes } = await this.http.get<ArrayBuffer>(info.url, {
           responseType: 'arraybuffer',
         });
         images.push({
