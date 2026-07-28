@@ -4,13 +4,16 @@ Claude to actually compute something (crunch numbers, generate a chart,
 transform a file) rather than just talk about it. Because the sandbox has
 no network access, getting data in and files out has to go through the
 **Files API** instead. This lab fetches real issue/commit data from this
-project's own GitHub repo, uploads it, and lets Claude write and run Python
-against it — optionally reaching for a custom **Agent Skill** along the way.
+app's configured GitHub repository, uploads it,
+and lets Claude write and run Python against it — optionally reaching for a
+custom **Agent Skill** along the way.
 
 ## Getting data into the sandbox
 
-The dataset never gets typed into the prompt as text — it's uploaded once,
-and the sandbox reads it as a real file:
+Each run starts with a live GitHub API call for that repo's issues and
+commits. The result is serialized to JSON and uploaded through the Files
+API — the dataset never gets typed into the prompt as text, and the
+sandbox reads it as a real file:
 
 ```json
 {
@@ -90,11 +93,20 @@ telling Claude it has a better option than a plain CSV for tabular output:
 A custom skill needs registering once before it has a `skill_id` at all
 (`POST /v1/skills`, a separate call this lab makes lazily on its first use
 and then caches for the rest of the process's lifetime) — there's no way to
-point a request at a `SKILL.md` file path directly. Loading a skill also
-adds two more beta headers on top of the Files API one this lab always
-sends: `skills-2025-10-02` for the Skills API itself, and
+point a request at a `SKILL.md` file path directly. That registration call
+uploads `SKILL.md` and its helper script as individual files, each named
+with a shared top-level folder matching the skill's own `name`
+(`spreadsheet-export/SKILL.md`, `spreadsheet-export/export_xlsx.py`).
+Loading a skill also adds two more beta headers on top of the Files API
+one this lab always sends:
+`skills-2025-10-02` for the Skills API itself, and
 `code-execution-2025-08-25`, which is required whenever code execution is
 combined with a container skill like this.
+
+Try it with the toggle on and a prompt like "Export the commit history as a
+spreadsheet" — tabular output plus an explicit spreadsheet ask is exactly
+what this skill's own description tells Claude to reach for it over a plain
+CSV.
 
 ## Gotcha
 
