@@ -46,6 +46,13 @@
             </span>
           </div>
 
+          @if (result.answerText) {
+            <div>
+              <span class="text-xs font-bold uppercase tracking-wide text-foreground">Answer</span>
+              <div class="markdown-content text-sm" data-testid="answer-text" [innerHTML]="result.answerText | markdown"></div>
+            </div>
+          }
+
           <div>
             <span class="text-xs font-bold uppercase tracking-wide text-foreground">Executed code</span>
             @if (result.executedCode.length > 0) {

@@ -121,6 +121,59 @@ describe('DataCodeSandbox', () => {
     expect(el.textContent).toContain('stop_reason: end_turn');
   });
 
+  it("renders Claude's final text reply as markdown", async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    typePrompt(el, 'Chart commit frequency by month.');
+    fixture.detectChanges();
+    runButton(el).click();
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/data-code-sandbox/run').flush({
+      request: {},
+      response: {
+        content: [
+          { type: 'server_tool_use', id: 'srvtoolu_1', name: 'bash_code_execution', input: { command: 'python analyze.py' } },
+          { type: 'text', text: 'Most commits landed in **July**.' },
+        ],
+      },
+      stopReason: 'end_turn',
+      executedCode: [],
+      outputFiles: [],
+      skillUsed: false,
+    });
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+
+    const answer = el.querySelector('[data-testid="answer-text"]');
+    expect(answer?.textContent).toContain('Most commits landed in July.');
+    expect(answer?.querySelector('strong')?.textContent).toBe('July');
+  });
+
+  it('omits the answer section when the response has no text block', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    typePrompt(el, 'Chart commit frequency by month.');
+    fixture.detectChanges();
+    runButton(el).click();
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/data-code-sandbox/run').flush({
+      request: {},
+      response: {},
+      stopReason: 'end_turn',
+      executedCode: [],
+      outputFiles: [],
+      skillUsed: false,
+    });
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="answer-text"]')).toBeFalsy();
+  });
+
   it('renders an image output file inline and a non-image output file as a download link', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();
