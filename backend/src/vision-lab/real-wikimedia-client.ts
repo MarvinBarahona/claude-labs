@@ -8,12 +8,17 @@ const FILE_NAMESPACE = 6;
 // Required by Wikimedia's User-Agent policy (https://meta.wikimedia.org/wiki/User-Agent_policy) — requests without one, or with axios's default, get a 403.
 const USER_AGENT =
   'claude-labs/1.0 (https://github.com/MarvinBarahona/claude-labs)';
+// Commons originals can run tens of MB; requesting this thumbnail width keeps bytes small while staying just above the 2000px multi-image cap so the dimension-cap demo still triggers.
+const THUMBNAIL_TARGET_WIDTH_PX = 2200;
 
 interface CommonsImageInfo {
   url: string;
   width: number;
   height: number;
   mime: string;
+  thumburl?: string;
+  thumbwidth?: number;
+  thumbheight?: number;
 }
 
 interface CommonsPage {
@@ -48,6 +53,7 @@ export class RealWikimediaClient extends WikimediaClient {
             gsrlimit: count,
             prop: 'imageinfo',
             iiprop: 'url|size|mime',
+            iiurlwidth: THUMBNAIL_TARGET_WIDTH_PX,
           },
         },
       );
@@ -60,15 +66,16 @@ export class RealWikimediaClient extends WikimediaClient {
       const images: WikimediaImage[] = [];
       for (const page of pages) {
         const info = page.imageinfo[0];
-        const { data: bytes } = await this.http.get<ArrayBuffer>(info.url, {
+        const fetchUrl = info.thumburl ?? info.url;
+        const { data: bytes } = await this.http.get<ArrayBuffer>(fetchUrl, {
           responseType: 'arraybuffer',
         });
         images.push({
-          url: info.url,
+          url: fetchUrl,
           title: page.title,
           mediaType: info.mime,
-          widthPx: info.width,
-          heightPx: info.height,
+          widthPx: info.thumbwidth ?? info.width,
+          heightPx: info.thumbheight ?? info.height,
           bytes: Buffer.from(bytes),
         });
       }

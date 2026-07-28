@@ -16,6 +16,7 @@ import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-buil
 import { TurnEnvelope } from '../shared/envelope-builder/envelope-builder.types';
 import { StreamResponseBuilderService } from '../shared/stream-response-builder/stream-response-builder.service';
 import { ContentBlockBuilderService } from '../shared/content-block-builder/content-block-builder.service';
+import { ContentBlock } from '../shared/content-block-builder/content-block-builder.types';
 import { WikimediaClient, WikimediaImage } from './wikimedia-client';
 import { RunDto } from './dto/run.dto';
 
@@ -23,6 +24,8 @@ import { RunDto } from './dto/run.dto';
 const DIMENSION_CAP_THRESHOLD_PX = 2000;
 /** Needed on the Messages call itself (not just the upload) whenever a request references an uploaded `file_id`. */
 const FILES_API_BETA = 'files-api-2025-04-14';
+/** Anthropic's hard request-size cap is 32MB; this leaves headroom for JSON overhead and the instruction text before failing fast instead of round-tripping to a 413. */
+const MAX_BASE64_PAYLOAD_BYTES = 28 * 1024 * 1024;
 
 type MessageContentBlock = AnthropicMessage['content'][number];
 type ContentBlockParam = Anthropic.Messages.ContentBlockParam;
@@ -130,6 +133,10 @@ export class VisionLabService {
       ),
     );
 
+    if (dto.deliveryMode === 'base64') {
+      this.assertBase64PayloadWithinLimit(imageBlocks);
+    }
+
     // ContentBlock's media_type is a generic string, not the SDK's literal image-mime union — cast is deliberate, not a modeling mistake.
     const content = [
       ...imageBlocks,
@@ -141,6 +148,22 @@ export class VisionLabService {
       max_tokens: this.modelConfig.getDefaultMaxTokens(),
       messages: [{ role: 'user', content }],
     };
+  }
+
+  private assertBase64PayloadWithinLimit(imageBlocks: ContentBlock[]): void {
+    const totalBytes = imageBlocks.reduce((sum, block) => {
+      return block.source.type === 'base64'
+        ? sum + block.source.data.length
+        : sum;
+    }, 0);
+    if (totalBytes > MAX_BASE64_PAYLOAD_BYTES) {
+      const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
+      const limitMb = MAX_BASE64_PAYLOAD_BYTES / (1024 * 1024);
+      throw new ExternalApiError(
+        'anthropic',
+        `Base64 image payload is ~${totalMb}MB, over this app's ${limitMb}MB safety threshold (Anthropic's hard limit is 32MB). Try Files API mode or fewer images.`,
+      );
+    }
   }
 
   private buildEnvelope(
