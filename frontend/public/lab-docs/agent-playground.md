@@ -60,35 +60,13 @@ Two differences, and they're the whole story:
   different goal and toolset. The domain knowledge lives entirely in the
   tool definitions and the system prompt, not in the control flow.
 
-## How to build your own agent from this
-
-1. Pick a small set of **general-purpose, combinable tools** rather than one
-   tool per anticipated task — this lab offers `list_files`/`read_file`/`search`
-   (generic filesystem primitives) instead of, say, a bespoke
-   `find_the_readme` tool. The same principle as Claude Code's own
-   bash/read/edit/search toolset: a fixed, small surface that composes to
-   cover cases you didn't anticipate, rather than a tool list that grows with
-   every new use case.
-2. State the **goal**, not the steps, in the system prompt — and say so
-   explicitly ("there is no fixed procedure, decide your own steps"), or
-   Claude will default to the narrowest plausible interpretation.
-3. Write the **loop control flow with zero knowledge of what the tools do** —
-   it should only ever branch on `stop_reason`, never on a specific tool
-   name. If your loop has a `switch` on tool name anywhere outside the
-   tool-execution function itself, you've smuggled a workflow's fixed
-   sequencing back into what's supposed to be an agent.
-4. **Always cap iterations.** An open-ended loop needs a hard stop
-   regardless of goal or toolset — this lab caps at 10 backend-executed tool
-   calls (`ITERATION_CAP`) and reports `hitIterationCap: true` rather than
-   hanging or erroring when hit. Treat this the same as Workflow Gallery's
-   own evaluator-optimizer retry cap: non-negotiable for any loop Claude
-   controls the length of.
-5. **Nudge self-checking into the prompt**, since nothing else will —
-   Claude can't tell a lookup actually answered its question unless it's
-   told to verify. This lab's system prompt explicitly asks for that
-   ("re-check a prior result... rather than guessing"); the tool-activity
-   list below flags a repeated tool+input pair as an "environment
-   inspection" instance when it happens.
+The tool list is small and generic for the same reason:
+`list_files`/`read_file`/`search` are filesystem primitives, not one bespoke
+tool per anticipated question (no `find_the_readme`). It's the shape of
+Claude Code's own bash/read/edit/search toolset — a fixed, small surface that
+composes to cover cases the tool author never anticipated. A tool list that
+grows an entry per use case is fixed sequencing smuggled back in under
+another name.
 
 ## Mixing a custom-tool loop with a server-executed tool
 
@@ -99,18 +77,31 @@ is server-executed — it resolves entirely on Anthropic's side, inside
 whichever single call it appears in, and comes back as an ordinary
 `mcp_tool_use`/`mcp_tool_result` pair. The loop above only advances on the
 three custom tools; an MCP call never triggers another round trip by
-itself — the `if (response.stop_reason !== 'tool_use')` check in step 3
-above is what makes this work for free, since an MCP-only response's
-`stop_reason` is never `'tool_use'`.
+itself — the `stop_reason !== 'tool_use'` check is what makes this work for
+free, since an MCP-only response's `stop_reason` is never `'tool_use'`.
 
 A `read_file` call for a path that doesn't exist comes back as a
 `tool_result` with `"is_error": true`, not a transport failure — Claude sees
 the miss and can try a different path instead of the run erroring out.
 
+## Environment inspection
+
+Nothing makes Claude double-check itself by default — a lookup that came back
+empty reads the same to it as one that answered the question. So the system
+prompt asks for it outright: *"inspect your own findings: re-read a file or
+re-check a prior tool result if doing so would confirm or correct what you
+have learned, rather than guessing."* When Claude takes that up, the
+tool-activity list below tags the repeat — any call reusing an earlier call's
+exact tool and input — as an **environment inspection**, so a verification
+pass is visible as something other than a wasted call.
+
 ## Gotcha
 
 An agent's call count is genuinely unpredictable — the same goal can take 2
 calls or 9 depending on what Claude decides it needs to check, which is the
-entire point of handing over control. That's also exactly why the iteration
-cap in step 4 matters far more here than in a workflow, where the call count
-is already known in advance from the code alone.
+entire point of handing over control. That's why this loop needs a hard stop
+that a workflow doesn't: it cuts off after 10 backend-executed tool calls
+(MCP calls don't count toward it, since they never cost an extra round trip)
+and returns `hitIterationCap: true`, shown as a banner above the run. The
+final answer still comes back, but it's whatever Claude had mid-investigation
+when the cap hit — not a conclusion it decided it was ready to give.
