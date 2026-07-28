@@ -149,11 +149,11 @@ export class DataCodeSandboxService {
   private async registerSkill(): Promise<string> {
     const files = [
       {
-        filename: 'SKILL.md',
+        filename: `${SKILL_NAME}/SKILL.md`,
         content: readFileSync(join(SKILL_DIR, 'SKILL.md')),
       },
       {
-        filename: 'export_xlsx.py',
+        filename: `${SKILL_NAME}/export_xlsx.py`,
         content: readFileSync(join(SKILL_DIR, 'export_xlsx.py')),
       },
     ];
