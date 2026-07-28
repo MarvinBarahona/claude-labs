@@ -67,7 +67,6 @@ export class DataCodeSandbox {
   protected readonly error = signal<string | null>(null);
   protected readonly inspectorCall = signal<InspectorCall>(NO_CALL_YET);
 
-  // Raced against a floor timer (MIN_RUN_MS) so a near-instant response is never applied too soon.
   private readonly trigger = signal<RunRequestBody | null>(null);
   private readonly runResult = toSignal(
     toObservable(this.trigger).pipe(

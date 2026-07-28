@@ -116,7 +116,6 @@ export class AgentPlayground {
     () => this.result()?.toolActivity ?? this.liveToolActivity(),
   );
 
-  // Non-streaming run: trigger-signal → switchMap → toSignal() shape, raced against a floor timer (MIN_RUN_MS).
   private readonly trigger = signal<RunRequestBody | null>(null);
   private readonly runResult = toSignal(
     toObservable(this.trigger).pipe(

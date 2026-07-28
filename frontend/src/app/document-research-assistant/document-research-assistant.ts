@@ -188,7 +188,6 @@ export class DocumentResearchAssistant {
     return notes !== null ? renderMarkdown(notes) : '';
   });
 
-  // Non-streaming ask: same trigger-signal → switchMap → toSignal() shape as the session flow, raced against MIN_ASKING_MS.
   private readonly turnTrigger = signal<AskRequestBody | null>(null);
   private readonly turnResult = toSignal(
     toObservable(this.turnTrigger).pipe(

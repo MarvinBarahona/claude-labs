@@ -76,7 +76,6 @@ export class LiveToolUseConsole {
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly inspectorCall = signal<InspectorCall>(NO_CALL_YET);
 
-  // Non-streaming ask: trigger-signal → switchMap → toSignal(), raced against MIN_ASKING_MS.
   private readonly turnTrigger = signal<TurnRequestBody | null>(null);
   private readonly turnResult = toSignal(
     toObservable(this.turnTrigger).pipe(

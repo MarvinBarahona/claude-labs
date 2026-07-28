@@ -82,7 +82,6 @@ export class VisionLab {
     Array.from({ length: this.imageCount() }, (_, index) => index),
   );
 
-  // Non-streaming run: same trigger-signal → switchMap → toSignal() shape as every other lab, raced against MIN_RUN_MS per loading-states.md.
   private readonly runTrigger = signal<RunRequestBody | null>(null);
   private readonly runResult = toSignal(
     toObservable(this.runTrigger).pipe(

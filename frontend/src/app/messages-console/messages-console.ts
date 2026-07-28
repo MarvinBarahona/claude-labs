@@ -76,7 +76,6 @@ export class MessagesConsole {
 
   protected readonly inspectorCall = signal<InspectorCall>(NO_CALL_YET);
 
-  // Non-streaming send: same trigger-signal → switchMap → toSignal() shape as DocsPanel, raced against MIN_TURN_MS per loading-states.md.
   private readonly turnTrigger = signal<TurnRequestBody | null>(null);
   private readonly turnResult = toSignal(
     toObservable(this.turnTrigger).pipe(

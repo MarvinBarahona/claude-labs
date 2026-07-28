@@ -52,7 +52,6 @@ export class StructuredOutputConsole {
 
   protected readonly inspectorCall = signal<InspectorCall>(NO_CALL_YET);
 
-  // Non-streaming send: same trigger-signal → switchMap → toSignal() shape as MessagesConsole.
   private readonly trigger = signal<StructuredRequestBody | null>(null);
   private readonly httpResult = toSignal(
     toObservable(this.trigger).pipe(
