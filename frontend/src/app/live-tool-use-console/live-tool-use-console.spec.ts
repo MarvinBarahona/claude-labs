@@ -262,6 +262,32 @@ describe('LiveToolUseConsole', () => {
     expect(el.querySelector('[data-testid="tool-activity-list"]')).toBeTruthy();
   });
 
+  it('disables Ask while an ask is in flight, so a second click cannot fire a concurrent turn', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    typeQuestion(el, 'What is the weather in Berlin?');
+    fixture.detectChanges();
+    clickAsk(el);
+    fixture.detectChanges();
+
+    expect(askButton(el).disabled).toBe(true);
+
+    clickAsk(el);
+    fixture.detectChanges();
+    httpMock.expectOne('/api/live-tool-use-console/turn').flush({
+      request: {},
+      response: { content: [{ type: 'text', text: 'It is 18°C and cloudy in Berlin.' }] },
+      calls: [],
+      usage: { inputTokens: 20, outputTokens: 10 },
+      stopReason: 'end_turn',
+    });
+
+    await vi.advanceTimersByTimeAsync(MIN_ASKING_MS);
+    fixture.detectChanges();
+    expect(askButton(el).disabled).toBe(false);
+  });
+
   it('shows a visible error state when the (non-streaming) request fails', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();

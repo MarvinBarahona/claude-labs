@@ -124,7 +124,7 @@ export class LiveToolUseConsole {
 
   protected askQuestion(): void {
     const question = this.question().trim();
-    if (!question) {
+    if (!question || this.isAsking()) {
       return;
     }
 
