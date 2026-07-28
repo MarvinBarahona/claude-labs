@@ -83,11 +83,15 @@ last attempt's draft, marked as not passed, rather than failing the request.
 ## Prompt caching
 
 Every call after routing shares the same system prompt (the issue's own
-number, title, and body), so it's marked as a cache breakpoint — the first
-of those calls pays full price to write it into the cache, and every later
-call in the same run, or a same-issue re-run within the cache's lifetime,
-reads it back instead of reprocessing it. The inspector panel below shows
-whether the run's final call read from or wrote to the cache.
+number, title, and body), so it's marked as a cache breakpoint on every one
+of those calls. Marking a breakpoint only requests caching, though — the API
+still requires the cached region to reach a minimum token count (1024 for
+the model this pipeline uses) before it actually writes or reads anything.
+For a short issue, the shared system prompt can fall under that minimum, in
+which case the breakpoint is a silent no-op: no error, just no caching, on
+every call. The inspector panel below shows whether the run's final call
+actually read from or wrote to the cache, which is why it can legitimately
+show neither.
 
 ## The trace
 
