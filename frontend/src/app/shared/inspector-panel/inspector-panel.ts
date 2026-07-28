@@ -53,6 +53,11 @@ export class InspectorPanel {
     })),
   );
 
+  protected readonly finalCallNumber = computed(() => {
+    const priorCount = this.call().calls?.length ?? 0;
+    return priorCount > 0 ? priorCount + 1 : null;
+  });
+
   protected readonly contentBlocks = computed<ContentBlockView[]>(() => {
     const response = this.call().response;
     if (typeof response !== 'object' || response === null) {

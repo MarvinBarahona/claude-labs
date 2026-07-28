@@ -121,6 +121,14 @@ describe('InspectorPanel', () => {
     // Chronological reading order: call 0, then call 1, then the final call.
     expect(idx0Request).toBeLessThan(idx1Request);
     expect(idx1Response).toBeLessThan(idxFinal);
+
+    // The final pair is numbered one past the last prior call, so every pair reads as part of one sequence.
+    expect(text).toContain('Request (call 1)');
+    expect(text).toContain('Response (call 1)');
+    expect(text).toContain('Request (call 2)');
+    expect(text).toContain('Response (call 2)');
+    expect(text).toContain('Request (call 3)');
+    expect(text).toContain('Response (call 3)');
   });
 
   it('renders exactly as before when calls is omitted or empty (regression check)', async () => {

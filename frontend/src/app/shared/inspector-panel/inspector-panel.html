@@ -36,11 +36,15 @@
 
   <div class="grid gap-4 md:grid-cols-2">
     <div class="flex flex-col gap-1">
-      <h3 class="text-xs font-bold uppercase tracking-wide text-foreground">Request</h3>
+      <h3 class="text-xs font-bold uppercase tracking-wide text-foreground">
+        Request{{ finalCallNumber() ? ' (call ' + finalCallNumber() + ')' : '' }}
+      </h3>
       <pre class="overflow-auto rounded-sm bg-muted p-2 text-xs">{{ requestJson() }}</pre>
     </div>
     <div class="flex flex-col gap-1">
-      <h3 class="text-xs font-bold uppercase tracking-wide text-foreground">Response</h3>
+      <h3 class="text-xs font-bold uppercase tracking-wide text-foreground">
+        Response{{ finalCallNumber() ? ' (call ' + finalCallNumber() + ')' : '' }}
+      </h3>
       @if (responseJson(); as json) {
         <pre class="overflow-auto rounded-sm bg-muted p-2 text-xs">{{ json }}</pre>
       } @else {
