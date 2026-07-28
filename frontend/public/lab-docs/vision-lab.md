@@ -54,6 +54,16 @@ This lab re-uploads on every run rather than caching a `file_id` across
 requests — each run is a fresh, independent query, unlike a multi-turn
 session where the same document persists across turns.
 
+**Gotcha:** base64 inlines every image's raw bytes into the request body,
+and Anthropic caps the whole request at 32MB — Wikimedia originals can run
+into the tens of MB before base64 even adds its ~33% overhead, so a large
+`Image Count` in base64 mode can trip a `413 request_too_large`. This lab
+fetches a downscaled Wikimedia thumbnail rather than the full original, and
+checks the total payload size before ever calling Claude, failing fast with
+a clear message instead of round-tripping to a 413. Files API mode doesn't
+have this exposure at all — the Messages request only carries a `file_id`
+reference, regardless of how large the uploaded image was.
+
 ## The response
 
 A non-streaming run returns the model's answer as plain text, alongside
