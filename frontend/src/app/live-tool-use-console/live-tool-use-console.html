@@ -44,7 +44,7 @@
         <div class="flex flex-col gap-1 border-t border-border pt-4">
           <h3 class="text-xs font-bold uppercase tracking-wide text-foreground">Answer</h3>
           @if (answerText()) {
-            <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ answerText() }}</p>
+            <div class="markdown-content text-sm" data-testid="answer-text" [innerHTML]="answerText() | markdown"></div>
           } @else {
             <div class="flex flex-col gap-2" aria-hidden="true" data-testid="answer-skeleton">
               <app-skeleton widthClass="w-full" />

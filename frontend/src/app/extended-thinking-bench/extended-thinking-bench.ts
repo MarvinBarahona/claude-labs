@@ -7,6 +7,7 @@ import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
 import { NO_CALL_YET } from '../shared/inspector-panel/inspector-call';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { Skeleton } from '../shared/skeleton/skeleton';
+import { MarkdownPipe } from '../shared/markdown/markdown.pipe';
 import { extractErrorMessage } from '../shared/http-error/extract-error-message';
 import { raceWithMinDuration } from '../shared/min-duration/min-duration';
 
@@ -62,7 +63,7 @@ const MIN_RUN_MS = 500;
 
 @Component({
   selector: 'app-extended-thinking-bench',
-  imports: [DocsPanel, InspectorPanel, Skeleton],
+  imports: [DocsPanel, InspectorPanel, Skeleton, MarkdownPipe],
   templateUrl: './extended-thinking-bench.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -42,11 +42,11 @@
                 [attr.data-testid]="'comparison-column-' + run.label"
               >
                 <span class="text-xs font-bold uppercase tracking-wide text-foreground">{{ columnHeading(run.label) }}</span>
-                <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ run.answer }}</p>
+                <div class="markdown-content text-sm" data-testid="answer-text" [innerHTML]="run.answer | markdown"></div>
                 <div>
                   <span class="text-xs font-bold uppercase tracking-wide text-foreground">Reasoning Trace</span>
                   @if (run.reasoningTrace) {
-                    <p class="whitespace-pre-wrap text-xs" data-testid="reasoning-trace">{{ run.reasoningTrace }}</p>
+                    <div class="markdown-content text-xs" data-testid="reasoning-trace" [innerHTML]="run.reasoningTrace | markdown"></div>
                   } @else {
                     <p class="text-xs italic text-muted-foreground" data-testid="reasoning-trace">No thinking used for this run.</p>
                   }

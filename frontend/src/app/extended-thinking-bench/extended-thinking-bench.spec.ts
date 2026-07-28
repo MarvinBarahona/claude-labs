@@ -176,6 +176,35 @@ describe('ExtendedThinkingBench', () => {
     expect(el.textContent).toContain('high-response');
   });
 
+  it('renders both the answer and the reasoning trace as markdown rather than literal source text', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    selectIssue(el, 12);
+    fixture.detectChanges();
+    runButton(el).click();
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/extended-thinking-bench/run').flush({
+      issue: { number: 12, title: 'Login button misaligned' },
+      runs: [
+        {
+          label: 'thinking-off',
+          envelope: { request: {}, response: {}, stopReason: 'end_turn' },
+          latencyMs: 120,
+          answer: 'The **root cause** is a stale cache.',
+          reasoningTrace: 'Two options:\n\n- invalidate\n- recompute',
+        },
+      ],
+    });
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+
+    const column = el.querySelector('[data-testid="comparison-column-thinking-off"]') as HTMLElement;
+    expect(column.querySelector('[data-testid="answer-text"] strong')?.textContent).toBe('root cause');
+    expect(column.querySelectorAll('[data-testid="reasoning-trace"] li').length).toBe(2);
+  });
+
   it('shows skeleton placeholders instead of blanking the comparison section while a run is in flight, held for at least MIN_RUN_MS', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();

@@ -7,6 +7,7 @@ import { InspectorPanel } from '../shared/inspector-panel/inspector-panel';
 import { NO_CALL_YET } from '../shared/inspector-panel/inspector-call';
 import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/inspector-call';
 import { Skeleton } from '../shared/skeleton/skeleton';
+import { MarkdownPipe } from '../shared/markdown/markdown.pipe';
 import type { CallPair } from '../shared/anthropic-content/anthropic-content';
 import { extractErrorMessage } from '../shared/http-error/extract-error-message';
 import { raceWithMinDuration, waitOutMinDuration } from '../shared/min-duration/min-duration';
@@ -96,7 +97,7 @@ function findLastRunningIndex(activity: readonly DisplayToolActivityEntry[], too
 
 @Component({
   selector: 'app-agent-playground',
-  imports: [DocsPanel, InspectorPanel, Skeleton],
+  imports: [DocsPanel, InspectorPanel, Skeleton, MarkdownPipe],
   templateUrl: './agent-playground.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

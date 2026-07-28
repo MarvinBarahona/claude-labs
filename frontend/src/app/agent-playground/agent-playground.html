@@ -73,7 +73,7 @@
           <div>
             <span class="text-xs font-bold uppercase tracking-wide text-foreground">Final Answer</span>
             @if (result(); as result) {
-              <p class="mt-2 whitespace-pre-wrap text-sm" data-testid="final-answer">{{ result.finalAnswer }}</p>
+              <div class="markdown-content mt-2 text-sm" data-testid="final-answer" [innerHTML]="result.finalAnswer | markdown"></div>
             } @else {
               <div class="mt-2 flex flex-col gap-2" aria-hidden="true" data-testid="final-answer-skeleton">
                 <app-skeleton widthClass="w-full" />

@@ -119,9 +119,9 @@
             <app-skeleton widthClass="w-2/3" />
           </div>
         } @else if (isRunning()) {
-          <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ streamingAnswerText() }}</p>
+          <div class="markdown-content text-sm" data-testid="answer-text" [innerHTML]="streamingAnswerText() | markdown"></div>
         } @else if (answerText()) {
-          <p class="whitespace-pre-wrap text-sm" data-testid="answer-text">{{ answerText() }}</p>
+          <div class="markdown-content text-sm" data-testid="answer-text" [innerHTML]="answerText() | markdown"></div>
         }
       </div>
     }

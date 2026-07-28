@@ -128,6 +128,34 @@ describe('WorkflowGallery', () => {
     expect(el.textContent).toContain('stop_reason: end_turn');
   });
 
+  it('renders the draft as markdown rather than literal source text', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    selectIssue(el, 12);
+    fixture.detectChanges();
+    runButton(el).click();
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/workflow-gallery/run').flush({
+      request: {},
+      response: {},
+      calls: [],
+      stopReason: 'end_turn',
+      route: 'bug',
+      draft: '## Proposed reply\n\n- Acknowledge the report\n- Ask for a screenshot',
+      grading: [],
+      iterations: 1,
+      passed: true,
+    });
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+
+    const draft = el.querySelector('[data-testid="draft-text"]');
+    expect(draft?.querySelector('h2')?.textContent).toBe('Proposed reply');
+    expect(draft?.querySelectorAll('li').length).toBe(2);
+  });
+
   it('renders "Did not pass after 3 attempts" when the attempt cap is hit without passing', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();

@@ -190,6 +190,24 @@ describe('VisionLab', () => {
     expect(result.textContent).toContain('Both images show a red panda.');
   });
 
+  it('renders the answer as markdown rather than literal source text', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    fillForm(el);
+    fixture.detectChanges();
+    runButton(el).click();
+    fixture.detectChanges();
+
+    httpMock
+      .expectOne('/api/vision-lab/run')
+      .flush(runEnvelope({ answer: 'Both images show a **red panda**.' }));
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="answer-text"] strong')?.textContent).toBe('red panda');
+  });
+
   it('shows the dimension-cap banner only when dimensionCapApplied is true', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();

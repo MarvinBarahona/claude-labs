@@ -125,6 +125,23 @@ describe('AgentPlayground', () => {
     expect(activityItems[0].textContent).toContain('list_files');
   });
 
+  it('renders the final answer as markdown rather than literal source text', async () => {
+    const { el, httpMock, fixture } = await createFixture();
+
+    runButton(el).click();
+    fixture.detectChanges();
+
+    httpMock
+      .expectOne('/api/agent-playground/run')
+      .flush(envelope({ finalAnswer: 'It has two apps:\n\n- `frontend/`\n- `backend/`' }));
+    await new Promise((resolve) => setTimeout(resolve, MIN_RUN_MS + 100));
+    fixture.detectChanges();
+
+    const finalAnswer = el.querySelector('[data-testid="final-answer"]');
+    expect(finalAnswer?.querySelectorAll('li').length).toBe(2);
+    expect(finalAnswer?.querySelector('code')?.textContent).toBe('frontend/');
+  });
+
   it('keeps the result section mounted (skeleton, not a gap) across a second-onward run', async () => {
     const { el, httpMock, fixture } = await createFixture();
 

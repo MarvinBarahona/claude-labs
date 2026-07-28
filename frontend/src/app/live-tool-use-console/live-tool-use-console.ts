@@ -9,6 +9,7 @@ import type { InspectorCall, InspectorUsage } from '../shared/inspector-panel/in
 import { ModelPicker } from '../shared/model-picker/model-picker';
 import type { ModelChoice } from '../shared/model-picker/model-picker';
 import { Skeleton } from '../shared/skeleton/skeleton';
+import { MarkdownPipe } from '../shared/markdown/markdown.pipe';
 import {
   deriveToolActivityFromCalls,
   extractResponseText,
@@ -45,7 +46,7 @@ const MIN_ASKING_MS = 500;
 
 @Component({
   selector: 'app-live-tool-use-console',
-  imports: [DocsPanel, InspectorPanel, ModelPicker, Skeleton],
+  imports: [DocsPanel, InspectorPanel, ModelPicker, Skeleton, MarkdownPipe],
   templateUrl: './live-tool-use-console.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -196,6 +196,28 @@ describe('LiveToolUseConsole', () => {
     expect(activityItems[0].textContent).toContain('done');
   });
 
+  it('renders the answer as markdown rather than literal source text', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    typeQuestion(el, 'What is the weather in Berlin?');
+    fixture.detectChanges();
+    clickAsk(el);
+    fixture.detectChanges();
+
+    httpMock.expectOne('/api/live-tool-use-console/turn').flush({
+      request: { model: 'claude-sonnet-5', messages: [] },
+      response: { content: [{ type: 'text', text: 'It is **18°C** in Berlin.' }] },
+      calls: [],
+      usage: { inputTokens: 20, outputTokens: 10 },
+      stopReason: 'end_turn',
+    });
+    await vi.advanceTimersByTimeAsync(MIN_ASKING_MS);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="answer-text"] strong')?.textContent).toBe('18°C');
+  });
+
   it('shows skeleton placeholders instead of blanking the Answer/Tool Activity sections while a second-onward ask is in flight', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();

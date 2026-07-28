@@ -42,7 +42,7 @@
             </div>
             <div>
               <span class="text-xs font-bold uppercase tracking-wide text-foreground">Draft</span>
-              <p class="whitespace-pre-wrap text-sm" data-testid="draft-text">{{ result.draft }}</p>
+              <div class="markdown-content text-sm" data-testid="draft-text" [innerHTML]="result.draft | markdown"></div>
             </div>
             <div>
               <span class="text-xs font-bold uppercase tracking-wide text-foreground">Grading</span>
