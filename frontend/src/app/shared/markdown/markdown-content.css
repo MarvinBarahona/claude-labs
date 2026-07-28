@@ -100,3 +100,8 @@
   background: none;
   padding: 0;
 }
+
+/* Keeps the rendered block flush with its container's own spacing instead of adding a trailing gap. */
+.markdown-content > :last-child {
+  margin-bottom: 0;
+}
