@@ -200,6 +200,46 @@ describe('WorkflowGallery', () => {
     expect(el.querySelector('[data-testid="route"]')?.textContent).toContain('question');
   });
 
+  it('swaps the stale result out for the skeleton on a second-onward run', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    function flushRun(route: string): void {
+      httpMock.expectOne('/api/workflow-gallery/run').flush({
+        request: {},
+        response: {},
+        calls: [{ request: {}, response: {} }],
+        stopReason: 'end_turn',
+        route,
+        draft: 'draft text',
+        grading: [{ criterion: 'tone', pass: true, feedback: 'ok' }],
+        iterations: 1,
+        passed: true,
+        cache: { read: false, write: false },
+      });
+    }
+
+    selectIssue(el, 12);
+    fixture.detectChanges();
+    runButton(el).click();
+    fixture.detectChanges();
+    flushRun('question');
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="route"]')?.textContent).toContain('question');
+
+    runButton(el).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="route"]')).toBeFalsy();
+    expect(el.querySelector('[data-testid="run-result-skeleton"]')).toBeTruthy();
+
+    flushRun('bug');
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="route"]')?.textContent).toContain('bug');
+  });
+
   it('shows a visible error state when the request fails, not a silent failure', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();

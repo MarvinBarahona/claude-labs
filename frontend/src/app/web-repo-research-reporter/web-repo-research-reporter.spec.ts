@@ -234,6 +234,35 @@ describe('WebRepoResearchReporter', () => {
     expect(el.querySelector('[data-testid="brief-summary"]')).toBeTruthy();
   });
 
+  it('swaps the stale brief out for the skeleton on a second-onward run', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    typeQuestion(el, 'What testing approach does this repo use?');
+    fixture.detectChanges();
+    runButton(el).click();
+    fixture.detectChanges();
+    httpMock
+      .expectOne('/api/web-repo-research-reporter/run')
+      .flush(fixtureEnvelope({ brief: { summary: 'first summary', findings: [] } }));
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="brief-summary"]')?.textContent).toContain('first summary');
+
+    runButton(el).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="brief-summary"]')).toBeFalsy();
+    expect(el.querySelector('[data-testid="brief-result-skeleton"]')).toBeTruthy();
+
+    httpMock
+      .expectOne('/api/web-repo-research-reporter/run')
+      .flush(fixtureEnvelope({ brief: { summary: 'second summary', findings: [] } }));
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="brief-summary"]')?.textContent).toContain('second summary');
+  });
+
   it('shows a visible error state when the request fails, not a silent failure', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();

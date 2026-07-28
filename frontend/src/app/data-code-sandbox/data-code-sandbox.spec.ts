@@ -217,6 +217,42 @@ describe('DataCodeSandbox', () => {
     expect(el.querySelector('[data-testid="skill-used-badge"]')).toBeTruthy();
   });
 
+  it('swaps the stale result out for the skeleton on a second-onward run', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    function flushRun(skillUsed: boolean): void {
+      httpMock.expectOne('/api/data-code-sandbox/run').flush({
+        request: {},
+        response: {},
+        stopReason: 'end_turn',
+        executedCode: [],
+        outputFiles: [],
+        skillUsed,
+      });
+    }
+
+    typePrompt(el, 'Chart commit frequency by month.');
+    fixture.detectChanges();
+    runButton(el).click();
+    fixture.detectChanges();
+    flushRun(true);
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="skill-used-badge"]')?.textContent).toContain('Yes');
+
+    runButton(el).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="skill-used-badge"]')).toBeFalsy();
+    expect(el.querySelector('[data-testid="run-result-skeleton"]')).toBeTruthy();
+
+    flushRun(false);
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="skill-used-badge"]')?.textContent).toContain('No');
+  });
+
   it('shows a visible error state when the request fails, not a silent failure', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();

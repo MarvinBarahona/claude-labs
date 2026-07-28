@@ -148,12 +148,13 @@ export class ExtendedThinkingBench {
 
   protected run(): void {
     const issueNumber = this.selectedIssueNumber();
-    if (issueNumber === null) {
+    if (issueNumber === null || this.isRunning()) {
       return;
     }
 
     this.error.set(null);
     this.isRunning.set(true);
+    this.runs.set(null);
     this.trigger.set({ issueNumber });
   }
 

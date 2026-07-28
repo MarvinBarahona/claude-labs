@@ -202,6 +202,31 @@ describe('ExtendedThinkingBench', () => {
     expect(el.querySelector('[data-testid="comparison-column-thinking-off"]')).toBeTruthy();
   });
 
+  it('swaps the stale comparison out for the skeleton on a second-onward run', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+
+    selectIssue(el, 12);
+    fixture.detectChanges();
+    runButton(el).click();
+    fixture.detectChanges();
+    httpMock.expectOne('/api/extended-thinking-bench/run').flush(threeRunsBody());
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="comparison-column-thinking-off"]')).toBeTruthy();
+
+    runButton(el).click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="comparison-column-thinking-off"]')).toBeFalsy();
+    expect(el.querySelectorAll('[data-testid="comparison-column-skeleton"]').length).toBe(3);
+
+    httpMock.expectOne('/api/extended-thinking-bench/run').flush(threeRunsBody());
+    await vi.advanceTimersByTimeAsync(MIN_RUN_MS);
+    fixture.detectChanges();
+    expect(el.querySelector('[data-testid="comparison-column-thinking-off"]')).toBeTruthy();
+  });
+
   it('shows a visible error state when the request fails, not a silent failure', async () => {
     vi.useFakeTimers();
     const { fixture, httpMock, el } = await createFixture();

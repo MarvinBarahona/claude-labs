@@ -111,12 +111,13 @@ export class DataCodeSandbox {
 
   protected run(): void {
     const prompt = this.prompt().trim();
-    if (!prompt) {
+    if (!prompt || this.isRunning()) {
       return;
     }
 
     this.error.set(null);
     this.isRunning.set(true);
+    this.result.set(null);
     this.trigger.set({ prompt, useSkill: this.useSkill() });
   }
 

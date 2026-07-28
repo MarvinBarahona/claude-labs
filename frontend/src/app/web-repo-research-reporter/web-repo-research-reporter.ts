@@ -135,12 +135,13 @@ export class WebRepoResearchReporter {
 
   protected run(): void {
     const question = this.question().trim();
-    if (!question) {
+    if (!question || this.isRunning()) {
       return;
     }
 
     this.error.set(null);
     this.isRunning.set(true);
+    this.result.set(null);
     this.trigger.set({ question, maxSearches: this.maxSearches() });
   }
 
