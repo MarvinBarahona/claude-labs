@@ -99,7 +99,11 @@ describe('AgentPlaygroundController (e2e)', () => {
       {
         tool: 'list_files',
         input: {},
-        result: [{ path: 'README.md', type: 'blob', sha: 'sha1' }],
+        result: {
+          entries: [{ path: 'README.md', type: 'blob' }],
+          totalMatches: 1,
+          truncated: false,
+        },
         isError: false,
       },
     ]);

@@ -13,11 +13,41 @@ import { EnvelopeBuilderService } from '../shared/envelope-builder/envelope-buil
 import { TurnEnvelope } from '../shared/envelope-builder/envelope-builder.types';
 import { StreamResponseBuilderService } from '../shared/stream-response-builder/stream-response-builder.service';
 import { GithubClient } from '../shared/github-provider/github-client';
+import { GithubFileTreeEntry } from '../shared/github-provider/github-provider.types';
 import { DeepwikiConnectorService } from '../shared/deepwiki-connector/deepwiki-connector.service';
 import { RunDto } from './dto/run.dto';
 
-/** Backend-executed (custom) tool calls only — an mcp_tool_use never counts toward this, since it resolves inline and never advances the loop. */
+/** Counts both custom tool calls and `mcp_tool_use` calls — including one still unresolved/deferred to the next turn — even though an `mcp_tool_use` alone never advances the loop by itself. */
 const ITERATION_CAP = 10;
+
+/** Caps `list_files`/`search` results so a tool result's size is bounded regardless of `GITHUB_TARGET_REPO`'s actual tree size — see docs/technical/unbounded-data-sources.md. */
+const MAX_TREE_ENTRIES = 500;
+
+/** Caps `read_file` results so a single large file (a lockfile, a minified bundle) can't blow up a tool result. */
+const MAX_FILE_CONTENT_CHARS = 20_000;
+
+/** Caps an `ask_deepwiki` (`mcp_tool_result`) result's text — defense-in-depth for `read_wiki_structure`/`ask_question` (see `DEEPWIKI_ALLOWED_TOOLS` below for why `read_wiki_contents` itself is excluded rather than capped). */
+const MAX_MCP_RESULT_CHARS = 20_000;
+
+/** `read_wiki_contents` excluded, not just capped: an MCP result is billed as input tokens the moment it resolves server-side, before this backend ever sees the response — so a client-side cap can't bound it, and this one tool alone can cost ~$1 on a large repo. */
+const DEEPWIKI_ALLOWED_TOOLS = ['read_wiki_structure', 'ask_question'];
+
+/** Uniform result shape for `list_files`/`search`, whether or not truncation actually happened. */
+interface TreeResult {
+  entries: Array<{ path: string; type: 'blob' | 'tree' }>;
+  totalMatches: number;
+  truncated: boolean;
+}
+
+function toTreeResult(matches: GithubFileTreeEntry[]): TreeResult {
+  return {
+    entries: matches
+      .slice(0, MAX_TREE_ENTRIES)
+      .map(({ path, type }) => ({ path, type })),
+    totalMatches: matches.length,
+    truncated: matches.length > MAX_TREE_ENTRIES,
+  };
+}
 
 type MessageContentBlock = AnthropicMessage['content'][number];
 type ToolUseBlock = Extract<MessageContentBlock, { type: 'tool_use' }>;
@@ -31,14 +61,15 @@ const CUSTOM_TOOLS: AnthropicTool[] = [
   {
     name: 'list_files',
     description:
-      "List files in the repository's file tree, optionally filtered to paths starting with a given prefix.",
+      "List files in the repository's file tree, optionally filtered to paths starting with a given prefix. Results over " +
+      `${MAX_TREE_ENTRIES} entries are truncated (check the "truncated" field); narrow with a path prefix to see everything under it.`,
     input_schema: {
       type: 'object',
       properties: {
         path: {
           type: 'string',
           description:
-            'Optional path prefix to filter the file tree to, e.g. "src/app". Omit to list the whole tree.',
+            'Optional path prefix to filter the file tree to, e.g. "src/app". Omit to list the whole tree (may be truncated for a large repo).',
         },
       },
     },
@@ -61,7 +92,8 @@ const CUSTOM_TOOLS: AnthropicTool[] = [
   {
     name: 'search',
     description:
-      "Case-insensitive substring search over the repository's file paths (not file contents).",
+      "Case-insensitive substring search over the repository's file paths (not file contents). Results over " +
+      `${MAX_TREE_ENTRIES} matches are truncated (check the "truncated" field); use a more specific query to narrow down.`,
     input_schema: {
       type: 'object',
       properties: {
@@ -112,6 +144,33 @@ interface RawBlock {
   is_error?: boolean;
 }
 
+/** Applied once right after a response is received, so the same capped copy is used for display and for what gets resent as history — same "cap once, uniformly" approach as the 3 custom tools. */
+function capMcpToolResult(response: AnthropicMessage): AnthropicMessage {
+  const blocks = response.content as unknown as RawBlock[];
+  const cappedBlocks = blocks.map((block) => {
+    if (block.type !== 'mcp_tool_result' || !Array.isArray(block.content)) {
+      return block;
+    }
+    return {
+      ...block,
+      content: (block.content as RawBlock[]).map((item) => {
+        const text = (item as { text?: unknown }).text;
+        if (typeof text !== 'string' || text.length <= MAX_MCP_RESULT_CHARS) {
+          return item;
+        }
+        return {
+          ...item,
+          text: `${text.slice(0, MAX_MCP_RESULT_CHARS)}\n\n[truncated — response exceeded ${MAX_MCP_RESULT_CHARS} characters]`,
+        };
+      }),
+    };
+  });
+  return {
+    ...response,
+    content: cappedBlocks as unknown as AnthropicMessage['content'],
+  };
+}
+
 export type AgentPlaygroundStreamFrame =
   | { kind: 'stream-event'; event: AnthropicStreamEvent }
   | { kind: 'tool-call-start'; name: string; input: unknown }
@@ -156,17 +215,16 @@ export class AgentPlaygroundService {
     let params = this.buildMessageParams();
     const calls: TurnCall[] = [];
     const toolActivity: ToolActivityEntry[] = [];
-    let executedCustomToolCalls = 0;
+    let executedToolCalls = 0;
 
     for (;;) {
-      const response = await this.anthropicClient.createMessage(
-        params,
-        this.betas(),
+      const response = capMcpToolResult(
+        await this.anthropicClient.createMessage(params, this.betas()),
       );
       this.recordMcpActivity(response, toolActivity);
 
       const toolUseBlocks = this.toolUseBlocksOf(response);
-      const hitCap = executedCustomToolCalls >= ITERATION_CAP;
+      const hitCap = executedToolCalls >= ITERATION_CAP;
 
       if (
         response.stop_reason !== 'tool_use' ||
@@ -188,7 +246,8 @@ export class AgentPlaygroundService {
       const executed = await Promise.all(
         toolUseBlocks.map((block) => this.executeTool(block)),
       );
-      executedCustomToolCalls += toolUseBlocks.length;
+      executedToolCalls +=
+        toolUseBlocks.length + this.mcpToolUseCount(response);
       this.recordCustomActivity(toolUseBlocks, executed, toolActivity);
       params = this.appendToolResults(
         params,
@@ -203,7 +262,7 @@ export class AgentPlaygroundService {
     let params = this.buildMessageParams();
     const calls: TurnCall[] = [];
     const toolActivity: ToolActivityEntry[] = [];
-    let executedCustomToolCalls = 0;
+    let executedToolCalls = 0;
 
     try {
       for (;;) {
@@ -215,11 +274,13 @@ export class AgentPlaygroundService {
           events.push(event);
           yield { kind: 'stream-event', event };
         }
-        const response = this.streamResponseBuilder.reconstructMessage(events);
+        const response = capMcpToolResult(
+          this.streamResponseBuilder.reconstructMessage(events),
+        );
         this.recordMcpActivity(response, toolActivity);
 
         const toolUseBlocks = this.toolUseBlocksOf(response);
-        const hitCap = executedCustomToolCalls >= ITERATION_CAP;
+        const hitCap = executedToolCalls >= ITERATION_CAP;
 
         if (
           response.stop_reason !== 'tool_use' ||
@@ -262,7 +323,8 @@ export class AgentPlaygroundService {
             isError: executed.isError,
           };
         }
-        executedCustomToolCalls += toolUseBlocks.length;
+        executedToolCalls +=
+          toolUseBlocks.length + this.mcpToolUseCount(response);
         params = this.appendToolResults(params, response, toolResultBlocks);
       }
     } catch (exception) {
@@ -330,6 +392,12 @@ export class AgentPlaygroundService {
     );
   }
 
+  /** Includes an `mcp_tool_use` even when it's still pending, deferred to resolve at the start of the next response. */
+  private mcpToolUseCount(response: AnthropicMessage): number {
+    const blocks = response.content as unknown as RawBlock[];
+    return blocks.filter((block) => block.type === 'mcp_tool_use').length;
+  }
+
   /** Reassigns rather than mutates `params` — each earlier `calls` entry must keep the request snapshot it was actually sent with. */
   private appendToolResults(
     params: AnthropicMessageParams,
@@ -365,13 +433,14 @@ export class AgentPlaygroundService {
     const filtered = prefix
       ? tree.filter((entry) => entry.path.startsWith(prefix))
       : tree;
+    const result = toTreeResult(filtered);
     return {
       toolResultBlock: {
         type: 'tool_result',
         tool_use_id: block.id,
-        content: JSON.stringify(filtered),
+        content: JSON.stringify(result),
       },
-      displayResult: filtered,
+      displayResult: result,
       isError: false,
     };
   }
@@ -382,13 +451,14 @@ export class AgentPlaygroundService {
     const matches = tree.filter((entry) =>
       entry.path.toLowerCase().includes(query),
     );
+    const result = toTreeResult(matches);
     return {
       toolResultBlock: {
         type: 'tool_result',
         tool_use_id: block.id,
-        content: JSON.stringify(matches),
+        content: JSON.stringify(result),
       },
-      displayResult: matches,
+      displayResult: result,
       isError: false,
     };
   }
@@ -398,13 +468,21 @@ export class AgentPlaygroundService {
     const path = (block.input as { path: string }).path;
     try {
       const file = await this.githubClient.getFileContent(path);
+      const truncated = file.content.length > MAX_FILE_CONTENT_CHARS;
+      const result = {
+        content: truncated
+          ? file.content.slice(0, MAX_FILE_CONTENT_CHARS)
+          : file.content,
+        encoding: file.encoding,
+        truncated,
+      };
       return {
         toolResultBlock: {
           type: 'tool_result',
           tool_use_id: block.id,
-          content: JSON.stringify(file),
+          content: JSON.stringify(result),
         },
-        displayResult: file,
+        displayResult: result,
         isError: false,
       };
     } catch (error) {
@@ -434,11 +512,15 @@ export class AgentPlaygroundService {
   }
 
   private betas(): string[] {
-    return this.deepwikiConnector.buildRequestFragment().betas;
+    return this.deepwikiConnector.buildRequestFragment({
+      allowedTools: DEEPWIKI_ALLOWED_TOOLS,
+    }).betas;
   }
 
   private buildMessageParams(): AnthropicMessageParams {
-    const deepwiki = this.deepwikiConnector.buildRequestFragment();
+    const deepwiki = this.deepwikiConnector.buildRequestFragment({
+      allowedTools: DEEPWIKI_ALLOWED_TOOLS,
+    });
     return {
       model: this.modelConfig.getModel('default'),
       max_tokens: this.modelConfig.getDefaultMaxTokens(),

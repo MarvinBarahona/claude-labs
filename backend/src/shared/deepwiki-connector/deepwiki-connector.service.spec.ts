@@ -12,11 +12,12 @@ describe('DeepwikiConnectorService', () => {
     expect(fragment.tools).toEqual([
       { type: 'mcp_toolset', mcp_server_name: 'deepwiki' },
     ]);
-    expect(fragment.tools[0]).not.toHaveProperty('allowed_tools');
+    expect(fragment.tools[0]).not.toHaveProperty('default_config');
+    expect(fragment.tools[0]).not.toHaveProperty('configs');
     expect(fragment.betas).toEqual(['mcp-client-2025-11-20']);
   });
 
-  it('with allowedTools includes that array as allowed_tools, everything else unchanged', () => {
+  it('with allowedTools disables all tools by default and enables only the named ones via configs', () => {
     const service = new DeepwikiConnectorService();
 
     const fragment = service.buildRequestFragment({
@@ -30,7 +31,11 @@ describe('DeepwikiConnectorService', () => {
       {
         type: 'mcp_toolset',
         mcp_server_name: 'deepwiki',
-        allowed_tools: ['read_wiki_structure', 'ask_question'],
+        default_config: { enabled: false },
+        configs: {
+          read_wiki_structure: { enabled: true },
+          ask_question: { enabled: true },
+        },
       },
     ]);
     expect(fragment.betas).toEqual(['mcp-client-2025-11-20']);

@@ -18,7 +18,12 @@ export class DeepwikiConnectorService {
           type: 'mcp_toolset',
           mcp_server_name: DEEPWIKI_SERVER_NAME,
           ...(options?.allowedTools
-            ? { allowed_tools: options.allowedTools }
+            ? {
+                default_config: { enabled: false },
+                configs: Object.fromEntries(
+                  options.allowedTools.map((name) => [name, { enabled: true }]),
+                ),
+              }
             : {}),
         },
       ],

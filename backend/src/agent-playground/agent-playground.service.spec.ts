@@ -33,7 +33,7 @@ function buildDto(overrides: Partial<RunDto> = {}): RunDto {
 }
 
 /** A fabricated `mcp_tool_use`/`mcp_tool_result` pair, mirroring what the real deepwiki MCP server's resolved response looks like. */
-function mcpBlocks(id = 'mcp_1'): unknown[] {
+function mcpBlocks(id = 'mcp_1', text = 'It is a demo app.'): unknown[] {
   return [
     {
       type: 'mcp_tool_use',
@@ -46,7 +46,7 @@ function mcpBlocks(id = 'mcp_1'): unknown[] {
       type: 'mcp_tool_result',
       tool_use_id: id,
       is_error: false,
-      content: [{ type: 'text', text: 'It is a demo app.' }],
+      content: [{ type: 'text', text }],
     },
   ];
 }
@@ -101,17 +101,45 @@ describe('AgentPlaygroundService', () => {
         {
           tool: 'list_files',
           input: {},
-          result: [
-            { path: 'README.md', type: 'blob', sha: 's1' },
-            { path: 'src/main.ts', type: 'blob', sha: 's2' },
-          ],
+          result: {
+            entries: [
+              { path: 'README.md', type: 'blob' },
+              { path: 'src/main.ts', type: 'blob' },
+            ],
+            totalMatches: 2,
+            truncated: false,
+          },
           isError: false,
         },
       ]);
       expect(envelope.finalAnswer).toBe('Investigated the repo.');
     });
 
-    it('filters list_files by the given path prefix', async () => {
+    it('caps list_files at MAX_TREE_ENTRIES and reports truncated: true', async () => {
+      const bigTree = Array.from({ length: 600 }, (_, i) => ({
+        path: `file-${i}.ts`,
+        type: 'blob' as const,
+        sha: `s${i}`,
+      }));
+      fakeGithub.setFileTree(bigTree);
+      fakeAnthropic.queueMessage(
+        fakeToolUseMessage([{ id: 'call_1', name: 'list_files', input: {} }]),
+      );
+      fakeAnthropic.queueMessage(fakeTextMessage('Done.'));
+
+      const envelope = await service.run(buildDto());
+
+      const result = envelope.toolActivity[0].result as {
+        entries: unknown[];
+        totalMatches: number;
+        truncated: boolean;
+      };
+      expect(result.entries).toHaveLength(500);
+      expect(result.totalMatches).toBe(600);
+      expect(result.truncated).toBe(true);
+    });
+
+    it('filters list_files by the given path prefix, counting the filtered set', async () => {
       fakeGithub.setFileTree([
         { path: 'src/main.ts', type: 'blob', sha: 's1' },
         { path: 'docs/readme.md', type: 'blob', sha: 's2' },
@@ -125,9 +153,11 @@ describe('AgentPlaygroundService', () => {
 
       const envelope = await service.run(buildDto());
 
-      expect(envelope.toolActivity[0].result).toEqual([
-        { path: 'src/main.ts', type: 'blob', sha: 's1' },
-      ]);
+      expect(envelope.toolActivity[0].result).toEqual({
+        entries: [{ path: 'src/main.ts', type: 'blob' }],
+        totalMatches: 1,
+        truncated: false,
+      });
     });
 
     it('executes search as a case-insensitive substring match over paths', async () => {
@@ -147,8 +177,63 @@ describe('AgentPlaygroundService', () => {
       expect(envelope.toolActivity[0]).toEqual({
         tool: 'search',
         input: { query: 'main' },
-        result: [{ path: 'src/Main.ts', type: 'blob', sha: 's1' }],
+        result: {
+          entries: [{ path: 'src/Main.ts', type: 'blob' }],
+          totalMatches: 1,
+          truncated: false,
+        },
         isError: false,
+      });
+    });
+
+    it('caps search at MAX_TREE_ENTRIES and reports truncated: true', async () => {
+      const bigTree = Array.from({ length: 600 }, (_, i) => ({
+        path: `match-${i}.ts`,
+        type: 'blob' as const,
+        sha: `s${i}`,
+      }));
+      fakeGithub.setFileTree(bigTree);
+      fakeAnthropic.queueMessage(
+        fakeToolUseMessage([
+          { id: 'call_1', name: 'search', input: { query: 'match' } },
+        ]),
+      );
+      fakeAnthropic.queueMessage(fakeTextMessage('Done.'));
+
+      const envelope = await service.run(buildDto());
+
+      const result = envelope.toolActivity[0].result as {
+        entries: unknown[];
+        totalMatches: number;
+        truncated: boolean;
+      };
+      expect(result.entries).toHaveLength(500);
+      expect(result.totalMatches).toBe(600);
+      expect(result.truncated).toBe(true);
+    });
+
+    it('search counts only the substring-matched set, not the whole tree', async () => {
+      fakeGithub.setFileTree([
+        { path: 'src/Main.ts', type: 'blob', sha: 's1' },
+        { path: 'docs/readme.md', type: 'blob', sha: 's2' },
+        { path: 'other/main.spec.ts', type: 'blob', sha: 's3' },
+      ]);
+      fakeAnthropic.queueMessage(
+        fakeToolUseMessage([
+          { id: 'call_1', name: 'search', input: { query: 'main' } },
+        ]),
+      );
+      fakeAnthropic.queueMessage(fakeTextMessage('Done.'));
+
+      const envelope = await service.run(buildDto());
+
+      expect(envelope.toolActivity[0].result).toEqual({
+        entries: [
+          { path: 'src/Main.ts', type: 'blob' },
+          { path: 'other/main.spec.ts', type: 'blob' },
+        ],
+        totalMatches: 2,
+        truncated: false,
       });
     });
 
@@ -166,9 +251,31 @@ describe('AgentPlaygroundService', () => {
       expect(envelope.toolActivity[0]).toEqual({
         tool: 'read_file',
         input: { path: 'README.md' },
-        result: { content: '# Hello', encoding: 'utf-8' },
+        result: { content: '# Hello', encoding: 'utf-8', truncated: false },
         isError: false,
       });
+    });
+
+    it('caps read_file content at MAX_FILE_CONTENT_CHARS and reports truncated: true', async () => {
+      const bigContent = 'x'.repeat(25_000);
+      fakeGithub.setFileContent({ content: bigContent, encoding: 'utf-8' });
+      fakeAnthropic.queueMessage(
+        fakeToolUseMessage([
+          { id: 'call_1', name: 'read_file', input: { path: 'big.txt' } },
+        ]),
+      );
+      fakeAnthropic.queueMessage(fakeTextMessage('Done.'));
+
+      const envelope = await service.run(buildDto());
+
+      const result = envelope.toolActivity[0].result as {
+        content: string;
+        encoding: string;
+        truncated: boolean;
+      };
+      expect(result.content).toHaveLength(20_000);
+      expect(result.content).toBe(bigContent.slice(0, 20_000));
+      expect(result.truncated).toBe(true);
     });
 
     it('read_file on a not-found path returns is_error: true, not a transport failure', async () => {
@@ -213,6 +320,26 @@ describe('AgentPlaygroundService', () => {
       );
     });
 
+    it('restricts the deepwiki mcp_toolset to read_wiki_structure and ask_question, excluding read_wiki_contents', async () => {
+      fakeAnthropic.queueMessage(fakeTextMessage('Done.'));
+
+      await service.run(buildDto());
+
+      const [{ tools }] = fakeAnthropic.recordedCalls;
+      const mcpToolset = (tools ?? []).find(
+        (tool) => 'type' in tool && tool.type === 'mcp_toolset',
+      );
+      expect(mcpToolset).toEqual({
+        type: 'mcp_toolset',
+        mcp_server_name: 'deepwiki',
+        default_config: { enabled: false },
+        configs: {
+          read_wiki_structure: { enabled: true },
+          ask_question: { enabled: true },
+        },
+      });
+    });
+
     it('an mcp_tool_use/mcp_tool_result pair resolved inline never advances the loop by itself', async () => {
       fakeAnthropic.queueMessage(
         fakeTextMessage('It is a demo app.', {
@@ -235,6 +362,51 @@ describe('AgentPlaygroundService', () => {
           isError: false,
         },
       ]);
+    });
+
+    it('caps a large ask_deepwiki (mcp_tool_result) answer before it is resent as history on a later call', async () => {
+      const bigAnswer = 'x'.repeat(25_000);
+      fakeGithub.setFileTree([{ path: 'README.md', type: 'blob', sha: 's1' }]);
+      fakeAnthropic.queueMessage(
+        fakeToolUseMessage([{ id: 'call_1', name: 'list_files', input: {} }], {
+          content: [
+            ...mcpBlocks('mcp_1', bigAnswer),
+            {
+              type: 'tool_use',
+              id: 'call_1',
+              name: 'list_files',
+              input: {},
+              caller: { type: 'direct' },
+            },
+          ] as unknown as ReturnType<typeof fakeToolUseMessage>['content'],
+        }),
+      );
+      fakeAnthropic.queueMessage(fakeTextMessage('Done.'));
+
+      const envelope = await service.run(buildDto());
+
+      const askDeepwikiEntry = envelope.toolActivity.find(
+        (entry) => entry.tool === 'ask_deepwiki',
+      );
+      const immediateResult = askDeepwikiEntry?.result as Array<{
+        text: string;
+      }>;
+      expect(immediateResult[0].text.length).toBeLessThan(bigAnswer.length);
+      expect(immediateResult[0].text).toContain('truncated');
+      expect(immediateResult[0].text.startsWith('x'.repeat(20_000))).toBe(true);
+
+      const secondCallMessages = fakeAnthropic.recordedCalls[1].messages;
+      const assistantMessage = secondCallMessages.find(
+        (message) => message.role === 'assistant',
+      ) as {
+        content: Array<{ type: string; content?: Array<{ text: string }> }>;
+      };
+      const mcpResultBlock = assistantMessage.content.find(
+        (block) => block.type === 'mcp_tool_result',
+      );
+      const resentText = mcpResultBlock?.content?.[0].text ?? '';
+      expect(resentText.length).toBeLessThan(bigAnswer.length);
+      expect(resentText).toContain('truncated');
     });
 
     it('flattens toolActivity across both custom and MCP tool calls, in order', async () => {
@@ -297,6 +469,42 @@ describe('AgentPlaygroundService', () => {
       expect(fakeAnthropic.recordedCalls).toHaveLength(11);
       expect(envelope.toolActivity).toHaveLength(10);
       expect(envelope.calls).toHaveLength(10);
+    });
+
+    it('counts mcp_tool_use calls toward ITERATION_CAP too, force-stopping sooner on a run mixing tool kinds', async () => {
+      fakeGithub.setFileTree([{ path: 'README.md', type: 'blob', sha: 's1' }]);
+      // 1 custom + 1 mcp per response = 2 toward the cap; hits ITERATION_CAP=10 in 5 round-trips, plus 1 more to observe and stop on.
+      for (let i = 0; i < 6; i++) {
+        fakeAnthropic.queueMessage(
+          fakeToolUseMessage(
+            [{ id: `call_${i}`, name: 'list_files', input: {} }],
+            {
+              content: [
+                ...mcpBlocks(`mcp_${i}`),
+                {
+                  type: 'tool_use',
+                  id: `call_${i}`,
+                  name: 'list_files',
+                  input: {},
+                  caller: { type: 'direct' },
+                },
+              ] as unknown as ReturnType<typeof fakeToolUseMessage>['content'],
+            },
+          ),
+        );
+      }
+
+      const envelope = await service.run(buildDto());
+
+      expect(envelope.hitIterationCap).toBe(true);
+      expect(fakeAnthropic.recordedCalls).toHaveLength(6);
+      expect(envelope.calls).toHaveLength(5);
+      expect(
+        envelope.toolActivity.filter((entry) => entry.tool === 'list_files'),
+      ).toHaveLength(5);
+      expect(
+        envelope.toolActivity.filter((entry) => entry.tool === 'ask_deepwiki'),
+      ).toHaveLength(6);
     });
   });
 
