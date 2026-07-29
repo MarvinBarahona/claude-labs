@@ -108,6 +108,10 @@ run. The final answer still comes back, but it's whatever Claude had
 mid-investigation when the cap hit — not a conclusion it decided it was
 ready to give.
 
+The cap is checked once per round trip, not per tool call — a response
+requesting several tools at once can still push the total slightly past 10
+before that.
+
 ## Bounding tool-result cost
 
 Nothing about the Messages API stops a tool result from being huge, and a
