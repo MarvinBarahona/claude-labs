@@ -126,7 +126,6 @@ export class DocumentResearchAssistant {
 
   protected readonly deliveryModeOptions = DELIVERY_MODE_OPTIONS;
 
-  // Session
   protected readonly arxivIdInput = signal('');
   protected readonly session = signal<SessionResponse | null>(null);
   protected readonly sessionError = signal<string | null>(null);
@@ -166,7 +165,6 @@ export class DocumentResearchAssistant {
     { initialValue: null },
   );
 
-  // Ask / transcript
   protected readonly deliveryMode = signal<DeliveryMode>('files-api');
   protected readonly streamingEnabled = signal(false);
   protected readonly transcript = signal<readonly TranscriptTurn[]>([]);
