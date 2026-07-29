@@ -266,7 +266,7 @@ export class DocumentResearchAssistant {
     }
   }
 
-  private applyTurnEnvelope(envelope: TurnEnvelope): void {
+  private applyTurnEnvelope(envelope: TurnEnvelope, streamEvents?: readonly unknown[]): void {
     const paragraphs = buildAnswerParagraphs(envelope.response, envelope.citations);
     this.transcript.update((turns) => {
       if (turns.length === 0) {
@@ -286,6 +286,7 @@ export class DocumentResearchAssistant {
       calls: envelope.calls,
       stopReason: envelope.stopReason,
       usage: envelope.usage,
+      ...(streamEvents ? { streamEvents } : {}),
     });
     this.askError.set(null);
     this.streamingAnswerText.set('');
@@ -330,7 +331,7 @@ export class DocumentResearchAssistant {
     if (parsed.event === 'turn_complete') {
       const envelope = parsed.data as TurnEnvelope;
       await waitOutMinDuration(startedAt, MIN_ASKING_MS);
-      this.applyTurnEnvelope(envelope);
+      this.applyTurnEnvelope(envelope, streamEventsBuffer);
       return;
     }
 

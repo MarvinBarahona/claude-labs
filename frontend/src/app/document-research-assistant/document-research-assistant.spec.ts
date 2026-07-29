@@ -510,6 +510,8 @@ describe('DocumentResearchAssistant', () => {
     const markers = transcript.querySelectorAll('[data-testid="citation-marker"]');
     expect(markers.length).toBe(1);
     expect(el.querySelector('[data-testid="notes-panel"]')?.textContent).toContain('Key point about self-attention.');
+    // The raw stream-event log stays in the inspector after turn_complete lands, not just while the turn is in flight.
+    expect(el.textContent).toContain('Stream events');
   });
 
   it('surfaces a visible error when the stream sends a terminal error event', async () => {

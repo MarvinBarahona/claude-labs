@@ -146,7 +146,7 @@ export class LiveToolUseConsole {
     }
   }
 
-  private applyTurnEnvelope(envelope: TurnEnvelope): void {
+  private applyTurnEnvelope(envelope: TurnEnvelope, streamEvents?: readonly unknown[]): void {
     this.answerText.set(extractResponseText(envelope.response));
     this.toolActivity.set(
       deriveToolActivityFromCalls(envelope.calls, { request: envelope.request, response: envelope.response }),
@@ -157,6 +157,7 @@ export class LiveToolUseConsole {
       calls: envelope.calls,
       stopReason: envelope.stopReason,
       usage: envelope.usage,
+      ...(streamEvents ? { streamEvents } : {}),
     });
     this.errorMessage.set(null);
     this.isAsking.set(false);
@@ -193,7 +194,7 @@ export class LiveToolUseConsole {
     if (parsed.event === 'turn_complete') {
       const envelope = parsed.data as TurnEnvelope;
       await waitOutMinDuration(startedAt, MIN_ASKING_MS);
-      this.applyTurnEnvelope(envelope);
+      this.applyTurnEnvelope(envelope, streamEventsBuffer);
       return;
     }
 

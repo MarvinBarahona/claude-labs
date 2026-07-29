@@ -50,6 +50,8 @@ test('is reachable from the nav, loads its docs, and completes a tool-use turn n
     await expect(toolActivityItems.first()).toContainText('done');
     await expect(answerText).toHaveText(fallbackText);
 
+    // Wait for the settled post-turn_complete state (stop_reason only renders once applied) before the next check.
+    await expect(inspector.getByText('stop_reason: end_turn')).toBeVisible();
     await expect(inspector.getByText('Stream events')).toBeVisible();
     await expect(inspector.getByText('Request (call 1)')).toBeVisible();
   });

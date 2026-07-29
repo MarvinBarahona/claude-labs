@@ -53,6 +53,8 @@ test('is reachable from the nav, loads its docs, and completes a document resear
     await expect(answerText).toHaveText(fallbackText);
     await expect(notesPanel).toContainText('Fake-mode notes');
 
+    // Wait for the settled post-turn_complete state (stop_reason only renders once applied) before the next check.
+    await expect(inspector.getByText('stop_reason: end_turn')).toBeVisible();
     await expect(inspector.getByText('Stream events')).toBeVisible();
   });
 });

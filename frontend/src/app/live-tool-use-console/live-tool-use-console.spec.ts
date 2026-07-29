@@ -422,6 +422,8 @@ describe('LiveToolUseConsole', () => {
     expect(el.querySelector('[data-testid="answer-text"]')?.textContent).toContain(
       'It is 18°C in Berlin.',
     );
+    // The raw stream-event log stays in the inspector after turn_complete lands, not just while the turn is in flight.
+    expect(el.textContent).toContain('Stream events');
   });
 
   it('surfaces a visible error when the stream sends a terminal error event', async () => {
