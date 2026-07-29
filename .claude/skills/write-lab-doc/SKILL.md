@@ -34,6 +34,12 @@ Produce or refresh `frontend/public/lab-docs/<slug>.md`, aimed at a developer wh
 
 Add or update this lab's entry in `frontend/src/app/core/lab-catalog.ts`'s `LAB_CATALOG` — a `goal` and a list of `concepts`, keyed by the lab's slug. Ground both in the same code just read above, not invented content, same rule as the doc itself.
 
+## Check the standalone guide
+
+`guide/claude-api-web-app-guide.md` is a separate publication, not part of the app: a self-contained guide to using the Claude API in a web application, written for a reader who will never open this repo. It draws on lessons learned building these labs, but everything in it must stay portable — generalized patterns and prose, no repo-specific names, routes, slugs, or file paths.
+
+If writing or refreshing a lab's doc surfaces a durable Claude API lesson the guide doesn't already capture — a pattern, tradeoff, or gotcha that would help someone building an unrelated application — use the `update-guide` skill to add it. Most lab docs won't surface anything guide-worthy; only route to it when the lesson is genuinely durable and transferable, not for every lab doc pass.
+
 ## Keep current
 
 Re-run this whenever a lab's code has changed enough that its in-app doc, or its `LAB_CATALOG` entry, would mislead a reader — that's a judgment call to make each time, not a scheduled step.
