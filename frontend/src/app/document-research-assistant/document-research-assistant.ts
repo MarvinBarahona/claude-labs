@@ -40,6 +40,7 @@ interface Paper {
 interface SessionResponse {
   readonly sessionId: string;
   readonly paper: Paper;
+  readonly warning: string | null;
 }
 
 interface SessionRequestBody {

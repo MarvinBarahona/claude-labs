@@ -64,8 +64,8 @@ const SAMPLE_PAPER = {
   pdfUrl: 'https://arxiv.org/pdf/2301.00234',
 };
 
-function sessionResponseBody(overrides: Partial<typeof SAMPLE_PAPER> = {}) {
-  return { sessionId: 'sess_1', paper: { ...SAMPLE_PAPER, ...overrides } };
+function sessionResponseBody(overrides: Partial<typeof SAMPLE_PAPER> = {}, warning: string | null = null) {
+  return { sessionId: 'sess_1', paper: { ...SAMPLE_PAPER, ...overrides }, warning };
 }
 
 function turnEnvelope(overrides: Record<string, unknown> = {}) {
@@ -216,6 +216,44 @@ describe('DocumentResearchAssistant', () => {
   it('does not render the Ask section until a session exists', async () => {
     const { el } = await createFixture();
     expect(questionInput(el)).toBeFalsy();
+  });
+
+  it('renders no large-file warning banner when the session response carries warning: null', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+    await startSession(fixture, httpMock, el);
+
+    expect(el.querySelector('[data-testid="large-file-warning"]')).toBeFalsy();
+  });
+
+  it('renders the large-file warning as a distinct alert banner when the session response carries a non-null warning', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+    await startSession(fixture, httpMock, el, sessionResponseBody({}, "This paper's PDF is 14.2 MB — turns against it will cost more."));
+
+    const banner = el.querySelector('[data-testid="large-file-warning"]');
+    expect(banner).toBeTruthy();
+    expect(banner?.getAttribute('role')).toBe('alert');
+    expect(banner?.textContent).toContain("This paper's PDF is 14.2 MB");
+  });
+
+  it('keeps the large-file warning banner visible after a subsequent ask completes', async () => {
+    vi.useFakeTimers();
+    const { fixture, httpMock, el } = await createFixture();
+    await startSession(fixture, httpMock, el, sessionResponseBody({}, 'This paper is large.'));
+
+    typeInto(questionInput(el)!, 'A question');
+    fixture.detectChanges();
+    askButton(el)!.click();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="large-file-warning"]')).toBeTruthy();
+
+    httpMock.expectOne('/api/document-research-assistant/session/sess_1/ask').flush(turnEnvelope());
+    await vi.advanceTimersByTimeAsync(MIN_ASKING_MS);
+    fixture.detectChanges();
+
+    expect(el.querySelector('[data-testid="large-file-warning"]')).toBeTruthy();
   });
 
   it('renders a question/answer transcript turn with paired citation markers from a mocked non-streaming response', async () => {

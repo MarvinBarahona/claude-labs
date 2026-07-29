@@ -88,9 +88,60 @@ describe('DocumentResearchAssistantService', () => {
         pdfUrl: TEST_PAPER.pdfUrl,
       });
       expect(result.sessionId).toEqual(expect.any(String));
+      expect(result.warning).toBeNull();
 
       // Nothing attached yet — the first `ask` is what actually attaches the document.
       expect(fakeAnthropic.recordedCalls).toHaveLength(0);
+    });
+
+    it('returns a non-null warning mentioning the size in MB when the PDF exceeds the large-file threshold', async () => {
+      const LARGE_PDF_WARNING_BYTES = 3 * 1024 * 1024;
+      fakeArxiv.setPaper({
+        ...TEST_PAPER,
+        pdfBytes: Buffer.alloc(LARGE_PDF_WARNING_BYTES + 1),
+      });
+
+      const result = await service.createSession({ arxivId: '2301.00234' });
+
+      expect(result.warning).toEqual(expect.stringContaining('MB'));
+    });
+
+    it('returns warning: null at the exact threshold boundary (strictly-greater-than cutoff)', async () => {
+      const LARGE_PDF_WARNING_BYTES = 3 * 1024 * 1024;
+      fakeArxiv.setPaper({
+        ...TEST_PAPER,
+        pdfBytes: Buffer.alloc(LARGE_PDF_WARNING_BYTES),
+      });
+
+      const result = await service.createSession({ arxivId: '2301.00234' });
+
+      expect(result.warning).toBeNull();
+    });
+
+    it('a large paper still creates a working session: sessionId/paper are returned and a subsequent ask attaches the document and answers normally', async () => {
+      const LARGE_PDF_WARNING_BYTES = 3 * 1024 * 1024;
+      fakeArxiv.setPaper({
+        ...TEST_PAPER,
+        pdfBytes: Buffer.alloc(LARGE_PDF_WARNING_BYTES + 1),
+      });
+      fakeAnthropic.queueMessage(
+        fakeTextMessage('This paper is about nothing.'),
+      );
+
+      const { sessionId, paper, warning } = await service.createSession({
+        arxivId: '2301.00234',
+      });
+      expect(sessionId).toEqual(expect.any(String));
+      expect(paper.arxivId).toBe(TEST_PAPER.arxivId);
+      expect(warning).toEqual(expect.stringContaining('MB'));
+
+      const envelope = await service.ask(sessionId, buildAskDto());
+
+      expect(fakeAnthropic.recordedCalls).toHaveLength(1);
+      const [{ messages }] = fakeAnthropic.recordedCalls;
+      const content = messages[0].content as Array<Record<string, unknown>>;
+      expect(content[0]).toMatchObject({ type: 'document' });
+      expect(envelope.answer).toBe('This paper is about nothing.');
     });
   });
 

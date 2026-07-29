@@ -22,6 +22,8 @@ import { AskDto } from './dto/ask.dto';
 const NOTES_PATH = '/notes.md';
 /** Needed on the Messages call itself (not just the upload) whenever a request references an uploaded `file_id`. */
 const FILES_API_BETA = 'files-api-2025-04-14';
+/** Sized so a first-ask cache-write turn against a paper at this size stays comfortably under $0.50 even in the worst case (dense figures, near Claude's high-resolution per-page vision-token ceiling) — not just "below the 32 MB/100-page hard ceiling," which a dense paper can blow past by several dollars. */
+const LARGE_PDF_WARNING_BYTES = 3 * 1024 * 1024;
 
 type MessageContentBlock = AnthropicMessage['content'][number];
 type ToolUseBlock = Extract<MessageContentBlock, { type: 'tool_use' }>;
@@ -63,6 +65,7 @@ export interface SessionPaper {
 export interface CreateSessionResult {
   sessionId: string;
   paper: SessionPaper;
+  warning: string | null;
 }
 
 interface DocumentSession {
@@ -205,7 +208,15 @@ export class DocumentResearchAssistantService {
       notesFileContent: null,
       messages: [],
     });
-    return { sessionId, paper };
+    return { sessionId, paper, warning: this.largeFileWarningFor(pdfBytes) };
+  }
+
+  private largeFileWarningFor(pdfBytes: Buffer): string | null {
+    if (pdfBytes.length <= LARGE_PDF_WARNING_BYTES) {
+      return null;
+    }
+    const sizeMb = (pdfBytes.length / (1024 * 1024)).toFixed(1);
+    return `This paper's PDF is ${sizeMb} MB — turns against it will process more content, so each question costs more and takes longer. Consider using a shorter paper if that's a concern.`;
   }
 
   /** Throws `NotFoundException` for an unknown session — called up front by the controller before it commits to a streaming response, since a 404 can't land as a real HTTP status once SSE headers are already written. */

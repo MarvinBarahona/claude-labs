@@ -37,6 +37,7 @@ interface SessionResponseBody {
     summary: string;
     pdfUrl: string;
   };
+  warning: string | null;
 }
 
 /** Parses a raw SSE response body into `{ event, data }` frames, in order. */
@@ -121,6 +122,7 @@ describe('DocumentResearchAssistantController (e2e)', () => {
       summary: 'This paper is about nothing in particular.',
       pdfUrl: PDF_URL,
     });
+    expect(body.warning).toBeNull();
   });
 
   it('normalizes a full arxiv.org URL into a bare ID', async () => {
@@ -211,8 +213,7 @@ describe('DocumentResearchAssistantController (e2e)', () => {
       citations: { enabled: true },
     });
 
-    // No second mockAnthropicFilesUpload is registered — if the code re-uploaded instead of
-    // reusing the cached fileId, this second call would hit an un-mocked host and fail outright.
+    // No second mockAnthropicFilesUpload is registered — a re-upload would hit an un-mocked host and fail.
     mockAnthropicBetaMessagesCreate(
       fakeTextMessage('Follow-up answer.', {
         usage: {

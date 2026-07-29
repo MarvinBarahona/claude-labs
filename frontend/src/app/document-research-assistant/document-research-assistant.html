@@ -12,6 +12,9 @@
         <p class="text-xs text-muted-foreground">{{ current.paper.authors.join(', ') }}</p>
         <p class="whitespace-pre-wrap text-sm" data-testid="paper-summary">{{ current.paper.summary }}</p>
         <a class="text-xs text-primary underline" [href]="current.paper.pdfUrl" target="_blank" rel="noopener">View PDF</a>
+        @if (current.warning; as warning) {
+          <p role="alert" class="rounded-sm bg-accent p-2 text-xs text-accent-foreground" data-testid="large-file-warning">{{ warning }}</p>
+        }
       </div>
     } @else {
       <div class="flex flex-col gap-3">
@@ -21,7 +24,7 @@
             class="rounded-sm border border-border bg-background p-2 text-sm"
             type="text"
             aria-label="arXiv ID or URL"
-            placeholder="e.g. 2301.00234"
+            placeholder="e.g. 2603.05621"
             [value]="arxivIdInput()"
             (input)="onArxivIdChange($event)"
             (keydown.enter)="startSession()"
