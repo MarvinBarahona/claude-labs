@@ -148,3 +148,16 @@ for `thinking`, harmless until you resend it as history, at which point
 the API rejects it (a thinking block must actually contain thinking); for
 citations, it just means a streamed turn silently comes back with no
 citations at all, same shape as a turn that never had any.
+
+A PDF's cost scales with its size, not just its word count: Claude
+converts each page into an image alongside its extracted text, so a
+typical page runs roughly 1,500–3,000 text tokens plus its own image
+tokens on top. For a long or figure-heavy paper, that adds up fast — and
+because the document is cached on the first question (see above), every
+turn in the session carries that cost. Unlike a tool result or a file
+listing, a PDF can't be safely truncated to cap this: cutting pages would
+shift or invalidate the exact page numbers citations point to. So instead
+of capping or truncating, this lab checks the PDF's byte size once at
+session start and surfaces a plain-language warning banner for an
+unusually large paper — the session still works normally, you're just
+told up front that turns against it will cost more and run slower.
