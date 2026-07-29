@@ -51,6 +51,10 @@ When the to-do list spans genuinely independent tracks — most often frontend a
 
 If the to-do list doesn't actually split into independent tracks — one track structurally depends on another's output, or there's only one track — skip this; don't force an artificial contract onto work that isn't actually separable.
 
+## Verifying a novel Anthropic API request shape
+
+When this work item's plan pins down a request-payload shape that hasn't yet been exercised against the real Anthropic API in this codebase (a new field, a new nested or keyed-object structure, a per-item override shape), don't rely solely on a cached reference or general recall of the API — check it against the live Anthropic API docs before writing it into the plan. A cached summary can be stale, or its prose can be misread in a way the real shape contradicts (e.g. an object keyed by name misread as an array), and that class of mistake is easy to carry straight through into the plan file if it's never checked against the current source.
+
 ## Automated vs. manual test scenarios
 
 Within the `## Test scenarios` section, split scenarios into two labeled groups:
