@@ -55,7 +55,7 @@ This table is a summary pointer — whatever process currently carries out each 
 | Vision Lab | Feature | `vision-lab` | ✅ Done | [`vision-lab.md`](features/vision-lab.md) |
 | Extended Thinking Bench | Feature | `extended-thinking-bench` | ✅ Done | [`extended-thinking-bench.md`](features/extended-thinking-bench.md) |
 | Agent Playground | Feature | `agent-playground` | ✅ Done | [`agent-playground.md`](features/agent-playground.md) |
-| Agent Playground Tool Result Caps | Task | `agent-playground-tool-result-caps` | 📋 Planned | [`task-agent-playground-tool-result-caps.md`](planning/task-agent-playground-tool-result-caps.md) |
+| Agent Playground Tool Result Caps | Task | `agent-playground-tool-result-caps` | ✅ Done | [`agent-playground.md`](features/agent-playground.md) |
 | Document Research Assistant Large-File Warning | Task | `document-research-assistant-large-file-warning` | 📋 Planned | [`task-document-research-assistant-large-file-warning.md`](planning/task-document-research-assistant-large-file-warning.md) |
 
 

@@ -100,8 +100,46 @@ pass is visible as something other than a wasted call.
 An agent's call count is genuinely unpredictable — the same goal can take 2
 calls or 9 depending on what Claude decides it needs to check, which is the
 entire point of handing over control. That's why this loop needs a hard stop
-that a workflow doesn't: it cuts off after 10 backend-executed tool calls
-(MCP calls don't count toward it, since they never cost an extra round trip)
-and returns `hitIterationCap: true`, shown as a banner above the run. The
-final answer still comes back, but it's whatever Claude had mid-investigation
-when the cap hit — not a conclusion it decided it was ready to give.
+that a workflow doesn't: it cuts off after 10 total tool calls — both the 3
+custom tools and `ask_deepwiki` count toward it, since an MCP call still
+costs an extra round trip's worth of resent history even though it resolves
+inline — and returns `hitIterationCap: true`, shown as a banner above the
+run. The final answer still comes back, but it's whatever Claude had
+mid-investigation when the cap hit — not a conclusion it decided it was
+ready to give.
+
+## Bounding tool-result cost
+
+Nothing about the Messages API stops a tool result from being huge, and a
+huge result gets resent as input on every later call in the loop — so it's
+on you to bound it. The two tool kinds need different treatment:
+
+A **custom tool's** result is built by your own backend code, so you can
+just cap it before returning it — `list_files`/`read_file`/`search` here all
+truncate to a fixed size and add a `truncated` field so Claude knows a
+result is partial rather than mistaking it for the whole answer.
+
+A **server-executed tool's** result is different: it's generated and billed
+as input tokens the moment it resolves, inside the same call that requested
+it — before your backend ever sees the response. Capping it after the fact
+can't undo that cost; it can only limit what gets resent later. If one of
+the tool's own operations has no size limit (DeepWiki's `read_wiki_contents`
+returns an entire generated wiki, for instance), the only real fix is to not
+let the model call it. For an MCP toolset that means restricting the
+`mcp_toolset` entry itself, disabling everything by default and re-enabling
+only specific tool names:
+
+```json
+{
+  "type": "mcp_toolset",
+  "mcp_server_name": "deepwiki",
+  "default_config": { "enabled": false },
+  "configs": {
+    "read_wiki_structure": { "enabled": true },
+    "ask_question": { "enabled": true }
+  }
+}
+```
+
+`configs` is an object keyed by tool name, not an array — worth
+double-checking against the live docs, since it's easy to guess wrong.

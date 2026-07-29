@@ -6,7 +6,7 @@
 
 ## What
 
-[`task-agent-playground-tool-result-caps.md`](task-agent-playground-tool-result-caps.md) fixed
+[`agent-playground.md`](../features/agent-playground.md) fixed
 an Agent Playground bug where an unbounded external data source (a repo's full file tree, a
 file's full contents) landed in a tool result with no size limit, driving per-call cost up
 without bound. Document Research Assistant has the same root exposure through a different
@@ -30,8 +30,8 @@ session or silently cut the document down.
 
 Filed as a follow-on to the already-shipped `document-research-assistant` feature, prompted by
 the same investigation that produced the Agent Playground task: both labs wrap an external,
-size-unbounded data source, and `architecture.md`'s "Custom tools vs. server-executed tools"
-section's size-cap rule doesn't cover this case (this isn't a custom tool result — it's a
+size-unbounded data source, and `unbounded-data-sources.md`'s custom-tool size-cap rule doesn't
+cover this case (this isn't a custom tool result — it's a
 document content block), so it's tracked as its own task rather than assumed to already be
 handled by that standing rule.
 
@@ -95,12 +95,10 @@ handled by that standing rule.
   has no size awareness of its own; this task's size check happens entirely in
   `DocumentResearchAssistantService.createSession()`, before that service is ever called, not
   inside the shared builder.
-- depends on: [`architecture.md`](../technical/architecture.md), "Unbounded external data
-  sources" — the standing rule this task's warn-not-cap approach follows (the document/image
-  content-block branch specifically), reworked during this task's own planning to state the
-  shared "unbounded external source" premise once and branch on mitigation, rather than
-  restating it in a second, separate section. Already applied — `build-work-item` doesn't need
-  to touch `architecture.md` again.
+- depends on: [`unbounded-data-sources.md`](../technical/unbounded-data-sources.md) — the
+  standing rule this task's warn-not-cap approach follows (the document/image content-block
+  branch specifically). Already applied — `build-work-item` doesn't need to touch this file
+  again.
 - depends on: [`session-state.md`](../technical/session-state.md) — this task adds no new
   session-state reason; `pdfBytes` is already held server-side per its second bullet ("Re-sending
   a large attachment... would be wasteful"), and `warning` is derived from that already-stored
@@ -111,7 +109,7 @@ handled by that standing rule.
   assistant.spec.ts` below — no structural assertion there touches the "Paper" section's element
   count, so no Playwright spec change is needed).
 - relates to (not a dependency):
-  [`task-agent-playground-tool-result-caps.md`](task-agent-playground-tool-result-caps.md) —
+  [`agent-playground.md`](../features/agent-playground.md) —
   same class of problem (unbounded external source feeding conversation history), different
   mitigation shape (warn vs. cap) for a reason specific to this lab (PDF/citation integrity).
 
