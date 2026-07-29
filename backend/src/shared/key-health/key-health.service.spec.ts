@@ -74,8 +74,7 @@ describe('KeyHealthService', () => {
     await expect(service.getKeyStatus()).resolves.toBe('valid');
     expect(scope.isDone()).toBe(true);
 
-    // No second interceptor is registered; a fresh call here would fail
-    // loudly (real network is disabled), proving the cache was reused.
+    // No second interceptor is registered, so a fresh call here would fail loudly, proving the cache was reused.
     await expect(service.getKeyStatus()).resolves.toBe('valid');
   });
 

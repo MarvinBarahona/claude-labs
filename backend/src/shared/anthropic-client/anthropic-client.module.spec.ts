@@ -6,8 +6,7 @@ import { AnthropicClient } from './anthropic-client';
 import { AnthropicClientModule } from './anthropic-client.module';
 import { RealAnthropicClient } from './real-anthropic-client';
 
-// Stands in for the real, @Global() AppConfigModule so this test never loads
-// the real backend/.env — no test ever holds a real credential.
+// Stands in for the real, @Global() AppConfigModule so this test never loads the real backend/.env.
 function stubConfigModule(configStub: Partial<AppConfigService>) {
   @Global()
   @Module({

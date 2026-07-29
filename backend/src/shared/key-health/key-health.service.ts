@@ -30,8 +30,7 @@ export class KeyHealthService {
       if (error instanceof AuthenticationError) {
         this.status = 'invalid';
       }
-      // Any other error (rate limit, network failure, 5xx) is inconclusive
-      // about the key itself, so the previous cached status is kept as-is.
+      // Any other error (rate limit, network failure, 5xx) is inconclusive, so the previous cached status is kept.
     }
     this.checkedAt = Date.now();
     return this.status;

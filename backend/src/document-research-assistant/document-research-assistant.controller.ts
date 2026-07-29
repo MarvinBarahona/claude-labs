@@ -34,12 +34,10 @@ export class DocumentResearchAssistantController {
       return;
     }
 
-    // A 404 has to land as a real HTTP status; once SSE headers are committed that's no longer
-    // possible, so the session's existence is checked up front, before res.status()/setHeader().
+    // A 404 must land as a real HTTP status, so it's checked before SSE headers commit below.
     this.service.assertSessionExists(sessionId);
 
-    // Nest defaults a POST route's status to 201 before the handler runs
-    // (see `getStatusByMethod` in `@nestjs/core`); override it for SSE's 200.
+    // Nest defaults a POST route's status to 201 before the handler runs; override it for SSE's 200.
     res.status(200);
     res.setHeader('Content-Type', 'text/event-stream');
 

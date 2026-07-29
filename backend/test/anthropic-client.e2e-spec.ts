@@ -9,9 +9,7 @@ import { useNockFixtures } from '../src/testing/http-fixtures/nock-lifecycle';
 
 const params = { model: 'claude-sonnet-5', max_tokens: 100, messages: [] };
 
-// FAKE_MODE=true wiring is already proven at the unit level in
-// anthropic-client.module.spec.ts; this covers only what a real, fully
-// composed app can: RealAnthropicClient making a real, nock-intercepted call.
+// FAKE_MODE=true wiring is already proven at the unit level; this covers only a real, fully composed app.
 describe('AnthropicClientModule wiring (e2e)', () => {
   useNockFixtures();
 

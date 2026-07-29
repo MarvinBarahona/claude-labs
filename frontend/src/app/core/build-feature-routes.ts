@@ -2,10 +2,7 @@ import type { Routes } from '@angular/router';
 import { Layout } from '../shared/layout/layout';
 import type { FeatureRoute } from './feature-route';
 
-/**
- * Builds the app's routes: a persistent `Layout` wrapping one lazy-loaded child route per feature, keyed by slug.
- * `features` order is the nav render order — the caller (the registry) owns ordering, not this function.
- */
+/** Builds a persistent `Layout` wrapping one lazy-loaded child route per feature, keyed by slug; `features` order is the nav render order. */
 export function buildFeatureRoutes(features: readonly FeatureRoute[]): Routes {
   const children: Routes = features.map((feature) => ({
     path: feature.slug,

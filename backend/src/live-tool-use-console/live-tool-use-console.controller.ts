@@ -36,8 +36,7 @@ export class LiveToolUseConsoleController {
       return;
     }
 
-    // Nest defaults a POST route's status to 201 before the handler runs
-    // (see `getStatusByMethod` in `@nestjs/core`); override it for SSE's 200.
+    // Nest defaults a POST route's status to 201 before the handler runs; override it for SSE's 200.
     res.status(200);
     res.setHeader('Content-Type', 'text/event-stream');
 

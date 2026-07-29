@@ -40,14 +40,7 @@ interface ElementClassManager {
 
 let sourceCounter = 0;
 
-/**
- * This function dynamically adds and removes classes for a given element without requiring
- * the a class binding (e.g. `[class]="..."`) which may interfere with other class bindings.
- *
- * 1. This will merge the existing classes on the element with the new classes.
- * 2. It will also remove any classes that were previously added by this function but are no longer present in the new classes.
- * 3. Multiple calls to this function on the same element will be merged efficiently.
- */
+/** Merges new classes onto an element without a `[class]` binding, tracking per-source classes so repeated calls on the same element combine rather than overwrite. */
 export function classes(computed: () => ClassValue[] | string, options: ClassesOptions = {}) {
   runInInjectionContext(options.injector ?? inject(Injector), () => {
     const elementRef = options.elementRef ?? inject(ElementRef);
@@ -89,9 +82,7 @@ export function classes(computed: () => ClassValue[] | string, options: ClassesO
       setupGlobalObserver(platformId);
       observedElements.add(element);
 
-      // Suppress transitions until the first effect writes correct classes and
-      // the browser has painted them. This prevents CSS transition animations
-      // during hydration when classes change from SSR state to client state.
+      // Suppress transitions until the first effect paints correct classes, avoiding SSR-to-client transition flicker.
       if (isPlatformBrowser(platformId)) {
         manager.previousTransition = element.style.getPropertyValue('transition');
         manager.previousTransitionPriority = element.style.getPropertyPriority('transition');
@@ -116,9 +107,7 @@ export function classes(computed: () => ClassValue[] | string, options: ClassesO
       // Update the element
       updateElement(manager!);
 
-      // Re-enable transitions after the first effect writes correct classes.
-      // Deferred to next animation frame so the browser paints the class change
-      // with transitions disabled first, then re-enables them.
+      // Re-enable transitions next animation frame, after the browser paints the class change with transitions off.
       if (manager!.transitionsSuppressed) {
         manager!.transitionsSuppressed = false;
         manager!.restoreRafId = requestAnimationFrame(() => {
@@ -152,11 +141,7 @@ export function classes(computed: () => ClassValue[] | string, options: ClassesO
       }
     });
 
-    /**
-     * We need this effect to track changes to the computed classes. Ideally, we would use
-     * afterRenderEffect here, but that doesn't run in SSR contexts, so we use a standard
-     * effect which works in both browser and SSR.
-     */
+    // A standard effect (not afterRenderEffect, which doesn't run in SSR) tracks computed-class changes in both contexts.
     effect(updateClasses);
   });
 }
@@ -239,8 +224,7 @@ function updateElement(manager: ElementClassManager): void {
       source.classes.forEach((className) => allSourceClasses.add(className));
     }
 
-    // Only consider classes as "base" if they're not produced by any source
-    // This prevents SSR-rendered classes from being preserved as base classes
+    // Only classes not produced by any source count as "base" — this excludes SSR-rendered classes from that set.
     currentClasses.forEach((className) => {
       if (!allSourceClasses.has(className)) {
         manager.baseClasses.add(className);
