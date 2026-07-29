@@ -1,6 +1,7 @@
 import { AnthropicStreamEvent } from '../anthropic-client/anthropic-client';
 import {
   fakeTextStreamEvents,
+  fakeThinkingStreamEvents,
   fakeToolUseStreamEvents,
 } from '../../testing/anthropic/message-builders';
 import { StreamResponseBuilderService } from './stream-response-builder.service';
@@ -67,30 +68,10 @@ describe('StreamResponseBuilderService', () => {
   });
 
   it('accumulates thinking_delta and signature_delta events into a thinking block', () => {
-    const events: AnthropicStreamEvent[] = [
-      { type: 'message_start', message: startMessage() },
-      {
-        type: 'content_block_start',
-        index: 0,
-        content_block: { type: 'thinking', thinking: '', signature: '' },
-      },
-      {
-        type: 'content_block_delta',
-        index: 0,
-        delta: { type: 'thinking_delta', thinking: 'Let me consider ' },
-      },
-      {
-        type: 'content_block_delta',
-        index: 0,
-        delta: { type: 'thinking_delta', thinking: 'this carefully.' },
-      },
-      {
-        type: 'content_block_delta',
-        index: 0,
-        delta: { type: 'signature_delta', signature: 'sig-abc' },
-      },
-      { type: 'content_block_stop', index: 0 },
-    ];
+    const events = fakeThinkingStreamEvents(
+      'Let me consider this carefully.',
+      'sig-abc',
+    );
 
     const message = service.reconstructMessage(events);
 

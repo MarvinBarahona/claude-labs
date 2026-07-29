@@ -13,6 +13,7 @@ import { CachingLayerService } from '../shared/caching-layer/caching-layer.servi
 import { FakeAnthropicClient } from '../testing/anthropic/fake-anthropic-client';
 import {
   fakeTextMessage,
+  fakeThinkingStreamEvents,
   fakeToolUseMessage,
 } from '../testing/anthropic/message-builders';
 import { ArxivClient, ArxivPaper } from './arxiv-client';
@@ -520,25 +521,10 @@ describe('DocumentResearchAssistantService', () => {
           type: 'message_start',
           message: fakeTextMessage('', { content: [], stop_reason: null }),
         },
-        {
-          type: 'content_block_start',
-          index: 0,
-          content_block: { type: 'thinking', thinking: '', signature: '' },
-        },
-        {
-          type: 'content_block_delta',
-          index: 0,
-          delta: {
-            type: 'thinking_delta',
-            thinking: 'Considering the question...',
-          },
-        },
-        {
-          type: 'content_block_delta',
-          index: 0,
-          delta: { type: 'signature_delta', signature: 'sig-abc' },
-        },
-        { type: 'content_block_stop', index: 0 },
+        ...fakeThinkingStreamEvents(
+          'Considering the question...',
+          'sig-abc',
+        ).slice(1, -2),
         {
           type: 'content_block_start',
           index: 1,

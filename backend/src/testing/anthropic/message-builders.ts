@@ -47,6 +47,15 @@ export function fakeTextMessage(
   return baseMessage({ content: [block], ...overrides });
 }
 
+export function fakeThinkingMessage(
+  thinking: string,
+  signature: string,
+  overrides: Partial<AnthropicMessage> = {},
+): AnthropicMessage {
+  const block: ContentBlock = { type: 'thinking', thinking, signature };
+  return baseMessage({ content: [block], ...overrides });
+}
+
 export interface FakeToolCall {
   id: string;
   name: string;
@@ -105,6 +114,58 @@ export function fakeTextStreamEvents(
           },
         ]
       : []),
+    { type: 'content_block_stop', index: 0 },
+    {
+      type: 'message_delta',
+      delta: {
+        container: null,
+        stop_details: null,
+        stop_reason: finalMessage.stop_reason,
+        stop_sequence: null,
+      },
+      usage: {
+        cache_creation_input_tokens: null,
+        cache_read_input_tokens: null,
+        input_tokens: finalMessage.usage.input_tokens,
+        output_tokens: finalMessage.usage.output_tokens,
+        output_tokens_details: null,
+        server_tool_use: null,
+      },
+    },
+    { type: 'message_stop' },
+  ];
+}
+
+/** The event sequence a real streamed call emits for a single thinking block, in order — `thinking`/`signature` each arrive as a single chunk here since callers only need the accumulation contract exercised, not fine-grained chunking. */
+export function fakeThinkingStreamEvents(
+  thinking: string,
+  signature: string,
+  overrides: Partial<AnthropicMessage> = {},
+): AnthropicStreamEvent[] {
+  const startMessage = baseMessage({
+    content: [],
+    stop_reason: null,
+    ...overrides,
+  });
+  const finalMessage = fakeThinkingMessage(thinking, signature, overrides);
+
+  return [
+    { type: 'message_start', message: startMessage },
+    {
+      type: 'content_block_start',
+      index: 0,
+      content_block: { type: 'thinking', thinking: '', signature: '' },
+    },
+    {
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'thinking_delta', thinking },
+    },
+    {
+      type: 'content_block_delta',
+      index: 0,
+      delta: { type: 'signature_delta', signature },
+    },
     { type: 'content_block_stop', index: 0 },
     {
       type: 'message_delta',

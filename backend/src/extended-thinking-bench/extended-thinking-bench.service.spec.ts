@@ -11,7 +11,10 @@ import { GithubClient } from '../shared/github-provider/github-client';
 import { GithubIssue } from '../shared/github-provider/github-provider.types';
 import { FakeAnthropicClient } from '../testing/anthropic/fake-anthropic-client';
 import { FakeGithubClient } from '../testing/github/fake-github-client';
-import { fakeTextMessage } from '../testing/anthropic/message-builders';
+import {
+  fakeTextMessage,
+  fakeThinkingMessage,
+} from '../testing/anthropic/message-builders';
 import {
   ExtendedThinkingBenchService,
   ThinkingRunLabel,
@@ -44,13 +47,13 @@ function buildDto(overrides: Partial<RunDto> = {}): RunDto {
   return { issueNumber: TEST_ISSUE.number, ...overrides };
 }
 
-function fakeThinkingMessage(
+function fakeThinkingAndTextMessage(
   thinkingText: string,
   answerText: string,
 ): AnthropicMessage {
   return fakeTextMessage(answerText, {
     content: [
-      { type: 'thinking', thinking: thinkingText, signature: 'sig_fake' },
+      ...fakeThinkingMessage(thinkingText, 'sig_fake').content,
       { type: 'text', text: answerText, citations: null },
     ],
   });
@@ -149,11 +152,11 @@ describe('ExtendedThinkingBenchService', () => {
     it('extracts reasoningTrace from summarized thinking-block text for the two thinking-on runs, and null for thinking-off', async () => {
       queueThreeRuns(fakeAnthropic, {
         'thinking-off': fakeTextMessage('Plain answer, no thinking.'),
-        'thinking-medium': fakeThinkingMessage(
+        'thinking-medium': fakeThinkingAndTextMessage(
           'Considering the medium-effort angle...',
           'Medium-effort answer.',
         ),
-        'thinking-high': fakeThinkingMessage(
+        'thinking-high': fakeThinkingAndTextMessage(
           'Considering the high-effort angle in depth...',
           'High-effort answer.',
         ),

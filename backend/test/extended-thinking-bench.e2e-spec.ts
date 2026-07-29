@@ -6,19 +6,22 @@ import { AppModule } from '../src/app.module';
 import { useNockFixtures } from '../src/testing/http-fixtures/nock-lifecycle';
 import { mockAnthropicMessagesCreate } from '../src/testing/http-fixtures/anthropic.fixtures';
 import { mockGithubIssues } from '../src/testing/http-fixtures/github.fixtures';
-import { fakeTextMessage } from '../src/testing/anthropic/message-builders';
+import {
+  fakeTextMessage,
+  fakeThinkingMessage,
+} from '../src/testing/anthropic/message-builders';
 import { AnthropicMessage } from '../src/shared/anthropic-client/anthropic-client';
 import type { ExtendedThinkingBenchResult } from '../src/extended-thinking-bench/extended-thinking-bench.service';
 
 const REPO_PATH = 'angular/angular';
 
-function fakeThinkingMessage(
+function fakeThinkingAndTextMessage(
   thinkingText: string,
   answerText: string,
 ): AnthropicMessage {
   return fakeTextMessage(answerText, {
     content: [
-      { type: 'thinking', thinking: thinkingText, signature: 'sig_fake' },
+      ...fakeThinkingMessage(thinkingText, 'sig_fake').content,
       { type: 'text', text: answerText, citations: null },
     ],
   });
@@ -60,13 +63,13 @@ describe('ExtendedThinkingBenchController (e2e)', () => {
     ]);
     mockAnthropicMessagesCreate(fakeTextMessage('Thinking-off answer.'));
     mockAnthropicMessagesCreate(
-      fakeThinkingMessage(
+      fakeThinkingAndTextMessage(
         'Weighing the medium-effort tradeoffs...',
         'Thinking-medium answer.',
       ),
     );
     mockAnthropicMessagesCreate(
-      fakeThinkingMessage(
+      fakeThinkingAndTextMessage(
         'Weighing the high-effort tradeoffs in depth...',
         'Thinking-high answer.',
       ),
