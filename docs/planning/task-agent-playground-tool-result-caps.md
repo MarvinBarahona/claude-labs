@@ -56,11 +56,13 @@ is 2 entries — so nothing in the existing test suite would have caught it.
   every tool result is capped, each extra round-trip is cheap on its own — this residual
   risk is far smaller than the bug that caused the $7 run. Not addressed here; revisit only
   if it actually becomes a problem in practice.
-- **New standing decision recorded:** `architecture.md`, "Custom tools vs. server-executed
-  tools" — added a bullet ("A custom tool wrapping a size-unbounded external data source
-  must cap what it returns") capturing this as a general rule for any future lab wrapping an
-  unbounded external source in a custom tool, not just this one. Already applied as part of
-  planning this task — `build-work-item` doesn't need to touch `architecture.md` again.
+- **New standing decision recorded:** `architecture.md`, "Unbounded external data sources"
+  — added a bullet capturing the cap-and-signal mitigation as a general rule for any future
+  lab wrapping an unbounded external source in a custom tool, not just this one (a sibling
+  bullet in the same section covers the different, warn-not-cap mitigation for a document/
+  image content block, added later by `task-document-research-assistant-large-file-warning.md`).
+  Already applied as part of planning this task — `build-work-item` doesn't need to touch
+  `architecture.md` again.
 
 ## Dependencies
 
@@ -73,9 +75,9 @@ is 2 entries — so nothing in the existing test suite would have caught it.
   `GithubFileTreeEntry` are unchanged by this task: `getFileTree()`/`getFileContent()` stay a
   faithful, uncapped wrapper of GitHub's real API. The cap is applied entirely in
   `agent-playground.service.ts`, the only consumer of these two methods.
-- depends on: [`architecture.md`](../technical/architecture.md), "Custom tools vs.
-  server-executed tools" — the newly-added size-cap bullet (see "Decisions" above) is the
-  standing rule this task's implementation follows.
+- depends on: [`architecture.md`](../technical/architecture.md), "Unbounded external data
+  sources" — the newly-added size-cap bullet (see "Decisions" above) is the standing rule
+  this task's implementation follows.
 - depends on: [`testing-strategy.md`](../technical/testing-strategy.md) — "Backend unit"
   bucket definition, and "Shared test doubles, not one ad hoc mock per lab" (this task's new
   tests drive `FakeGithubClient.setFileTree()`/`setFileContent()`, already exposed by the

@@ -56,5 +56,6 @@ This table is a summary pointer — whatever process currently carries out each 
 | Extended Thinking Bench | Feature | `extended-thinking-bench` | ✅ Done | [`extended-thinking-bench.md`](features/extended-thinking-bench.md) |
 | Agent Playground | Feature | `agent-playground` | ✅ Done | [`agent-playground.md`](features/agent-playground.md) |
 | Agent Playground Tool Result Caps | Task | `agent-playground-tool-result-caps` | 📋 Planned | [`task-agent-playground-tool-result-caps.md`](planning/task-agent-playground-tool-result-caps.md) |
+| Document Research Assistant Large-File Warning | Task | `document-research-assistant-large-file-warning` | 📋 Planned | [`task-document-research-assistant-large-file-warning.md`](planning/task-document-research-assistant-large-file-warning.md) |
 
 
