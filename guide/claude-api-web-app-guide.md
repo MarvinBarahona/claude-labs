@@ -2,9 +2,11 @@
 
 **A practical architecture and implementation guide for senior software engineers**
 
-Author or organization: _[To be supplied]_  
-Version: 0.1 (working draft)  
-Publication date: 2026-07-27
+## Revision History
+
+| Version | Date | Author | Changelog |
+|---|---|---|---|
+| 0.1 | 2026-07-27 | Marvin Barahona | Initial draft |
 
 ## Abstract
 
