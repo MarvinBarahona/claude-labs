@@ -1,6 +1,8 @@
-# Building AI-Powered Web Application Features with the Claude API
+<!-- CENTER -->
+# Building AI-Powered Features
 
-**A practical architecture and implementation guide for senior software engineers**
+**A practical architecture and implementation guide**
+<!-- /CENTER -->
 
 ## Revision History
 
@@ -15,6 +17,34 @@ Adding Claude to a web application is not primarily a prompt-writing exercise. I
 This guide develops those concerns from a conventional web architecture into progressively richer features. It begins with messages and streaming, then covers structured output, custom tools, fixed workflows, documents and citations, code execution, hosted tools, vision, extended thinking, and bounded agents. Each pattern is presented as an engineering choice with implementation guidance, tradeoffs, failure modes, tests, and production implications.
 
 The examples use portable TypeScript and JSON rather than a particular framework. They are informed by a working playground, but the playground is evidence—not a template. The goal is to help you design the smallest dependable AI capability that fits your product.
+
+<!-- PAGEBREAK -->
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [How to Use This Guide](#how-to-use-this-guide)
+- [Glossary](#glossary)
+- [1. Why AI Features Need Product Architecture](#1-why-ai-features-need-product-architecture)
+- [2. Reference Web Application Architecture](#2-reference-web-application-architecture)
+- [3. Foundations: Messages API in a Web Application](#3-foundations-messages-api-in-a-web-application)
+- [4. Structured Outputs](#4-structured-outputs)
+- [5. Custom Backend Tools](#5-custom-backend-tools)
+- [6. Workflows Before Agents](#6-workflows-before-agents)
+- [7. Files, Documents, Citations, and Caching](#7-files-documents-citations-and-caching)
+- [8. Code Execution and Generated Artifacts](#8-code-execution-and-generated-artifacts)
+- [9. Web Search and MCP Connectors](#9-web-search-and-mcp-connectors)
+- [10. Vision Features](#10-vision-features)
+- [11. Extended Thinking](#11-extended-thinking)
+- [12. Agents as a Deliberate Exception](#12-agents-as-a-deliberate-exception)
+- [13. Testing and Operational Hardening](#13-testing-and-operational-hardening)
+- [Putting It Together](#putting-it-together)
+- [Production Readiness Checklist](#production-readiness-checklist)
+- [References](#references)
+- [Appendix A: Portable Request and Response Examples](#appendix-a-portable-request-and-response-examples)
+- [Appendix B: Error Taxonomy](#appendix-b-error-taxonomy)
+- [Appendix C: Testing Matrix](#appendix-c-testing-matrix)
+- [Appendix D: Capability Comparison](#appendix-d-capability-comparison)
 
 <!-- PAGEBREAK -->
 
@@ -50,6 +80,8 @@ The source playground implements many Claude capabilities as small, inspectable 
 
 Accordingly, this guide extracts patterns and counterexamples rather than presenting the playground as a starter application.
 
+<!-- PAGEBREAK -->
+
 ## How to Use This Guide
 
 Read Chapters 1 and 2 first if you are establishing architecture or reviewing a design. Read Chapters 3 through 6 in order if you are implementing a first feature: messages lead naturally to typed results, tools, and then controlled multi-call workflows. Chapters 7 through 12 can be read independently when a product need requires a particular input or capability. Chapter 13 and the production checklist should accompany every implementation, not wait for a final hardening phase.
@@ -66,89 +98,65 @@ The examples use these conventions:
 
 <!-- PAGEBREAK -->
 
-## Table of Contents
-
-1. [Introduction](#introduction)
-2. [How to Use This Guide](#how-to-use-this-guide)
-3. [Glossary](#glossary)
-4. [Topical Index](#topical-index)
-5. [Why AI Features Need Product Architecture](#1-why-ai-features-need-product-architecture)
-6. [Reference Web Application Architecture](#2-reference-web-application-architecture)
-7. [Foundations: Messages API in a Web Application](#3-foundations-messages-api-in-a-web-application)
-8. [Structured Outputs](#4-structured-outputs)
-9. [Custom Backend Tools](#5-custom-backend-tools)
-10. [Workflows Before Agents](#6-workflows-before-agents)
-11. [Files, Documents, Citations, and Caching](#7-files-documents-citations-and-caching)
-12. [Code Execution and Generated Artifacts](#8-code-execution-and-generated-artifacts)
-13. [Web Search and MCP Connectors](#9-web-search-and-mcp-connectors)
-14. [Vision Features](#10-vision-features)
-15. [Extended Thinking](#11-extended-thinking)
-16. [Agents as a Deliberate Exception](#12-agents-as-a-deliberate-exception)
-17. [Testing and Operational Hardening](#13-testing-and-operational-hardening)
-18. [Putting It Together](#putting-it-together)
-19. [Production Readiness Checklist](#production-readiness-checklist)
-20. [References and Further Reading](#references-and-further-reading)
-21. [Appendices](#appendices)
-
-<!-- PAGEBREAK -->
-
 ## Glossary
 
-**Agent** — A model-directed loop in which Claude chooses the next action from available tools until it produces an answer or reaches an application-enforced limit.
+**Agent** — A model-directed loop in which Claude chooses the next action from available tools until it produces an answer or reaches an application-enforced limit. See [Chapter 12](#12-agents-as-a-deliberate-exception).
 
-**Content block** — A typed unit within a message, such as text, an image, a tool request, a tool result, or a thinking-related block.
+**API errors** — HTTP-level and typed SDK failures returned by the Claude API itself (validation, rate limits, transient 5xx conditions), distinct from a tool's own recoverable failure. See [Testing and Operational Hardening](#test-the-application-error-taxonomy).
+
+**Application contract** — A type owned by your product, even when it wraps selected Claude response metadata, as opposed to a provider type supplied by the Anthropic SDK. See [Reference Web Application Architecture](#expose-an-application-owned-turn-envelope).
+
+**Authorization** — The backend's responsibility to decide what a given request may access or do before it reaches Claude or an external system; never delegated to the browser or inferred from model output. See [Reference Web Application Architecture](#system-boundary).
+
+**Bounding external content cost** — Matching the truncation or restriction strategy to where a given kind of content actually incurs its cost — a tool's own result, a hosted/MCP tool call, or a document/image block each need a different approach. See [Reference Web Application Architecture](#bound-content-whose-size-you-dont-control).
+
+**Citations** — Exact supporting locations Claude returns alongside text blocks when a document is enabled for citations, expressed as page, character, or block ranges depending on document type. See [Files, Documents, Citations, and Caching](#enable-citations-as-a-data-contract).
+
+**Code execution** — A hosted tool that runs code inside Anthropic's sandboxed container, accepting uploaded inputs and returning result and generated-file content blocks. See [Chapter 8](#8-code-execution-and-generated-artifacts).
+
+**Content block** — A typed unit within a message, such as text, an image, a tool request, a tool result, or a thinking-related block. See [Chapter 3](#3-foundations-messages-api-in-a-web-application).
 
 **Custom tool** — An application-defined capability described to Claude with a name and input schema, then executed by your backend.
 
-**Hosted tool** — A capability executed within Anthropic's infrastructure, such as supported web search or code execution.
+**Error taxonomy** — A fixed classification of failure kinds (validation, provider failure, recoverable tool error, mid-stream failure, refusal, cap) mapped to retry ownership and user-facing behavior. See [Appendix B](#appendix-b-error-taxonomy).
+
+**Evaluations** — Versioned, repeatable checks of a model-integrated feature's output quality, combining deterministic checks with human or model-graded review, run and compared across releases rather than eyeballed once. See [Testing and Operational Hardening](#add-semantic-evaluations).
+
+**Files and documents** — Content delivered to Claude as file references or inline documents rather than user-visible chat text, with their own upload, reuse, and citation considerations. See [Chapter 7](#7-files-documents-citations-and-caching).
+
+**Hosted tool** — A capability executed within Anthropic's infrastructure, such as supported web search or code execution. See [Chapter 9](#9-web-search-and-mcp-connectors).
+
+**MCP** — Model Context Protocol, a protocol for exposing external tools and information sources to models through a standard interface. See [Connect MCP servers with least privilege](#connect-mcp-servers-with-least-privilege).
+
+**Message** — A role-bearing turn sent to or returned from the Messages API. A message contains one or more content blocks and operational metadata. See [Chapter 3](#3-foundations-messages-api-in-a-web-application).
+
+**Observability** — Recording enough about a turn — path taken, timing, model/configuration, token usage, tools run, termination reason — to answer what happened, with sensitive payload content redacted by default. See [Reference Web Application Architecture](#observability-without-accidental-disclosure).
+
+**Prompt caching** — A mechanism for reusing eligible, repeated prompt prefixes so later requests can reduce processing work. See [Chapter 7](#cache-the-stable-document-prefix).
+
+**Refusals and stop reasons** — The signal the Messages API uses to end a response for a reason other than normal completion — a safety refusal or a `max_tokens` truncation are both valid HTTP 200 responses that still need product-level handling before their content is trusted. See [Structured Outputs](#handle-valid-http-responses-that-are-not-valid-results).
 
 **Server tool** — A tool executed by Anthropic as part of a Messages API request. In this guide, server tool is the API term; hosted tool is the broader architectural category.
 
-**MCP** — Model Context Protocol, a protocol for exposing external tools and information sources to models through a standard interface.
+**Skills** — Agent Skills: reusable packaged instructions and helper files attached to a code-execution container, worth adopting once a capability is used across many turns rather than a single prompt. See [Code Execution and Generated Artifacts](#add-skills-when-repetition-justifies-them).
 
-**Message** — A role-bearing turn sent to or returned from the Messages API. A message contains one or more content blocks and operational metadata.
+**Streaming event** — An incremental event emitted while a response is being generated. See [Foundations: Messages API in a Web Application](#add-streaming-for-user-perceived-progress).
 
-**Prompt caching** — A mechanism for reusing eligible, repeated prompt prefixes so later requests can reduce processing work.
+**Structured output** — Model output constrained by a JSON schema so application code can consume a typed result instead of extracting facts from prose. See [Chapter 4](#4-structured-outputs).
 
-**Streaming event** — An incremental event emitted while a response is being generated.
+**Testing matrix** — The set of unit, integration, frontend, and evaluation checks a given capability needs, since no single test level catches every failure mode. See [Appendix C](#appendix-c-testing-matrix).
 
-**Structured output** — Model output constrained by a JSON schema so application code can consume a typed result instead of extracting facts from prose.
+**Thinking and effort** — Extended thinking exposes a model's intermediate reasoning as its own content block type; effort controls trade response quality against latency and cost independently of it. See [Chapter 11](#11-extended-thinking).
 
 **Tool result** — Content returned to Claude after a custom tool request is executed. It can represent success or a recoverable failure.
 
-**Tool use** — A content block in which Claude requests invocation of a named tool with structured arguments.
+**Tool use** — A content block in which Claude requests invocation of a named tool with structured arguments. See [Chapter 5](#5-custom-backend-tools).
 
 **Turn** — One user-visible interaction. A turn may require one or many Claude API calls.
 
-**Workflow** — An application-directed sequence of model calls and ordinary code, such as routing, chaining, parallelization, or evaluator-optimizer.
+**Vision** — Sending one or more images as typed content blocks alongside a text instruction, for narrow tasks like comparison, attribute extraction, or chart explanation rather than open-ended description. See [Chapter 10](#10-vision-features).
 
-## Topical Index
-
-- [Agents](#12-agents-as-a-deliberate-exception)
-- [API errors](#test-the-application-error-taxonomy)
-- [Application contracts](#expose-an-application-owned-turn-envelope)
-- [Authorization](#system-boundary)
-- [Bounding external content cost](#bound-content-whose-size-you-dont-control)
-- [Citations](#enable-citations-as-a-data-contract)
-- [Code execution](#8-code-execution-and-generated-artifacts)
-- [Content blocks](#3-foundations-messages-api-in-a-web-application)
-- [Error taxonomy](#appendix-b-error-taxonomy)
-- [Evaluations](#add-semantic-evaluations)
-- [Files and documents](#7-files-documents-citations-and-caching)
-- [Hosted and server tools](#9-web-search-and-mcp-connectors)
-- [MCP](#connect-mcp-servers-with-least-privilege)
-- [Messages](#3-foundations-messages-api-in-a-web-application)
-- [Observability](#observability-without-accidental-disclosure)
-- [Prompt caching](#cache-the-stable-document-prefix)
-- [Refusals and stop reasons](#handle-valid-http-responses-that-are-not-valid-results)
-- [Skills](#add-skills-when-repetition-justifies-them)
-- [Streaming](#add-streaming-for-user-perceived-progress)
-- [Structured outputs](#4-structured-outputs)
-- [Testing matrix](#appendix-c-testing-matrix)
-- [Thinking and effort](#11-extended-thinking)
-- [Tool use](#5-custom-backend-tools)
-- [Vision](#10-vision-features)
-- [Workflows](#6-workflows-before-agents)
+**Workflow** — An application-directed sequence of model calls and ordinary code, such as routing, chaining, parallelization, or evaluator-optimizer. See [Chapter 6](#6-workflows-before-agents).
 
 <!-- PAGEBREAK -->
 
@@ -2353,7 +2361,7 @@ Use this checklist as a release gate. Assign an owner and evidence link for each
 
 <!-- PAGEBREAK -->
 
-## References and Further Reading
+## References
 
 The guide prioritizes official Anthropic sources for API behavior and marks volatile claims with access dates. All links below were accessed 2026-07-27.
 
@@ -2385,9 +2393,7 @@ Model names, tool versions, limits, availability, beta headers, pricing, and ret
 
 <!-- PAGEBREAK -->
 
-## Appendices
-
-### Appendix A: Portable Request and Response Examples
+## Appendix A: Portable Request and Response Examples
 
 Use these shapes as contract examples, not copy-paste production configuration. Select a current model and confirm supported parameters in the official documentation.
 
@@ -2415,7 +2421,7 @@ For structured output, define the schema at the API boundary and validate the pa
 
 <!-- PAGEBREAK -->
 
-### Appendix B: Error Taxonomy
+## Appendix B: Error Taxonomy
 
 | Error class | Detect at | Retry? | Public behavior |
 |---|---|---:|---|
@@ -2431,7 +2437,7 @@ For structured output, define the schema at the API boundary and validate the pa
 
 <!-- PAGEBREAK -->
 
-### Appendix C: Testing Matrix
+## Appendix C: Testing Matrix
 
 | Capability | Unit | Integration | Frontend/browser | Evaluation |
 |---|---|---|---|---|
@@ -2444,7 +2450,7 @@ For structured output, define the schema at the API boundary and validate the pa
 
 <!-- PAGEBREAK -->
 
-### Appendix D: Capability Comparison
+## Appendix D: Capability Comparison
 
 | Pattern | Who controls the next step? | Typical calls | Best fit | Principal risk |
 |---|---|---:|---|---|
