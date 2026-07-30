@@ -48,6 +48,15 @@ Every item except the numbered chapters is a fixed section: it always exists, al
 - The guide has a fixed PDF pagination: an `<!-- PAGEBREAK -->` marker — an HTML comment, invisible on GitHub — goes on its own line immediately before every fixed section and every chapter/appendix that should start a fresh page, except where two are deliberately paired to share one. Adding a new fixed section, chapter, or appendix without one leaves it silently sharing the previous section's page once rendered. Exact pairing and pagination mechanics are `revise-guide`'s call — see that skill for what the marker becomes at render time.
 - The title and subtitle are wrapped in a `<!-- CENTER -->` / `<!-- /CENTER -->` marker pair, same idea as `PAGEBREAK` — invisible on GitHub, resolved into real centering only by `revise-guide` at render time. This is a fixed, one-time fixture of the title block, not something to add elsewhere.
 
+## Renaming a heading breaks every link that points at it
+
+Internal links (Table of Contents, Glossary, inline cross-references) resolve from GitHub-style heading slugs — `revise-guide` renders with `gfm_auto_identifiers` for exactly this reason. Any heading rename is therefore also an anchor rename, and every place linking to the old anchor needs the same edit, in the same pass:
+
+- **Chapter (`##`) headings** are the safest to rename — for example, reframing a chapter title around a feature idea instead of a bare capability name. Update its Table of Contents entry, and any Glossary entry linking to it: some link with generic text like `[Chapter N]` and only need the anchor fixed, others link using the chapter's own title text and need both the visible text and the anchor updated to match.
+- **Subsection (`###`) headings are riskier to rename**: the Glossary routinely links a term directly to one specific subsection inside a chapter, not to the chapter as a whole. Prefer folding new material into an existing subsection's prose, or adding a brand-new subsection, over renaming one that something elsewhere already links to.
+
+After any heading rename, grep the whole file for the old anchor fragment to confirm nothing still points at it — don't rely on remembering every place a heading gets referenced.
+
 ## Screenshot placeholders
 
 Screenshots are captured manually, never invented or generated. Where a new figure would help, insert a placeholder at the exact spot instead:

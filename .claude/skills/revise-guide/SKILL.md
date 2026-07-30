@@ -26,6 +26,8 @@ Work through all of these against `guide/guide.md` before touching version metad
 
 Fix anything that fails before proceeding — don't render a PDF from a guide that still has open issues.
 
+**Explicit preview exception.** If the user explicitly asks to cut a revision anyway despite a known-failing check — most commonly "cut it without the images for now, I want to look at the structure" — that's a deliberate, one-off preview, not a real publish. State plainly which check is being skipped and why, then proceed through the remaining steps normally. Treat the result as disposable: if the user later asks to revert it, undo it completely — remove the row Step 2 added to `## Revision History` and delete the rendered PDF from `guide/output/` — so no trace of the test revision remains in either the tracked source or the build output.
+
 ## Step 2 — Bump the revision metadata
 
 `guide/guide.md` has a `## Revision History` table right below the title, with columns `Version | Date | Changelog` — no author column; the table records what changed and when, not who made the change. It's the single source of truth for version and date — there is no separate title-page metadata block to keep in sync with it. Every revision adds exactly one row. Propose both fields for the user to confirm or override:
@@ -169,6 +171,8 @@ grep -n "Overfull \\\\hbox" guide/output/pagenum.log
 ```
 
 `Overfull \hbox` means a line is wider than its column/page and will visibly clip past the margin in the PDF — most often an unhyphenatable compound term (e.g. `Authentication/authorization`) stuck in an auto-sized table column. This is a real, exact defect, not a false positive: if it fires, the fix is in the Markdown source (rephrase the cell, shorten the term, or narrow the table), not a pandoc flag — flag it back to `update-guide` rather than patching around it here. This log check catches width problems; it does not replace visually checking page breaks, since pdflatex doesn't warn about an otherwise-valid page break landing at an awkward spot.
+
+If this environment can't render PDF pages for visual inspection (no `pdftoppm`/`poppler-utils` available), the log-based checks above still run in full, but the visual checklist below has to be done by the user directly — say so plainly rather than silently skipping it or claiming the visual pass happened.
 
 Then open the final, index-updated `guide/output/claude-api-features-<version>.pdf` and check what only shows up once it's paginated:
 
