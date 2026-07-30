@@ -1,7 +1,7 @@
 <!-- CENTER -->
 # Building AI-Powered Features
 
-**A practical architecture and implementation guide**
+**A practical guide to real-world features built with Claude**
 <!-- /CENTER -->
 
 ## Revision History
@@ -14,9 +14,9 @@
 
 Adding Claude to a web application is not primarily a prompt-writing exercise. It is product and systems work: defining a useful interaction, placing a controlled model boundary on the server, designing application-owned contracts, managing state and tools, representing partial progress, and making probabilistic behavior testable and observable.
 
-This guide develops those concerns from a conventional web architecture into progressively richer features. It begins with messages and streaming, then covers structured output, custom tools, fixed workflows, documents and citations, code execution, hosted tools, vision, extended thinking, and bounded agents. Each pattern is presented as an engineering choice with implementation guidance, tradeoffs, failure modes, tests, and production implications.
+This guide is organized around practical, realistic features — a conversational assistant, an automated triage pipeline, a cited research tool over your own documents, an autonomous investigator, and others — each built around the one Claude capability it fundamentally depends on: messages and streaming, structured output, custom tools, fixed workflows, documents and citations, code execution, hosted web and MCP tools, vision, extended thinking, and bounded agents. Every chapter teaches its capability through the concrete feature that needs it, with implementation guidance, tradeoffs, failure modes, tests, and production implications.
 
-The examples use portable TypeScript and JSON rather than a particular framework. They are informed by a working playground, but the playground is evidence—not a template. The goal is to help you design the smallest dependable AI capability that fits your product.
+The examples use portable TypeScript and JSON rather than a particular framework, and every feature is a generic pattern rather than a specific product — nothing here depends on any framework, vendor tooling, or existing codebase to make sense. The goal is to help you design the smallest dependable AI capability that fits your product.
 
 <!-- PAGEBREAK -->
 
@@ -27,16 +27,16 @@ The examples use portable TypeScript and JSON rather than a particular framework
 - [Glossary](#glossary)
 - [1. Why AI Features Need Product Architecture](#1-why-ai-features-need-product-architecture)
 - [2. Reference Web Application Architecture](#2-reference-web-application-architecture)
-- [3. Foundations: Messages API in a Web Application](#3-foundations-messages-api-in-a-web-application)
-- [4. Structured Outputs](#4-structured-outputs)
-- [5. Custom Backend Tools](#5-custom-backend-tools)
-- [6. Workflows Before Agents](#6-workflows-before-agents)
-- [7. Files, Documents, Citations, and Caching](#7-files-documents-citations-and-caching)
-- [8. Code Execution and Generated Artifacts](#8-code-execution-and-generated-artifacts)
-- [9. Web Search and MCP Connectors](#9-web-search-and-mcp-connectors)
-- [10. Vision Features](#10-vision-features)
-- [11. Extended Thinking](#11-extended-thinking)
-- [12. Agents as a Deliberate Exception](#12-agents-as-a-deliberate-exception)
+- [3. Foundations: A Simple Conversational Assistant with the Messages API](#3-foundations-a-simple-conversational-assistant-with-the-messages-api)
+- [4. Structured Outputs: From Free Text to Trusted Data](#4-structured-outputs-from-free-text-to-trusted-data)
+- [5. Custom Backend Tools: Giving Claude Real Actions to Take](#5-custom-backend-tools-giving-claude-real-actions-to-take)
+- [6. Workflows Before Agents: An Automated Support-Triage Pipeline](#6-workflows-before-agents-an-automated-support-triage-pipeline)
+- [7. Files, Documents, Citations, and Caching: A Cited Research Assistant Over Your Documents](#7-files-documents-citations-and-caching-a-cited-research-assistant-over-your-documents)
+- [8. Code Execution and Generated Artifacts: From Raw Data to a Finished Deliverable](#8-code-execution-and-generated-artifacts-from-raw-data-to-a-finished-deliverable)
+- [9. Web Search and MCP Connectors: A Scoped, Cited Research Brief](#9-web-search-and-mcp-connectors-a-scoped-cited-research-brief)
+- [10. Vision Features: Comparing and Reading Across Multiple Images](#10-vision-features-comparing-and-reading-across-multiple-images)
+- [11. Extended Thinking: Is Deeper Reasoning Worth the Cost?](#11-extended-thinking-is-deeper-reasoning-worth-the-cost)
+- [12. Agents as a Deliberate Exception: Open-Ended Investigation, Bounded](#12-agents-as-a-deliberate-exception-open-ended-investigation-bounded)
 - [13. Testing and Operational Hardening](#13-testing-and-operational-hardening)
 - [Putting It Together](#putting-it-together)
 - [Production Readiness Checklist](#production-readiness-checklist)
@@ -60,6 +60,7 @@ The central question is narrower and more useful: **how should an existing web a
 
 By the end of the guide, you should be able to:
 
+- recognize which practical feature idea a product need maps to, and which Claude capability it calls for;
 - choose among free-text messages, structured output, tools, fixed workflows, and agents;
 - place Claude behind a stable application-owned backend boundary;
 - stream useful progress without coupling the browser to provider event details;
@@ -74,11 +75,13 @@ The guide covers Claude API integration inside a web product. It focuses on arch
 
 Examples deliberately omit application-specific routes and names. They also separate production architecture from useful development affordances. A deterministic fake, raw trace viewer, or interactive inspector can dramatically improve engineering work, but none is automatically an end-user product requirement.
 
-### How the reference playground informed this guide
+### How a reference implementation shaped this guide's structure
 
-The source playground implements many Claude capabilities as small, inspectable labs. That breadth exposes recurring concerns: every feature needs a server boundary, response contract, failure taxonomy, test double, and rendering strategy. It also reveals which ideas should not be copied wholesale. A showcase benefits from exposing raw payloads and letting users toggle implementation details; a production feature usually benefits from fewer controls and a workflow shaped around one user outcome.
+Each numbered chapter is built around one practical, realistic feature — implemented and exercised end-to-end in a working reference application — and teaches the Claude capability that feature depends on through it. That grounding surfaces recurring concerns a purely theoretical treatment would miss: every feature needs a server boundary, response contract, failure taxonomy, test double, and rendering strategy, plus the specific edge cases and gotchas that only surface once a feature is actually built and used.
 
-Accordingly, this guide extracts patterns and counterexamples rather than presenting the playground as a starter application.
+It also reveals which ideas should not be copied wholesale. A demonstration environment benefits from exposing raw payloads and letting a developer toggle implementation details to see what changes; a production feature usually benefits from fewer controls and a workflow shaped around one user outcome. This guide keeps the feature idea and the underlying lesson, and deliberately leaves behind whatever only made sense as a demonstration affordance.
+
+Nothing in this guide depends on knowing that reference implementation exists. Every example is portable TypeScript and JSON, free of framework-specific wiring, product names, or file paths — a chapter should read the same whether or not you ever learn where its feature idea came from.
 
 <!-- PAGEBREAK -->
 
@@ -100,7 +103,7 @@ The examples use these conventions:
 
 ## Glossary
 
-**Agent** — A model-directed loop in which Claude chooses the next action from available tools until it produces an answer or reaches an application-enforced limit. See [Chapter 12](#12-agents-as-a-deliberate-exception).
+**Agent** — A model-directed loop in which Claude chooses the next action from available tools until it produces an answer or reaches an application-enforced limit. See [Chapter 12](#12-agents-as-a-deliberate-exception-open-ended-investigation-bounded).
 
 **API errors** — HTTP-level and typed SDK failures returned by the Claude API itself (validation, rate limits, transient 5xx conditions), distinct from a tool's own recoverable failure. See [Testing and Operational Hardening](#test-the-application-error-taxonomy).
 
@@ -112,9 +115,9 @@ The examples use these conventions:
 
 **Citations** — Exact supporting locations Claude returns alongside text blocks when a document is enabled for citations, expressed as page, character, or block ranges depending on document type. See [Files, Documents, Citations, and Caching](#enable-citations-as-a-data-contract).
 
-**Code execution** — A hosted tool that runs code inside Anthropic's sandboxed container, accepting uploaded inputs and returning result and generated-file content blocks. See [Chapter 8](#8-code-execution-and-generated-artifacts).
+**Code execution** — A hosted tool that runs code inside Anthropic's sandboxed container, accepting uploaded inputs and returning result and generated-file content blocks. See [Chapter 8](#8-code-execution-and-generated-artifacts-from-raw-data-to-a-finished-deliverable).
 
-**Content block** — A typed unit within a message, such as text, an image, a tool request, a tool result, or a thinking-related block. See [Chapter 3](#3-foundations-messages-api-in-a-web-application).
+**Content block** — A typed unit within a message, such as text, an image, a tool request, a tool result, or a thinking-related block. See [Chapter 3](#3-foundations-a-simple-conversational-assistant-with-the-messages-api).
 
 **Custom tool** — An application-defined capability described to Claude with a name and input schema, then executed by your backend.
 
@@ -122,41 +125,41 @@ The examples use these conventions:
 
 **Evaluations** — Versioned, repeatable checks of a model-integrated feature's output quality, combining deterministic checks with human or model-graded review, run and compared across releases rather than eyeballed once. See [Testing and Operational Hardening](#add-semantic-evaluations).
 
-**Files and documents** — Content delivered to Claude as file references or inline documents rather than user-visible chat text, with their own upload, reuse, and citation considerations. See [Chapter 7](#7-files-documents-citations-and-caching).
+**Files and documents** — Content delivered to Claude as file references or inline documents rather than user-visible chat text, with their own upload, reuse, and citation considerations. See [Chapter 7](#7-files-documents-citations-and-caching-a-cited-research-assistant-over-your-documents).
 
-**Hosted tool** — A capability executed within Anthropic's infrastructure, such as supported web search or code execution. See [Chapter 9](#9-web-search-and-mcp-connectors).
+**Hosted tool** — A capability executed within Anthropic's infrastructure, such as supported web search or code execution. See [Chapter 9](#9-web-search-and-mcp-connectors-a-scoped-cited-research-brief).
 
 **MCP** — Model Context Protocol, a protocol for exposing external tools and information sources to models through a standard interface. See [Connect MCP servers with least privilege](#connect-mcp-servers-with-least-privilege).
 
-**Message** — A role-bearing turn sent to or returned from the Messages API. A message contains one or more content blocks and operational metadata. See [Chapter 3](#3-foundations-messages-api-in-a-web-application).
+**Message** — A role-bearing turn sent to or returned from the Messages API. A message contains one or more content blocks and operational metadata. See [Chapter 3](#3-foundations-a-simple-conversational-assistant-with-the-messages-api).
 
 **Observability** — Recording enough about a turn — path taken, timing, model/configuration, token usage, tools run, termination reason — to answer what happened, with sensitive payload content redacted by default. See [Reference Web Application Architecture](#observability-without-accidental-disclosure).
 
 **Prompt caching** — A mechanism for reusing eligible, repeated prompt prefixes so later requests can reduce processing work. See [Chapter 7](#cache-the-stable-document-prefix).
 
-**Refusals and stop reasons** — The signal the Messages API uses to end a response for a reason other than normal completion — a safety refusal or a `max_tokens` truncation are both valid HTTP 200 responses that still need product-level handling before their content is trusted. See [Structured Outputs](#handle-valid-http-responses-that-are-not-valid-results).
+**Refusals and stop reasons** — The signal the Messages API uses to end a response for a reason other than normal completion — a safety refusal or a `max_tokens` truncation are both valid HTTP 200 responses that still need product-level handling before their content is trusted. See [Structured Outputs: From Free Text to Trusted Data](#handle-valid-http-responses-that-are-not-valid-results).
 
 **Server tool** — A tool executed by Anthropic as part of a Messages API request. In this guide, server tool is the API term; hosted tool is the broader architectural category.
 
-**Skills** — Agent Skills: reusable packaged instructions and helper files attached to a code-execution container, worth adopting once a capability is used across many turns rather than a single prompt. See [Code Execution and Generated Artifacts](#add-skills-when-repetition-justifies-them).
+**Skills** — Agent Skills: reusable packaged instructions and helper files attached to a code-execution container, worth adopting once a capability is used across many turns rather than a single prompt. See [Code Execution and Generated Artifacts: From Raw Data to a Finished Deliverable](#add-skills-when-repetition-justifies-them).
 
-**Streaming event** — An incremental event emitted while a response is being generated. See [Foundations: Messages API in a Web Application](#add-streaming-for-user-perceived-progress).
+**Streaming event** — An incremental event emitted while a response is being generated. See [Foundations: A Simple Conversational Assistant with the Messages API](#add-streaming-for-user-perceived-progress).
 
-**Structured output** — Model output constrained by a JSON schema so application code can consume a typed result instead of extracting facts from prose. See [Chapter 4](#4-structured-outputs).
+**Structured output** — Model output constrained by a JSON schema so application code can consume a typed result instead of extracting facts from prose. See [Chapter 4](#4-structured-outputs-from-free-text-to-trusted-data).
 
 **Testing matrix** — The set of unit, integration, frontend, and evaluation checks a given capability needs, since no single test level catches every failure mode. See [Appendix C](#appendix-c-testing-matrix).
 
-**Thinking and effort** — Extended thinking exposes a model's intermediate reasoning as its own content block type; effort controls trade response quality against latency and cost independently of it. See [Chapter 11](#11-extended-thinking).
+**Thinking and effort** — Extended thinking exposes a model's intermediate reasoning as its own content block type; effort controls trade response quality against latency and cost independently of it. See [Chapter 11](#11-extended-thinking-is-deeper-reasoning-worth-the-cost).
 
 **Tool result** — Content returned to Claude after a custom tool request is executed. It can represent success or a recoverable failure.
 
-**Tool use** — A content block in which Claude requests invocation of a named tool with structured arguments. See [Chapter 5](#5-custom-backend-tools).
+**Tool use** — A content block in which Claude requests invocation of a named tool with structured arguments. See [Chapter 5](#5-custom-backend-tools-giving-claude-real-actions-to-take).
 
 **Turn** — One user-visible interaction. A turn may require one or many Claude API calls.
 
-**Vision** — Sending one or more images as typed content blocks alongside a text instruction, for narrow tasks like comparison, attribute extraction, or chart explanation rather than open-ended description. See [Chapter 10](#10-vision-features).
+**Vision** — Sending one or more images as typed content blocks alongside a text instruction, for narrow tasks like comparison, attribute extraction, or chart explanation rather than open-ended description. See [Chapter 10](#10-vision-features-comparing-and-reading-across-multiple-images).
 
-**Workflow** — An application-directed sequence of model calls and ordinary code, such as routing, chaining, parallelization, or evaluator-optimizer. See [Chapter 6](#6-workflows-before-agents).
+**Workflow** — An application-directed sequence of model calls and ordinary code, such as routing, chaining, parallelization, or evaluator-optimizer. See [Chapter 6](#6-workflows-before-agents-an-automated-support-triage-pipeline).
 
 <!-- PAGEBREAK -->
 
@@ -400,7 +403,9 @@ Prompts, tool arguments, documents, and outputs may contain sensitive data. Defa
 
 <!-- PAGEBREAK -->
 
-## 3. Foundations: Messages API in a Web Application
+## 3. Foundations: A Simple Conversational Assistant with the Messages API
+
+Consider the simplest AI feature a product can ship: an embedded assistant that answers a user's question in plain language — a support widget, a documentation search box, an in-product helper. Nothing about it needs tools, structured fields, or multi-step orchestration; it needs one well-formed request and one well-handled response. Every other chapter in this guide adds a capability on top of exactly this same request shape, so getting this one right pays for itself repeatedly.
 
 The Messages API is the foundation beneath the richer patterns in this guide. It accepts conversational turns and returns the next assistant message. The API is stateless: your application supplies the relevant history on every request. That fact determines where conversation state lives, how it is authorized, and how its size is controlled.
 
@@ -469,6 +474,8 @@ const request: ClaudeRequest = {
 ```
 
 Only send parameters supported by the selected model and feature combination. Omitting an unsupported or unnecessary field is safer than forwarding a generic settings object. Record the resolved configuration in telemetry so a later model migration can be evaluated.
+
+A parameter can be more than merely unsupported — some models reject it outright as an invalid request rather than silently ignoring it. A sampling control accepted on one model tier can fail on another because that tier's decoding doesn't expose the field at all. Resolve support the same way Chapter 11 resolves thinking support: from a small, tested per-model capability table, checked before the request is built, not discovered from a production error.
 
 ### Implement the non-streaming path first
 
@@ -573,9 +580,11 @@ In production, measure time to first content, time to completion, cancellation r
 
 <!-- PAGEBREAK -->
 
-## 4. Structured Outputs
+## 4. Structured Outputs: From Free Text to Trusted Data
 
-Free text is appropriate when a person will interpret the answer. When application code needs fields, enums, arrays, or nested records, use structured output. Prompting Claude to “return JSON” is not the same guarantee: malformed JSON, missing fields, and inconsistent types remain possible.
+Consider a support inbox where every incoming note needs a summary, a priority, and a list of action items before it can reach a queue, a dashboard, or an automation. A person could read and tag each one, but that doesn't scale, and free text extracted with regular expressions or ad hoc parsing breaks the moment phrasing shifts. What the system actually needs is a typed record its own code can trust immediately — not a paragraph to reinterpret.
+
+Free text is appropriate when a person will interpret the answer. When application code needs fields, enums, arrays, or nested records — as this triage record does — use structured output. Prompting Claude to “return JSON” is not the same guarantee: malformed JSON, missing fields, and inconsistent types remain possible. Structured output is strictly stronger: schema compliance is enforced by the response mechanism itself, not requested in prose and hoped for.
 
 Claude's JSON outputs constrain the response with a schema supplied at `output_config.format`. This differs from strict tool use: JSON outputs constrain Claude's direct response, while `strict: true` constrains tool names and inputs. Anthropic documents both under [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) (accessed 2026-07-27).
 
@@ -584,6 +593,8 @@ Claude's JSON outputs constrain the response with a schema supplied at `output_c
 Good uses include extraction, classification, routing decisions, form suggestions, and machine-rendered reports. Prefer free text when structure would merely wrap one prose answer or encode an unstable product concept prematurely.
 
 A schema is an application contract. Keep it small, version it deliberately, and name fields for domain meaning rather than UI placement. Do not make every property optional “for flexibility”; that pushes ambiguity into every consumer.
+
+A single structured-output call is also a building block, not only a final answer. A larger pipeline often calls this same pattern repeatedly for different narrow decisions — a category here, a pass/fail grade there — composing several small typed calls rather than one large one. Chapter 6 builds exactly that kind of pipeline out of pieces shaped like this.
 
 ```ts
 const triageSchema = {
@@ -639,7 +650,7 @@ async function triage(text: string): Promise<TurnEnvelope<TriageResult>> {
 }
 ```
 
-Schema-constrained output strengthens the provider response, but runtime validation remains useful at your trust boundary. It protects against integration regressions, unsupported stop conditions, accidental calls without the schema, and later application changes. Generate the TypeScript type, schema, and validator from one source when your tooling supports it; otherwise test that they stay aligned.
+Schema-constrained output strengthens the provider response, but runtime validation remains useful at your trust boundary. It protects against integration regressions, unsupported stop conditions, accidental calls without the schema, and later application changes. The guard for a missing or malformed result is cheap insurance, not redundant paranoia: the schema guarantee covers the model's output, not every edge case in the surrounding SDK, network, or version behavior. Generate the TypeScript type, schema, and validator from one source when your tooling supports it; otherwise test that they stay aligned.
 
 Some SDKs provide parsing helpers that derive or accept a runtime schema. They reduce boilerplate, but keep their use behind `ClaudeClient` so features stay testable and provider setup remains centralized.
 
@@ -671,6 +682,16 @@ The frontend should consume `TriageResult`, not parse the provider response. Ren
 
 Do not expose raw JSON as the primary interface unless the product is a developer tool. A structured-output feature succeeds when users see a stable domain object, not when they see that the model followed a schema.
 
+<!-- SCREENSHOT TODO
+Capture: Structured Output Console after a completed ticket-triage request, showing the rendered priority badge, summary, and action-item list rather than raw JSON.
+Setup: Use fake mode. Submit a sample support note as input and wait for the structured result to render.
+Frame: Include the input note and the rendered triage card (priority badge, summary, action items). Exclude navigation, inline lab documentation, browser chrome, and the raw JSON/inspector payload.
+File: assets/structured-output-rendered-result.png (relative to this document, which lives in guide/)
+Alt: A support-ticket triage result rendered as a priority badge, summary, and action-item list rather than a JSON block.
+Caption: Figure 2. A structured-output feature succeeds when users see a stable domain object, not the JSON the model returned to produce it.
+Purpose: Show the transferable distinction between a validated typed result and its raw wire representation.
+-->
+
 ### Decide deliberately whether to stream
 
 Structured outputs can be streamed, but individual text deltas contain incomplete JSON. Do not repeatedly call `JSON.parse` on the growing string and treat parser errors as exceptional. Show a generating state and parse after completion, use an SDK-supported partial parser for a carefully designed progressive UI, or choose non-streaming when the result is small.
@@ -695,7 +716,9 @@ In production, track schema version, cold/warm latency, stop reason, validation 
 
 <!-- PAGEBREAK -->
 
-## 5. Custom Backend Tools
+## 5. Custom Backend Tools: Giving Claude Real Actions to Take
+
+An assistant that can answer "where's my order" or "is this service down right now" needs to actually check, not guess from what sounds plausible. That requires more than a good prompt: the model needs a way to ask your backend for a real answer, and your backend needs a way to decide what it will actually do on Claude's behalf.
 
 A custom tool lets Claude request a capability that your backend owns: look up an order, search an internal catalog, calculate a quote, or propose an update. Claude chooses a tool and supplies arguments; your application validates authorization and input, executes ordinary code, and returns the result. The model never receives direct access to your function, network, database, or credentials.
 
@@ -728,6 +751,8 @@ const tools = [
 ```
 
 Describe what the tool does, when it applies, and what each argument means. Avoid one broad `execute_action` tool with a large union of behaviors; small tools are easier to authorize, test, observe, and remove. Use `strict: true` when schema-valid arguments matter, while still applying domain validation in your code.
+
+A tool that needs no input at all — a status check, a fixed lookup — is equally valid with an empty `properties` object and nothing in `required`. Don't invent a placeholder argument just to give the schema something to hold; an empty input schema is a deliberate, well-formed shape, not an incomplete one.
 
 Tool names and schemas are not access control. Resolve the authenticated principal outside the model-generated arguments. For example, accept `orderId` from Claude but derive `customerId` from the server session. Never let the model choose a tenant, role, or unrestricted storage path merely because the field validates.
 
@@ -776,6 +801,8 @@ async function runToolTurn(initial: ClaudeRequest): Promise<TurnEnvelope<string>
 ```
 
 The request is reassigned rather than mutated so every trace entry remains an accurate snapshot. A production loop also needs caps on rounds, total tool calls, wall-clock time, and possibly spend. Reaching a cap is a controlled incomplete outcome, not permission to continue indefinitely.
+
+Write the cap into the loop's condition from the start. An unbounded `for (;;)` that plans to "add a cap later" is a common and easy mistake, and a stuck or adversarial tool loop will find that gap in production long before a code reviewer does.
 
 Check every non-tool stop reason explicitly. `end_turn` can produce the final answer, while truncation, refusal, or other supported stop conditions need their own handling. A loop condition alone does not prove success.
 
@@ -837,6 +864,8 @@ async function executeToolBatch(blocks: ToolUseBlock[]) {
 
 If a sequential batch stops after an earlier failure, still return `is_error: true` results for calls you deliberately skipped. For side effects, add confirmation, idempotency keys, precondition checks, and audit records. Consider separating read tools from propose/commit operations so Claude can plan without silently executing a consequential change.
 
+This is concurrency across the tool calls Claude requested in one response. A single tool's own implementation can introduce a second, independent layer of concurrency — fanning out internally to several backend calls needed to answer one tool request, before returning its one result. Both are legitimate levers, but they are not the same decision: batching `tool_use` blocks is an orchestration choice the loop makes; fanning out inside one tool's execution is an implementation choice that tool alone makes, invisible to the loop.
+
 ### Stream application activity, not invented model text
 
 A tool loop can span several Claude calls and periods with no text deltas. Emit application events around backend execution so users see meaningful progress.
@@ -860,7 +889,7 @@ Setup: Use fake mode. Enable "Stream response", ask "What are the latest repo st
 Frame: Include the question/answer, resolved tool-activity item, and the inspector portion showing the tool-use call followed by the final call. Exclude the navigation, inline lab documentation, browser chrome, configured repository name if it is sensitive, and verbose payload fields not needed to see ordering.
 File: assets/custom-tool-loop-and-trace.png (relative to this document, which lives in guide/)
 Alt: Tool-use interface showing a resolved backend tool activity and an ordered two-call trace ending in an answer.
-Caption: Figure 2. The product can expose safe activity while protected tooling retains the complete tool-use and tool-result trajectory.
+Caption: Figure 3. The product can expose safe activity while protected tooling retains the complete tool-use and tool-result trajectory.
 Purpose: Illustrate the separation between user-safe progress, backend execution, and an immutable multi-call trace.
 -->
 
@@ -874,7 +903,9 @@ In production, record tool name, duration, outcome class, round number, and corr
 
 <!-- PAGEBREAK -->
 
-## 6. Workflows Before Agents
+## 6. Workflows Before Agents: An Automated Support-Triage Pipeline
+
+An inbound support ticket needs to be categorized, answered, checked against policy and tone, and revised if it falls short — every time, without a human doing each step by hand. The steps themselves are well understood; what varies is the content of each ticket. That combination — known stages, variable content — is exactly what a workflow is for, and exactly where reaching straight for an open-ended agent would trade away predictability the task doesn't need.
 
 A workflow is an application-directed sequence of model calls and ordinary code. The application decides which stages exist, what each stage receives, when work runs concurrently, and when the process stops. This predictability makes workflows the default for multi-step product features.
 
@@ -937,6 +968,8 @@ async function route(request: SupportRequest): Promise<RoutedRequest> {
   return { category: result.category, request };
 }
 ```
+
+Route with the cheapest and fastest model tier capable of the classification, not the tier used for the actual response — routing only picks a category, it never produces user-facing prose, so it is one of the clearest cases for Chapter 3's per-feature model-profile resolution to favor economy over capability.
 
 Validate the route against a closed set and define a safe fallback for low-confidence or unknown cases. Avoid asking the router to produce both a category and a full response if only the category determines the next path; mixed responsibilities make evaluation harder.
 
@@ -1030,6 +1063,10 @@ Workflows often repeat the same source document, policy, or case context across 
 
 Caching reduces repeated input processing; it does not make unnecessary calls free. Routing once, limiting retries, choosing an appropriate model per stage, and running independent calls concurrently remain the larger architectural decisions.
 
+A request is also limited in how many separate cache breakpoints it may declare — providers commonly cap this at a small number per call. A pipeline that marks a new breakpoint after every stage's shared context can exceed that cap well before it exceeds any token budget; check the current limit and budget breakpoints deliberately rather than adding `cache_control` at every opportunity.
+
+A configured breakpoint can also silently produce neither a cache write nor a read, as Chapter 7 covers, when the shared prefix falls under the minimum cacheable size — a real risk here specifically, since a workflow's shared system prompt is often the entire reused prefix and can be shorter than a full document would be.
+
 ### Decide how workflows fail and resume
 
 Define failure semantics per stage:
@@ -1069,15 +1106,15 @@ Setup: Use fake mode. Open Workflow Gallery, keep the automatically selected iss
 Frame: Include only the interactive result panel from the issue selector through the grading and iteration summary. Exclude navigation, inline lab documentation, browser chrome, and the raw inspector payload.
 File: assets/fixed-workflow-result.png (relative to this document, which lives in guide/)
 Alt: Workflow result displaying a routed category, refined draft, three grading criteria, iteration count, and final pass state.
-Caption: Figure 3. A fixed workflow exposes stage outcomes and termination criteria instead of presenting a multi-call pipeline as one opaque answer.
+Caption: Figure 4. A fixed workflow exposes stage outcomes and termination criteria instead of presenting a multi-call pipeline as one opaque answer.
 Purpose: Show how routing, chaining, parallel evaluation, and a capped optimizer become legible product state.
 -->
 
 <!-- PAGEBREAK -->
 
-## 7. Files, Documents, Citations, and Caching
+## 7. Files, Documents, Citations, and Caching: A Cited Research Assistant Over Your Documents
 
-Document features combine several concerns that are easy to conflate: moving bytes to Claude, representing a document in a message, grounding claims with citations, retaining conversation state, and avoiding repeated processing. Design each concern explicitly.
+A feature that lets a user ask questions about a long document — a contract, a paper, a policy manual — across several follow-up turns needs every claim in the answer traceable back to the exact passage that supports it, and often benefits from letting the assistant maintain its own running notes as the conversation continues. That combination — a large document, multi-turn continuity, and verifiable grounding — touches several concerns that are easy to conflate: moving bytes to Claude, representing a document in a message, grounding claims with citations, retaining conversation state, and avoiding repeated processing. Design each concern explicitly.
 
 ### Choose a delivery method independently of document semantics
 
@@ -1159,7 +1196,7 @@ Setup: Use fake mode. Start a session with arXiv ID 2301.00234, ask "What is thi
 Frame: Include the paper title, question and answer, open citation disclosure, and notes panel. Exclude navigation, inline lab documentation, inspector payloads, browser chrome, and any source URL or metadata not needed for the citation relationship.
 File: assets/cited-document-answer.png (relative to this document, which lives in guide/)
 Alt: Document question-answer interface with an answer citation expanded to show quoted source text and pages, alongside structured running notes.
-Caption: Figure 4. Citation UX keeps the supporting passage attached to the claim and available without relying on hover.
+Caption: Figure 5. Citation UX keeps the supporting passage attached to the claim and available without relying on hover.
 Purpose: Demonstrate accessible claim-to-source inspection and the distinction between grounded prose and separately maintained structured state.
 -->
 
@@ -1183,6 +1220,10 @@ On the first question, attach the document and question. On later questions, sen
 
 Store a resendable form of assistant content. Provider response blocks can contain metadata that is output-only or unsuitable for a later request. Build an explicit `toConversationHistory(response)` transformation, test every supported block type, and retain citations separately for display if the request format does not accept the response annotation unchanged.
 
+In practice this is not an edge case — a document citation block commonly cannot be resent unchanged in a later request's history at all. Strip the citation annotations before storing that turn, keep only the cited text as ordinary content, and retain the full citation detail separately, keyed to that turn, for display. Rebuilding history from this clean representation avoids sending back a shape the next request may not accept.
+
+When the same feature also lets Claude maintain its own scratch state across turns — running notes, a draft outline — that capability is usually a stateful custom tool with no meaningful `input_schema` of its own, the pattern Chapter 5 describes for a tool whose contract lives entirely in the system prompt rather than in a schema Claude can read. Keep that tool's system-prompt explanation and this chapter's document/citation handling independent: one governs how Claude finds grounded facts, the other governs how it accumulates its own working state.
+
 In-memory maps are acceptable for a local demonstration, but production sessions need expiration, tenant isolation, concurrency control, and a durable store when multiple instances or restarts matter. Two simultaneous questions against one conversation require serialization or version checks to prevent lost history.
 
 ### Cache the stable document prefix
@@ -1204,7 +1245,7 @@ A stable Files API identifier helps keep request bytes and cache prefixes stable
 
 ### Document failure modes and testing
 
-Handle unsupported type, oversized or encrypted file, failed upload, stale file identifier, provider deletion, extraction failure, session expiry, cache miss, uncitable scan, and a response without usable text. A citation-free answer can be either a valid outcome or a product failure depending on the promise made to users; encode that decision. An oversized document should not be silently truncated to fit a limit — cutting pages invalidates the exact page numbers its citations point to. Warn instead, sized to the real cost and latency impact, and let the user proceed informed (see Chapter 2's "Bound content whose size you don't control").
+Handle unsupported type, oversized or encrypted file, failed upload, stale file identifier, provider deletion, extraction failure, session expiry, cache miss, uncitable scan, and a response without usable text. A citation-free answer can be either a valid outcome or a product failure depending on the promise made to users; encode that decision. An oversized document should not be silently truncated to fit a limit — cutting pages invalidates the exact page numbers its citations point to. Warn instead, sized to the real cost and latency impact, and let the user proceed informed (see Chapter 2's "Bound content whose size you don't control"). Set that threshold from an actual worst-case estimate rather than a round number: processing cost scales with what a document contains, not only its byte count, and a text-heavy file can differ several-fold in real cost from a dense, image-heavy one of the same page count. Estimate the worst realistic case your product accepts and price the warning threshold from that, so the number means something concrete instead of being guessed.
 
 Unit tests should cover inline and uploaded sources, upload reuse, document-before-question ordering, citation enablement and normalization, history sanitization, cache-control placement, first versus follow-up requests, delivery-mode changes, session authorization, and expiration. Integration tests should intercept file upload and Messages calls. Frontend tests should render multiple sources and citation types accessibly. Browser tests should ask at least one follow-up to prove session and cache behavior rather than testing only the initial upload.
 
@@ -1212,9 +1253,9 @@ Production telemetry should include source type, page/byte count, upload reuse, 
 
 <!-- PAGEBREAK -->
 
-## 8. Code Execution and Generated Artifacts
+## 8. Code Execution and Generated Artifacts: From Raw Data to a Finished Deliverable
 
-Code execution is useful when a task is better solved by computation than by prose: analyze a dataset, create a chart, transform files, or verify a calculation. Claude writes and runs code inside an Anthropic-managed container, and the response records tool activity and generated files.
+Handing Claude a real dataset — recent activity, usage records, exported metrics — and expecting back not just a description but a finished deliverable (a chart, a computed summary, a polished spreadsheet a person can open and use directly) needs actual computation, not prose about what the numbers probably show. Code execution is useful whenever a task is better solved this way than by description: analyze a dataset, create a chart, transform files, or verify a calculation. Claude writes and runs code inside an Anthropic-managed container, and the response records tool activity and generated files.
 
 This is a server-executed tool. Your backend enables it and interprets its response blocks; it does not run the generated command locally and does not implement a client `tool_result` loop.
 
@@ -1309,7 +1350,9 @@ At a high level:
 
 Anthropic's [Agent Skills guide](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) documents current prerequisites and prebuilt/custom skill behavior (accessed 2026-07-27).
 
-Register custom skills during deployment or through a durable provisioning path, not once per application process without persistence. Version skill contents and record the version used by each turn. Making a skill available does not guarantee Claude used it; infer use only from documented execution evidence, and label heuristic detection as such.
+Register custom skills during deployment or through a durable provisioning path, not once per application process without persistence. A lighter-weight alternative is lazy registration on first use, caching the resulting identifier for the process lifetime so a burst of concurrent first requests doesn't each try to register the same skill — either approach is fine, but registration is always a separate step from a request that merely references an already-registered skill by identifier. Version skill contents and record the version used by each turn. Making a skill available does not guarantee Claude used it: invocation is the model's own judgment call, informed by the skill's description field, and a reasonable request may simply not warrant it. Infer use only from documented execution evidence, and label heuristic detection as such.
+
+Combining code execution with a container skill typically requires stacking more than one feature/beta flag at once, not just the one for code execution itself. Resolve the full set a given combination needs from the same capability table that resolves model and tool versions, rather than adding flags ad hoc as each new combination is discovered.
 
 A skill is executable supply-chain material. Review helper scripts, pin dependencies where possible, restrict who can publish updates, and test the packaged files in the same runtime shape used in production.
 
@@ -1336,9 +1379,9 @@ Production telemetry should track upload size, tool version, container duration,
 
 <!-- PAGEBREAK -->
 
-## 9. Web Search and MCP Connectors
+## 9. Web Search and MCP Connectors: A Scoped, Cited Research Brief
 
-Web search and the MCP connector let Claude reach information through server-executed tools. Your backend declares the tools and reads their activity from the response, while Anthropic executes the tool calls within the Messages request. This differs from a custom tool, where your application must execute a function and return `tool_result` blocks.
+A feature that answers one narrow question by combining current public information with a domain-specific knowledge source is not an open browsing session — it is a scoped research assistant that returns a structured, sourced brief for exactly the question asked. Web search and the MCP connector let Claude reach that information through server-executed tools. Your backend declares the tools and reads their activity from the response, while Anthropic executes the tool calls within the Messages request. This differs from a custom tool, where your application must execute a function and return `tool_result` blocks.
 
 ### Choose the execution boundary first
 
@@ -1422,7 +1465,11 @@ const mcpCallsPerformed = response.content.filter(
 ).length;
 ```
 
-Counts are useful operational metadata, not proof of research quality. Preserve result error blocks and surface partial coverage. An MCP-side failure or search-limit error may appear inside an otherwise successful HTTP response.
+This client-side counting exists because the API returns no aggregate count of its own — if a product wants to report "3 searches performed" or "2 knowledge-base calls," it has to derive that from matching content blocks itself, the same way this code does.
+
+The single most important trap in this chapter is what an MCP-side failure looks like. A remote MCP server erroring on a bad query, a timeout, or an internal fault does not surface as an HTTP error, a thrown exception, or even an unusual stop reason — it comes back as ordinary content inside an otherwise completely successful 200 response. Reflexively wrapping the outbound call in a try/catch will not catch it. The only reliable signal that something went wrong is inspecting the result content itself: a missing usable answer, an explicit tool-result error block, or a search-limit condition the model had to work around.
+
+Counts are useful operational metadata, not proof of research quality. Preserve result error blocks and surface partial coverage rather than presenting a degraded answer as complete.
 
 ### Combine research with a product contract
 
@@ -1476,9 +1523,9 @@ Production telemetry should include tool version, searches and MCP calls, domain
 
 <!-- PAGEBREAK -->
 
-## 10. Vision Features
+## 10. Vision Features: Comparing and Reading Across Multiple Images
 
-Vision features send one or more images as typed content blocks alongside a text instruction. Useful products are narrower than “describe this image”: compare two versions, extract visible attributes for review, explain a chart, inspect damage, or answer questions about a screenshot.
+Some questions span several photos at once — which of these two screenshots changed, does this batch of images share a defect, what's common across this set — rather than describing one picture in isolation. Vision features send one or more images as typed content blocks alongside a text instruction. Useful products are narrower than “describe this image”: compare two versions, extract visible attributes for review, explain a chart, inspect damage, or answer questions about a screenshot.
 
 ### Build image inputs on the backend
 
@@ -1498,6 +1545,8 @@ function imageBlock(source: ImageSource) {
 For user uploads or private images, fetch or receive bytes through an application-controlled path, verify the actual media type, decode dimensions, strip unnecessary metadata when policy requires it, and reject unsupported or oversized files before calling Claude. Do not let the model or browser turn an arbitrary URL into unrestricted backend fetching; apply SSRF protections and an allowlist where remote URLs are accepted.
 
 Inline base64 is convenient for a one-off image. Files API references reduce repeated payload size in multi-turn conversations. URL sources avoid transfer through your service only when the image is safely and reliably public. Anthropic's [vision guide](https://platform.claude.com/docs/en/build-with-claude/vision) documents current source types, formats, limits, and cost behavior (accessed 2026-07-27).
+
+For inline base64 delivery specifically, add your own payload-size ceiling set safely under the provider's actual hard cap. Failing fast with a clear validation error before the request is sent is a better experience than letting an oversized payload round-trip all the way to a provider-side rejection.
 
 ### Put images before the instruction
 
@@ -1528,6 +1577,8 @@ Structured output can help when code consumes detected fields, but schema validi
 Image count, dimensions, encoded size, request size, model resolution, and partner-platform limits can all apply. These values evolve. Keep them in validated configuration sourced from current provider documentation, and return a user-correctable validation error before upload or inference.
 
 As of the access date, Anthropic documents an 8000-by-8000 maximum per image and a stricter per-image rule for API requests containing more than 20 images; it recommends keeping dimensions at or below 2000 pixels to remain portable across platforms for many-image requests. Recheck before release rather than treating these numbers as permanent.
+
+A product commonly enforces its own stricter ceiling well before any documented threshold is reached — for example, dropping to a smaller maximum dimension the moment a request becomes multi-image rather than single-image, as a self-imposed safety margin against per-request cost and cross-platform portability, not because the provider requires it at that exact point. Compute whether your own cap actually changed anything for a given request — comparing what was received against your threshold — and surface that as a concrete note to the user rather than only stating the policy in documentation.
 
 Model resolution is not a single number. Models fall into resolution tiers, and the tier sets both the longest edge the model reads at full detail and the ceiling on how many visual tokens one image may consume. At the time of writing, Anthropic documents a high-resolution tier for its newer models—2576 pixels on the long edge and up to 4784 visual tokens—and a standard tier of 1568 pixels and 1568 visual tokens for the rest. The higher tier applies automatically on the models that have it; there is no header or client-side opt-in to add.
 
@@ -1572,9 +1623,9 @@ Evaluate vision quality on a representative labeled set, including difficult lig
 
 <!-- PAGEBREAK -->
 
-## 11. Extended Thinking
+## 11. Extended Thinking: Is Deeper Reasoning Worth the Cost?
 
-Thinking controls are useful when a task benefits from additional reasoning before the final answer: difficult analysis, planning, mathematics, coding, or decisions across competing constraints. They are not a universal quality switch. Extra reasoning can increase latency and cost without improving a simple task.
+A feature that needs to decide, per request, whether a hard question deserves extra reasoning time before answering needs an honest, measured answer to "is the extra latency and cost actually buying better results here" — not a guess. That is the right way to approach thinking controls: not as a universal quality switch to leave on, but as a cost/benefit decision to make deliberately and re-measure over time. They help when a task benefits from additional reasoning before the final answer — difficult analysis, planning, mathematics, coding, decisions across competing constraints — and add latency and cost without improving a simple task.
 
 ### Select tasks before selecting settings
 
@@ -1722,7 +1773,9 @@ In production, monitor reasoning profile, task class, latency, usage, tool calls
 
 <!-- PAGEBREAK -->
 
-## 12. Agents as a Deliberate Exception
+## 12. Agents as a Deliberate Exception: Open-Ended Investigation, Bounded
+
+Some features have no fixed sequence of steps at all — "investigate this system and report back what it does," where the useful path genuinely depends on what's found along the way. Contrast that directly with Chapter 6's support-triage pipeline: there, the stages were known in advance and only the content varied; here, even the stages themselves aren't known until the model starts looking. That contrast is the actual test for whether a task needs an agent, not a vibe about how "smart" the feature should feel.
 
 An agent gives Claude a goal and a set of tools, then lets it choose the sequence of observations and actions. This flexibility is valuable when the useful path cannot be enumerated in advance. It is also why an agent should be a deliberate exception rather than the default implementation for every multi-step feature.
 
@@ -1731,6 +1784,8 @@ An agent gives Claude a goal and a set of tools, then lets it choose the sequenc
 Use an agent when success may require exploring an environment, revising a plan after new evidence, or selecting an unpredictable number and order of tools. Repository investigation, open-ended incident diagnosis, and research across heterogeneous sources can fit.
 
 Prefer a fixed workflow when the stages, branches, or approval points are known. A workflow offers clearer latency, cost, evaluation, and failure behavior. Before building an agent, prototype the task with the message, structured-output, tool, and workflow patterns from earlier chapters.
+
+Reduced to its simplest test, the question is who decides the next step, and how narrow the goal is. If the application's own code picks each next call — a fixed sequence, however many stages it has — that is a workflow, even when some stages use the model's judgment internally. If the model itself decides what to do next from an open-ended goal and a general-purpose tool list, that is an agent. A narrow goal paired with a closed, structured-output contract is a strong signal for the former; an open goal paired with a small set of general-purpose tools — list, search, read, deliberately not a tool like "find the readme" that quietly re-encodes a fixed sequence as tool design — is a strong signal for the latter.
 
 Anthropic's [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) recommends starting with simple composable patterns and adding autonomous behavior only when it improves outcomes (accessed 2026-07-27).
 
@@ -1767,6 +1822,8 @@ A fixed goal is often safer than an unrestricted user goal for the first product
 Abstract tools let the agent form its own plan: list, search, read, inspect metadata, or request a narrow calculation. Avoid one tool that performs an entire hidden workflow; that gives the model little useful feedback and makes failures opaque.
 
 Each tool should have one clear effect, bounded output, runtime validation, authorization, timeout, and stable error semantics. Read-only tools are the safest starting point. For writes, separate propose, preview, and commit operations, and require confirmation at the application boundary.
+
+When an agent's tool list includes an MCP toolset, the allowlist can — and sometimes must — exclude one specific operation entirely rather than merely cap it. An operation that can return an unbounded amount of content (an entire linked corpus, say, instead of one lookup) bills for whatever it returns the moment the call resolves, before your backend ever sees the response; no application-side truncation afterward undoes that cost. As Chapter 2 covers, a hosted or MCP tool's cost can only be prevented by restricting what the tool is allowed to do before the call runs — capping the agent's overall budget does not substitute for excluding a specific operation that is unsafe at any frequency.
 
 Tool results are observations, not instructions. Keep external and repository content in tool-result blocks and treat it as untrusted. An agent that can read adversarial content and call powerful tools needs stronger isolation than an ordinary chat feature.
 
@@ -1824,7 +1881,7 @@ SDK tool runners can manage standard message history, execution, error wrapping,
 
 An agent may combine backend-executed tools with web search, code execution, or MCP. Only unresolved client `tool_use` blocks require your backend to execute functions and append `tool_result` blocks. Completed server-tool blocks are observations within the provider response.
 
-Mixed turns and server-side pauses require stop-reason-aware continuation. Preserve the tools array and assistant content exactly where the API contract requires it. Count server-tool uses in activity and budgets even when they do not create an application-side loop iteration.
+Mixed turns and server-side pauses require stop-reason-aware continuation. Preserve the tools array and assistant content exactly where the API contract requires it. Count server-tool uses in activity and budgets even when they do not create an application-side loop iteration. This distinction matters because a server-executed call still costs real latency and money the moment it resolves, whether or not the application's own iteration counter moved — a budget that only counts client-tool round-trips will silently under-count true resource usage.
 
 ```ts
 interface ToolActivity {
@@ -1845,6 +1902,8 @@ Use a stable sequence number rather than inferring activity order later from sev
 Agents improve their plan through observations. Preserve each request, response, tool call, result, and recoverable error in a correlated trace. This reveals whether the agent gathered evidence, repeated itself, ignored an error, or concluded prematurely.
 
 Repeated inspection is not automatically waste. Re-reading a file after discovering new context can be verification; repeating the same call with the same input and no changed state can signal a loop. Detect exact and semantic repetition, expose it in internal telemetry, and consider terminating after a repeated-no-progress threshold.
+
+A concrete way to make that distinction legible is to have the agent flag it itself: instruct the model, in its system prompt, to note when it is deliberately re-checking something it already called with the same input, versus moving to new ground. Nothing makes that distinction automatic — a model will not spontaneously explain a repeated call as verification unless asked to — but tagging it this way turns an ambiguous repeated-call pattern in the trace into a labeled, reviewable decision.
 
 The product UI should show concise, user-safe activity such as “searched repository paths” or “read configuration file,” not hidden reasoning or raw private data. Users need enough feedback to understand progress, cancel, and review consequential actions.
 
