@@ -19,6 +19,25 @@ Reserve this for durable, transferable lessons — a pattern, tradeoff, failure 
 - Define any non-obvious term at first use, or add it to the Glossary chapter.
 - Cite claims about model/API behavior or limits against current Anthropic documentation and record an access date next to the citation — that behavior can change.
 
+## Guide structure
+
+The guide has exactly one variable element — its numbered chapters — inside an otherwise fixed skeleton, always in this order:
+
+1. Title and subtitle
+2. Abstract
+3. Table of Contents
+4. Introduction
+5. How to Use This Guide
+6. Glossary — also serves as the topical index, see below
+7. Numbered chapters — the variable content
+8. References
+9. Appendices — only the ones actually needed, see below
+
+Every item except the numbered chapters is a fixed section: it always exists, always in this position, and is never itself numbered.
+
+- **Abstract** is at most 3 paragraphs. Its job is to quickly orient a new reader on what the guide is and get them interested enough to keep reading — not to summarize every chapter.
+- **Table of Contents** is a plain bullet list (`-`), never an ordered list — fixed sections are never numbered, and a chapter or appendix that already carries a number in its own heading (e.g. "3. Foundations...", "Appendix A: ...") keeps that number because it's in the heading text, not because the ToC re-numbers it. Entries start from Introduction — the Title, Abstract, and the Table of Contents itself aren't listed as entries in it.
+
 ## Formatting conventions
 
 - Single H1 for the whole document; ordered heading levels beneath it.
@@ -26,7 +45,8 @@ Reserve this for durable, transferable lessons — a pattern, tradeoff, failure 
 - Tables narrow enough to render legibly when converted to PDF.
 - Images live under `guide/assets/` and are referenced with guide-relative paths (e.g. `assets/example.png`), never a repo-root-relative `guide/assets/...` path — the guide is read as a standalone file, not from the repo root.
 - Use **application contract** for a type owned by the product (even one wrapping provider metadata) and **provider type** for an Anthropic SDK request/response type, consistent with the rest of the guide.
-- The guide has a fixed PDF pagination: every chapter, appendix, and top-level front-matter section starts on its own page, except a few deliberately paired to share one (Title+Revision History+Abstract; Introduction+How to Use This Guide; Glossary+Topical Index). This is encoded with an `<!-- PAGEBREAK -->` marker — an HTML comment, invisible on GitHub — on its own line immediately before every heading that should start fresh. Adding a new chapter or appendix without one leaves it silently sharing the previous section's page once rendered; see `revise-guide` for what the marker becomes at render time.
+- The guide has a fixed PDF pagination: an `<!-- PAGEBREAK -->` marker — an HTML comment, invisible on GitHub — goes on its own line immediately before every fixed section and every chapter/appendix that should start a fresh page, except where two are deliberately paired to share one. Adding a new fixed section, chapter, or appendix without one leaves it silently sharing the previous section's page once rendered. Exact pairing and pagination mechanics are `revise-guide`'s call — see that skill for what the marker becomes at render time.
+- The title and subtitle are wrapped in a `<!-- CENTER -->` / `<!-- /CENTER -->` marker pair, same idea as `PAGEBREAK` — invisible on GitHub, resolved into real centering only by `revise-guide` at render time. This is a fixed, one-time fixture of the title block, not something to add elsewhere.
 
 ## Screenshot placeholders
 
@@ -44,17 +64,25 @@ Purpose: [transferable concept illustrated]
 -->
 ```
 
-## Glossary and Topical Index are a joint section
+## Glossary is the topical index
 
-`## Glossary` and the immediately-following `## Topical Index` are a paired, adjacent section (they share one PDF page). Introducing a term or concept worth surfacing should update both together where it applies: define it in Glossary if it's genuinely non-obvious terminology used before it's explained, and add a `- [Term](#anchor)` entry to Topical Index if it's a concept a reader would want to jump to directly. Never add a page number here — `revise-guide` computes and injects those into a disposable copy at render time; the tracked source only ever holds the anchor link, e.g. `- [Prompt caching](#cache-the-stable-document-prefix)`.
+There is one `## Glossary` section — not a separate Glossary and Topical Index. Introducing a term or concept worth surfacing updates this one list. Define genuinely non-obvious terminology inline; for a concept that's really discussed at length elsewhere in the guide, add a link to where it's covered instead of maintaining a second lookup list, e.g. `**Prompt caching** — a mechanism for reusing eligible, repeated prompt prefixes. See [Chapter 7](#7-files-documents-citations-and-caching) for the full pattern.` Never add a page number here — `revise-guide` computes and injects those into a disposable copy at render time; the tracked source only ever holds the anchor link.
 
-## No Conclusion section
+## Appendices are optional and un-wrapped
 
-The guide has no `## Conclusion`. Its former content (a synthesis paragraph, a numbered principles list, an adoption path, a closing thought) mostly restated points made elsewhere and was folded into `How to Use This Guide` (the adoption-path idea) and `Putting It Together` (the closing thought). Don't recreate a Conclusion section — a closing thought for new content belongs at the end of `Putting It Together` or inside whichever existing chapter it's actually about.
+There is no `## Appendices` heading. Appendices aren't a section of their own — they're a sequence of independent fixed-type sections that begin directly at `## Appendix A: ...`, continue B, C, D... in order, and exist only when the guide actually needs one. Don't add a placeholder or empty appendix just to preserve a slot.
 
-## Sections reconciled only when a revision is cut
+## Sections that no longer exist
 
-`Abstract`, `Introduction`, and `References and Further Reading` are deliberately *not* touched as a side effect of an ordinary chapter edit here, even if the edit arguably changes what one of them should say. Updating them for every small change would make them chase content constantly and drift out of sync with each other instead. Leave them as they are; `revise-guide`'s pre-publication checks reconcile all three against the guide's current full content when a revision is actually being cut.
+The guide has no `## Conclusion` and no standalone `## Topical Index` — both were folded elsewhere (Conclusion's content into `How to Use This Guide` and `Putting It Together`; Topical Index into `Glossary`, see above). Don't recreate either, and don't leave a stray reference to one lying around in a ToC entry, cross-reference, or example — a reader who follows it will find nothing there.
+
+## Title, Abstract, and Introduction are checked on every content edit
+
+Whenever a chapter's content changes enough that it might shift what a first-time reader should expect from the guide, check the title/subtitle, Abstract, and Introduction (What You Will Learn / Scope and Non-Goals) against the change. Most edits won't need any change to these — but the check itself happens every time an edit is made here, not only when cutting a revision.
+
+## References is reconciled only when a revision is cut
+
+`References` is deliberately *not* touched as a side effect of an ordinary chapter edit here, even if the edit arguably changes what it should cite. Updating it for every small change would make it chase content constantly. Leave it as it is; `revise-guide`'s pre-publication checks reconcile it against the guide's current full content when a revision is actually being cut.
 
 ## Where content usually comes from
 
