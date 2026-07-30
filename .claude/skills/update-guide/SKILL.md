@@ -26,6 +26,7 @@ Reserve this for durable, transferable lessons — a pattern, tradeoff, failure 
 - Tables narrow enough to render legibly when converted to PDF.
 - Images live under `guide/assets/` and are referenced with guide-relative paths (e.g. `assets/example.png`), never a repo-root-relative `guide/assets/...` path — the guide is read as a standalone file, not from the repo root.
 - Use **application contract** for a type owned by the product (even one wrapping provider metadata) and **provider type** for an Anthropic SDK request/response type, consistent with the rest of the guide.
+- The guide has a fixed PDF pagination: every chapter, appendix, and top-level front-matter section starts on its own page, except a few deliberately paired to share one (Title+Revision History+Abstract; Introduction+How to Use This Guide; Glossary+Topical Index). This is encoded with an `<!-- PAGEBREAK -->` marker — an HTML comment, invisible on GitHub — on its own line immediately before every heading that should start fresh. Adding a new chapter or appendix without one leaves it silently sharing the previous section's page once rendered; see `revise-guide` for what the marker becomes at render time.
 
 ## Screenshot placeholders
 
@@ -42,6 +43,18 @@ Caption: [draft figure caption]
 Purpose: [transferable concept illustrated]
 -->
 ```
+
+## Glossary and Topical Index are a joint section
+
+`## Glossary` and the immediately-following `## Topical Index` are a paired, adjacent section (they share one PDF page). Introducing a term or concept worth surfacing should update both together where it applies: define it in Glossary if it's genuinely non-obvious terminology used before it's explained, and add a `- [Term](#anchor)` entry to Topical Index if it's a concept a reader would want to jump to directly. Never add a page number here — `revise-guide` computes and injects those into a disposable copy at render time; the tracked source only ever holds the anchor link, e.g. `- [Prompt caching](#cache-the-stable-document-prefix)`.
+
+## No Conclusion section
+
+The guide has no `## Conclusion`. Its former content (a synthesis paragraph, a numbered principles list, an adoption path, a closing thought) mostly restated points made elsewhere and was folded into `How to Use This Guide` (the adoption-path idea) and `Putting It Together` (the closing thought). Don't recreate a Conclusion section — a closing thought for new content belongs at the end of `Putting It Together` or inside whichever existing chapter it's actually about.
+
+## Sections reconciled only when a revision is cut
+
+`Abstract`, `Introduction`, and `References and Further Reading` are deliberately *not* touched as a side effect of an ordinary chapter edit here, even if the edit arguably changes what one of them should say. Updating them for every small change would make them chase content constantly and drift out of sync with each other instead. Leave them as they are; `revise-guide`'s pre-publication checks reconcile all three against the guide's current full content when a revision is actually being cut.
 
 ## Where content usually comes from
 
