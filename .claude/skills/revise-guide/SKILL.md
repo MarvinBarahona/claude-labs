@@ -15,8 +15,8 @@ Only run this once the edits for the revision are actually finished. If content 
 
 Work through all of these against `guide/guide.md` before touching version metadata or rendering anything:
 
-- No `SCREENSHOT TODO` is left unresolved — each either has a real image in place or a deliberate decision to drop the figure.
-- Internal links (table of contents, cross-references, glossary) still resolve.
+- No `SCREENSHOT TODO` is left unresolved — each either has a real image in place at its `assets/` path (see `update-guide`'s resolution step) or a deliberate decision to drop the figure and its dependent prose.
+- Internal links (table of contents, cross-references, glossary) and image paths still resolve.
 - Every technical claim about model/API behavior or limits is accurate against current Anthropic documentation and dated where it may drift.
 - Code and request/response examples match the API shape described in the cited documentation.
 - No repo-specific names, slugs, routes, or file paths leaked in, except where the repo is explicitly and deliberately named as an optional case study.

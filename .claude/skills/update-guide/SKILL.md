@@ -64,6 +64,8 @@ Purpose: [transferable concept illustrated]
 -->
 ```
 
+Once a real screenshot is supplied for a placeholder, resolve it here, in `guide/guide.md` itself: place the image file at the placeholder's `File:` path under `guide/assets/`, replace the whole comment block with a Markdown image using that path, the drafted `Alt:` text, and the drafted `Caption:` as visible text below the image, then remove the placeholder comment. If a figure turns out not to be worth capturing, remove the placeholder and any prose that depended on it instead of leaving it in place. Either way, no `SCREENSHOT TODO` should remain by the time `revise-guide` is asked to cut a revision — it checks for exactly that.
+
 ## Glossary is the topical index
 
 There is one `## Glossary` section — not a separate Glossary and Topical Index. Introducing a term or concept worth surfacing updates this one list. Define genuinely non-obvious terminology inline; for a concept that's really discussed at length elsewhere in the guide, add a link to where it's covered instead of maintaining a second lookup list, e.g. `**Prompt caching** — a mechanism for reusing eligible, repeated prompt prefixes. See [Chapter 7](#7-files-documents-citations-and-caching) for the full pattern.` Never add a page number here — `revise-guide` computes and injects those into a disposable copy at render time; the tracked source only ever holds the anchor link.
@@ -92,7 +94,3 @@ Whenever a chapter's content changes enough that it might shift what a first-tim
 ## Before considering an edit done
 
 Finishing an edit here is not the same as cutting a new revision. Once you're done adding or changing content, hand off to `revise-guide` for the pre-publication checks, version/date bump, and PDF render — don't run those steps here.
-
-## About `guide/plan.md`
-
-The guide currently also has its own drafting plan at `guide/plan.md`, tracking the initial writing session-by-session. It's temporary and will be deleted once the first complete version of the guide lands — this skill is what stays authoritative for the guide's conventions afterward, so don't treat `plan.md` as a dependency.
