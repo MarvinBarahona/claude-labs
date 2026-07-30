@@ -146,6 +146,8 @@ Treat a user-visible turn as a distributed operation rather than a function that
 
 Do not make the browser the authority for privileged conversation or orchestration state merely because it renders the transcript. Likewise, do not resend an entire provider response automatically: retain only the blocks and metadata required for the next valid request.
 
+The Messages API itself is stateless — every request stands alone — and the default should be to keep your own backend that way too. Hold server-side state for one of exactly three reasons: a tool implementation that inherently keeps its own execution state (a workspace, a scratch file, a running calculation); a Files API reference you intend to reuse rather than re-send the same bytes; or a prompt-caching boundary that depends on a byte-identical prefix across calls. Outside those three, prefer resending what the next call needs over introducing a session store you don't strictly need — one more place conversation, orchestration, and provider state can quietly drift out of sync with each other.
+
 ### Choose the least autonomous fitting pattern
 
 | Need | Prefer | Why |
@@ -311,6 +313,18 @@ For a **custom tool**, Claude requests an action; the backend validates and exec
 
 A turn may mix both. The backend should loop only for tool requests it owns. Other content blocks must be retained and interpreted by type rather than treated as unknown text.
 
+### Bound content whose size you don't control
+
+A feature commonly receives external content in three shapes, and each needs a different bounding strategy. Using the wrong one either fails silently or can't actually reduce cost.
+
+A **custom tool's own result** is yours before it ever reaches the model: minimize and truncate it deliberately, and return a `truncated: true`-style signal alongside the cut data rather than cutting silently. That signal lets the model act correctly on a partial result instead of assuming it's complete.
+
+A **hosted or MCP tool's result** is different: its cost is incurred the moment the tool call resolves, mid-generation, inside the same call that requested it. By the time your backend sees the response, that cost has already happened, so no amount of post-receipt truncation can reduce it. The only real lever is restricting what the tool's own configuration is allowed to do — an MCP toolset's operation allowlist, a search tool's domain and use caps — before the call runs, not after.
+
+A **document or image content block** can't be safely truncated at all without corrupting what it represents; cutting a PDF's pages, for instance, invalidates the exact page numbers its citations point to. The right mitigation there isn't capping or blocking the upload — it's a size-based warning that states the real cost and latency impact up front and lets the user proceed informed.
+
+The shared principle: decide where in the pipeline a given kind of content actually incurs its cost, and bound it there — not wherever happens to be most convenient to intercept.
+
 ### Frontend responsibilities
 
 The frontend owns interaction design, not orchestration policy. It validates cheap user-correctable constraints; shows queued, streaming, tool-active, completed, empty, and failed states; makes partial text visibly provisional; retains input when retry is appropriate; renders citations and artifacts accessibly; and offers cancellation when supported.
@@ -429,7 +443,7 @@ Never assume `content[0]` is text. Content is a typed block array, and later fea
 
 Streaming helps when users benefit from reading an answer as it arrives. It adds protocol and state complexity, so a short classification or extraction may be clearer as one atomic result.
 
-Claude streams Messages responses as Server-Sent Events. The sequence begins with `message_start`, opens each indexed content block, emits deltas, closes the block, reports message deltas, and ends with `message_stop`. Streams may contain `ping`, error, and future event types, so consumers must tolerate events they do not use. See Anthropic's [streaming guide](https://platform.claude.com/docs/en/build-with-claude/streaming) (accessed 2026-07-27).
+Claude streams Messages responses as Server-Sent Events. The sequence begins with `message_start`, opens each indexed content block, emits deltas, closes the block, reports message deltas, and ends with `message_stop`. `message_start`'s own nested message always carries an empty `content: []` — content blocks arrive only through the `content_block_start`/`content_block_delta`/`content_block_stop` events that follow, never seeded on `message_start` itself. Streams may contain `ping`, error, and future event types, so consumers must tolerate events they do not use. See Anthropic's [streaming guide](https://platform.claude.com/docs/en/build-with-claude/streaming) (accessed 2026-07-27).
 
 ```ts
 async function streamTurn(input: SendTurnInput, writer: EventWriter) {
@@ -662,6 +676,8 @@ Describe what the tool does, when it applies, and what each argument means. Avoi
 
 Tool names and schemas are not access control. Resolve the authenticated principal outside the model-generated arguments. For example, accept `orderId` from Claude but derive `customerId` from the server session. Never let the model choose a tenant, role, or unrestricted storage path merely because the field validates.
 
+Not every custom tool is described this way. A stateful tool that manages its own workspace — for example, a text-editor-style tool backed entirely by your own code, with no `input_schema` for Claude to read — has no `description` field to explain itself from inside the tool definition at all. Claude learns such a tool exists, what it manages, and when to use it only from the system prompt. Omit that explanation and the tool silently goes unused: no error, no failed call, just an assistant that never touches the workspace it was offered. Treat the system prompt as part of that tool's contract, not an optional nicety, whenever the tool's own definition can't carry its own explanation.
+
 ### Close the tool-use loop
 
 When Claude calls a client tool, the response has `stop_reason: "tool_use"` and one or more `tool_use` blocks containing `id`, `name`, and `input`. Execute the recognized tools, then append two turns: the complete assistant response and one user message containing the matching `tool_result` blocks. Anthropic's [tool-call handling guide](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls) documents this lifecycle and message ordering (accessed 2026-07-27).
@@ -731,7 +747,7 @@ const toolRegistry: ToolRegistry = {
 };
 ```
 
-Reject unknown names, validate inputs at runtime, and apply timeouts. Minimize results before returning them to Claude: exclude secrets, internal identifiers, irrelevant records, and unrestricted error details. Tool outputs consume context and can disclose data just as surely as the original prompt.
+Reject unknown names, validate inputs at runtime, and apply timeouts. Minimize results before returning them to Claude: exclude secrets, internal identifiers, irrelevant records, and unrestricted error details. Tool outputs consume context and can disclose data just as surely as the original prompt. When a result is naturally unbounded — a file listing, a search result set — truncate it deliberately and return a `truncated: true`-style signal alongside the cut data rather than cutting silently (see Chapter 2's "Bound content whose size you don't control").
 
 Tool-returned text is untrusted. A web page, email, repository file, or database record may contain instructions designed to redirect the model. Keep such material inside `tool_result` content, label its provenance, restrict tool authority independently, and never promote retrieved text into the system prompt.
 
@@ -1129,7 +1145,7 @@ A stable Files API identifier helps keep request bytes and cache prefixes stable
 
 ### Document failure modes and testing
 
-Handle unsupported type, oversized or encrypted file, failed upload, stale file identifier, provider deletion, extraction failure, session expiry, cache miss, uncitable scan, and a response without usable text. A citation-free answer can be either a valid outcome or a product failure depending on the promise made to users; encode that decision.
+Handle unsupported type, oversized or encrypted file, failed upload, stale file identifier, provider deletion, extraction failure, session expiry, cache miss, uncitable scan, and a response without usable text. A citation-free answer can be either a valid outcome or a product failure depending on the promise made to users; encode that decision. An oversized document should not be silently truncated to fit a limit — cutting pages invalidates the exact page numbers its citations point to. Warn instead, sized to the real cost and latency impact, and let the user proceed informed (see Chapter 2's "Bound content whose size you don't control").
 
 Unit tests should cover inline and uploaded sources, upload reuse, document-before-question ordering, citation enablement and normalization, history sanitization, cache-control placement, first versus follow-up requests, delivery-mode changes, session authorization, and expiration. Integration tests should intercept file upload and Messages calls. Frontend tests should render multiple sources and citation types accessibly. Browser tests should ask at least one follow-up to prove session and cache behavior rather than testing only the initial upload.
 
@@ -1318,7 +1334,7 @@ const request: ClaudeRequest = {
 
 Confirm the connector's release status before planning around it. At the time of writing, Anthropic offers the Messages API MCP connector as a beta capability: it can require an explicit opt-in header, it is not available on every partner platform a deployment might target, and its shape can change without a major-version signal. Verify the current status, required headers, and platform coverage in Anthropic's [Messages API MCP connector documentation](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector) (accessed 2026-07-27), and keep any opt-in header and version identifier in the same backend configuration that resolves model and tool versions. A feature still in beta is a different roadmap commitment from a generally available one, even when the request shape is stable.
 
-Keep MCP credentials in backend configuration or a secrets system and never return them in traces. Allowlist required operations instead of enabling everything a server may add later. Separate read-only research from write-capable MCP tools, and require application or human confirmation for consequential actions.
+Keep MCP credentials in backend configuration or a secrets system and never return them in traces. Allowlist required operations instead of enabling everything a server may add later. This allowlist is the only real cost lever available: a hosted or MCP tool's result is billed the moment the call resolves mid-generation, before your backend ever sees it, so no amount of post-receipt truncation can reduce what already happened (see Chapter 2's "Bound content whose size you don't control"). Separate read-only research from write-capable MCP tools, and require application or human confirmation for consequential actions.
 
 MCP is also a trust boundary. The remote operator controls tool descriptions, results, availability, and possibly newly exposed tools. Review the server, pin or govern its URL, restrict egress and tools, set timeouts, and treat returned content as untrusted. The connector documentation cited above also covers the full server and toolset configuration surface.
 
@@ -1605,7 +1621,7 @@ request = {
 };
 ```
 
-Keep one thinking mode for the whole assistant turn. Forced tool choices can be incompatible with thinking on supported models, so validate tool configuration as part of the model profile. Interleaved thinking behavior and required headers vary by model generation; use current capability metadata.
+Keep one thinking mode for the whole assistant turn. Forced tool choices and assistant-message prefilling can both be incompatible with thinking on supported models, so validate tool configuration and prefill usage as part of the model profile. Interleaved thinking behavior and required headers vary by model generation; use current capability metadata.
 
 ### Measure the actual tradeoff
 
@@ -1940,6 +1956,10 @@ Use exponential backoff with jitter for transient failures and honor `retry-afte
 
 Retry read-only calls more freely than side effects. Use idempotency keys, preconditions, and persisted operation state for custom tools that write. Never invisibly restart a response after partial text reached the user; the replacement can differ. Surface a retry action or resume from a documented checkpoint.
 
+### Detect a broken credential before it costs money
+
+A missing or revoked credential should fail fast and visibly, not surface for the first time as a confusing failure on some user's real turn. Check it proactively with a cheap, non-billable call — a models-list or account-metadata call, never a Messages call — at startup and periodically thereafter. Classify the result narrowly: treat only a definitive authentication rejection (a 401) as proof the credential is invalid. Treat a rate limit, timeout, network error, or 5xx as inconclusive and leave the last known-good status in place; conflating those with an invalid credential produces false "your key is broken" alarms during an unrelated outage. Surface the resolved status once, centrally, rather than letting every feature independently discover and report the same failure.
+
 ### Test the frontend as a state machine
 
 For every AI interaction, cover:
@@ -2194,6 +2214,7 @@ Use this checklist as a release gate. Assign an owner and evidence link for each
 - [ ] Prompts, schemas, tools, Skills, and model profiles are versioned in telemetry.
 - [ ] Current provider documentation has been checked for model support, limits, retention, and compatibility.
 - [ ] A model migration can be evaluated and rolled back independently of application deployment.
+- [ ] Credential health is checked proactively via a cheap, non-billable call, treating only a definitive auth rejection as invalid.
 
 ### Limits, cost, and latency
 
@@ -2382,6 +2403,7 @@ For structured output, define the schema at the API boundary and validate the pa
 - [API errors](#test-the-application-error-taxonomy)
 - [Application contracts](#expose-an-application-owned-turn-envelope)
 - [Authorization](#system-boundary)
+- [Bounding external content cost](#bound-content-whose-size-you-dont-control)
 - [Citations](#enable-citations-as-a-data-contract)
 - [Code execution](#8-code-execution-and-generated-artifacts)
 - [Content blocks](#3-foundations-messages-api-in-a-web-application)
