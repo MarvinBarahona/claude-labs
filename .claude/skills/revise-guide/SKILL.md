@@ -1,11 +1,11 @@
 ---
 name: revise-guide
-description: Use this skill to close out a round of edits to guide/claude-api-web-app-guide.md as a new publishable revision — for example "cut a new revision of the guide", "publish the guide", "check the guide before release", or "convert the guide to PDF". Runs the pre-publication checks, bumps the revision metadata, and renders the PDF. Not for adding or changing guide content — see update-guide for that.
+description: Use this skill to close out a round of edits to guide/guide.md as a new publishable revision — for example "cut a new revision of the guide", "publish the guide", "check the guide before release", or "convert the guide to PDF". Runs the pre-publication checks, bumps the revision metadata, and renders the PDF. Not for adding or changing guide content — see update-guide for that.
 ---
 
 # Publishing a new revision of the guide
 
-`update-guide` is for authoring: adding or changing content in `guide/claude-api-web-app-guide.md`. This skill is for the separate act of turning a batch of those edits into a new numbered, dated, PDF-rendered revision. Run it after content edits are done, not while still drafting.
+`update-guide` is for authoring: adding or changing content in `guide/guide.md`. This skill is for the separate act of turning a batch of those edits into a new numbered, dated, PDF-rendered revision. Run it after content edits are done, not while still drafting.
 
 ## Precondition
 
@@ -13,7 +13,7 @@ Only run this once the edits for the revision are actually finished. If content 
 
 ## Step 1 — Pre-publication checks
 
-Work through all of these against `guide/claude-api-web-app-guide.md` before touching version metadata or rendering anything:
+Work through all of these against `guide/guide.md` before touching version metadata or rendering anything:
 
 - No `SCREENSHOT TODO` is left unresolved — each either has a real image in place or a deliberate decision to drop the figure.
 - Internal links (table of contents, cross-references, topical index) still resolve.
@@ -28,12 +28,19 @@ Fix anything that fails before proceeding — don't render a PDF from a guide th
 
 ## Step 2 — Bump the revision metadata
 
-`guide/claude-api-web-app-guide.md` has a `## Revision History` table right below the title, with columns `Version | Date | Changelog` — no author column; the table records what changed and when, not who made the change. It's the single source of truth for version and date — there is no separate title-page metadata block to keep in sync with it. Every revision adds exactly one row. Propose both fields for the user to confirm or override:
+`guide/guide.md` has a `## Revision History` table right below the title, with columns `Version | Date | Changelog` — no author column; the table records what changed and when, not who made the change. It's the single source of truth for version and date — there is no separate title-page metadata block to keep in sync with it. Every revision adds exactly one row. Propose both fields for the user to confirm or override:
 
 - Suggested version: increment from the highest version currently in the table (e.g. `0.1` → `0.2`), keeping a `(working draft)` suffix on the version number until told otherwise. Drop the suffix, and move toward `1.0`, only on explicit direction that the guide is past its working-draft phase.
 - Suggested changelog: a short, concrete summary of what actually changed since the last row — based on the edits made this session, or `git diff` against the guide file if the session doesn't have that context. Don't write a generic "updates" placeholder.
 
-Once confirmed, append the new row to `## Revision History` with today's date, keeping the existing column-width formatting (see step 3's table-formatting note — it's set once in the separator row and a new row doesn't need to repeat it). That's the entire metadata update for this step.
+**Compute the target PDF filename and check for a collision before confirming.** The rendered PDF's name encodes the version: `claude-api-features-<version>.pdf`, with the version's dots replaced by dashes and any `(working draft)` suffix dropped — e.g. version `0.2 (working draft)` becomes `claude-api-features-0-2.pdf`. Check whether `guide/output/claude-api-features-<version>.pdf` already exists (most likely because a previous attempt at this exact version was left in place after step 5 didn't pass, per step 6's note that this is expected). If it does, ask the user:
+
+- **Substitute** — proceed as normal; this run's render overwrites that file.
+- **Create a new revision instead** — pick a different (usually incremented) version number, which targets a different filename and avoids the collision entirely.
+
+Don't silently overwrite an existing target file without asking.
+
+Once the version is confirmed, append the new row to `## Revision History` with today's date, keeping the existing column-width formatting (see step 3's table-formatting note — it's set once in the separator row and a new row doesn't need to repeat it). That's the entire metadata update for this step.
 
 ## Step 3 — Prepare the working copy and render (first pass)
 
@@ -47,7 +54,7 @@ Create the directory and the working copy:
 
 ```
 mkdir -p guide/output
-cp guide/claude-api-web-app-guide.md guide/output/source.md
+cp guide/guide.md guide/output/source.md
 ```
 
 **Build the render image once.** The stock `pandoc/latex` image is missing the font packages this guide's PDF uses (verified: `mathpazo`/`tgtermes`/etc. fail to load — the `.sty` loads but the actual Type 1 font metrics aren't installed, so text silently falls back to `nullfont` and prints as nothing). Write a small Dockerfile and build a tagged image from it — Docker's build cache makes every build after the first nearly instant, since the Dockerfile content never changes:
@@ -93,21 +100,21 @@ awk '{ if ($0 == "<!-- PAGEBREAK -->") { print "```{=latex}"; print "\\" "newpag
 
 That `"\\" "newpage"` is two concatenated string literals, not one — deliberately. gawk's escape processing mangles a single literal `"\\newpage"` (verified: it silently drops the `n`, producing `\ewpage`), but leaves `"\\" "newpage"` alone. Don't "simplify" this back to one string.
 
-This has to happen at the Markdown level, on the copy, before pandoc ever sees the file — pandoc silently strips HTML comments during conversion (verified: they don't survive into the `.tex` output at all), so there's no marker left to find or convert afterward. The fenced block with the `{=latex}` attribute is pandoc's native raw-passthrough syntax (the `raw_attribute` extension, on by default — no extra flag needed) and becomes a literal `\newpage` in the LaTeX output. `guide/claude-api-web-app-guide.md` itself is never touched by this substitution.
+This has to happen at the Markdown level, on the copy, before pandoc ever sees the file — pandoc silently strips HTML comments during conversion (verified: they don't survive into the `.tex` output at all), so there's no marker left to find or convert afterward. The fenced block with the `{=latex}` attribute is pandoc's native raw-passthrough syntax (the `raw_attribute` extension, on by default — no extra flag needed) and becomes a literal `\newpage` in the LaTeX output. `guide/guide.md` itself is never touched by this substitution.
 
-Render from the working copy, not the tracked source, from here on:
+Render from the working copy, not the tracked source, from here on, into the target filename computed in step 2 (`claude-api-features-<version>.pdf`, e.g. `claude-api-features-0-2.pdf`):
 
 ```
 docker run --rm -v "${PWD}/guide:/data" -w /data claude-labs-guide-pdf \
   -f markdown+gfm_auto_identifiers \
-  output/source.md -o output/claude-api-web-app-guide.pdf \
+  output/source.md -o output/claude-api-features-<version>.pdf \
   -V geometry:margin=1in --include-in-header=output/pdf-header.tex \
   -V colorlinks=true -V linkcolor=blue -V urlcolor=blue
 ```
 
 (On Windows Git Bash, prefix the command with `MSYS_NO_PATHCONV=1` — otherwise Git Bash rewrites the `/data` container path into a bogus host path before Docker ever sees it.)
 
-- Keeping the container's working directory at `/data` (mapped to `guide/` itself, not `guide/output/`) is required, not incidental — the guide's images use guide-relative paths like `assets/example.png`, and those only resolve if pandoc runs from `guide/`. The input (`output/source.md`) and output (`output/claude-api-web-app-guide.pdf`) living one level down, as paths relative to that same working directory, doesn't disturb that resolution.
+- Keeping the container's working directory at `/data` (mapped to `guide/` itself, not `guide/output/`) is required, not incidental — the guide's images use guide-relative paths like `assets/example.png`, and those only resolve if pandoc runs from `guide/`. The input (`output/source.md`) and output (`output/claude-api-features-<version>.pdf`) living one level down, as paths relative to that same working directory, doesn't disturb that resolution.
 - `-f markdown+gfm_auto_identifiers` is required, not optional: without it, pandoc generates its own heading identifiers instead of GitHub-style slugs, and every internal link the guide's own anchors depend on — table of contents, cross-references, topical index — silently breaks in the PDF (LaTeX logs it as `Hyper reference ... undefined`) even though the same anchors resolve fine when the file is read as plain Markdown. Confirm the render log has no `undefined` hyper reference warnings before moving on.
 - Do not pass `--toc`: the guide already has its own hand-authored `## Table of Contents` section, kept as ordinary Markdown so it also works on GitHub. Pandoc's `--toc` inserts a second, auto-generated table of contents (`\tableofcontents`) ahead of it, so the PDF ends up with two. The manual section is the only one that should exist in either output.
 - `-V colorlinks=true -V linkcolor=blue -V urlcolor=blue` makes every hyperlink — internal cross-references and external URLs alike — render in blue instead of unstyled black text, so a reader can tell something is a link before clicking it. `colorlinks=true` also removes hyperref's default behavior of drawing a colored box around links, which looks worse in print than plain colored text.
@@ -115,7 +122,7 @@ docker run --rm -v "${PWD}/guide:/data" -w /data claude-labs-guide-pdf \
 
 ## Step 4 — Add page numbers to the Table of Contents and Topical Index (second pass, same working copy)
 
-Both the Table of Contents (`## Table of Contents`) and the Topical Index (`## Topical Index`, merged onto the Glossary page) link to a section anchor but have no page numbers in the source — Markdown has no concept of a page, and page numbers shift on nearly any edit (a paragraph added, an image resized, a page-break marker moved). Storing them in `guide/claude-api-web-app-guide.md` would make them go stale the moment anything upstream of an entry changes, silently, with nothing to catch it. So they are never written to the tracked source — only injected into `guide/output/source.md`, the same working copy from step 3, on the fly, every time, for both sections in the same pass.
+Both the Table of Contents (`## Table of Contents`) and the Topical Index (`## Topical Index`, merged onto the Glossary page) link to a section anchor but have no page numbers in the source — Markdown has no concept of a page, and page numbers shift on nearly any edit (a paragraph added, an image resized, a page-break marker moved). Storing them in `guide/guide.md` would make them go stale the moment anything upstream of an entry changes, silently, with nothing to catch it. So they are never written to the tracked source — only injected into `guide/output/source.md`, the same working copy from step 3, on the fly, every time, for both sections in the same pass.
 
 Compile the intermediate LaTeX from that working copy — it already has the page breaks applied, which matters here: discovering page numbers from a version *without* the page breaks would give numbers that don't match the final, paginated PDF.
 
@@ -143,9 +150,9 @@ grep -oE "newlabel\{<slug>\}\{\{[^}]*\}\{[0-9]+\}" guide/output/pagenum.aux | he
 
 pulls the exact page. Collect one of these per anchor used in `## Table of Contents` and per anchor used in `## Topical Index` — both sections need this, separately, since they're different lists pointing at different (and sometimes overlapping) anchors.
 
-Edit `guide/output/source.md`'s `## Table of Contents` list and, separately, its `## Topical Index` list, appending `— p. <N>` to each entry using the numbers just collected. Bound each edit to its own section (stop at the next `## ` heading) — the two sections can share an anchor (e.g. both link to `#glossary`), and each occurrence needs its own correct page number, not each other's. `guide/claude-api-web-app-guide.md` itself is never edited by this step.
+Edit `guide/output/source.md`'s `## Table of Contents` list and, separately, its `## Topical Index` list, appending `— p. <N>` to each entry using the numbers just collected. Bound each edit to its own section (stop at the next `## ` heading) — the two sections can share an anchor (e.g. both link to `#glossary`), and each occurrence needs its own correct page number, not each other's. `guide/guide.md` itself is never edited by this step.
 
-Re-render the final PDF from the working copy with the exact step 3 render command (`output/source.md -o output/claude-api-web-app-guide.pdf`), so the shipped PDF's ToC and index match the page numbers actually printed in it.
+Re-render the final PDF from the working copy with the exact step 3 render command (`output/source.md -o output/claude-api-features-<version>.pdf`), so the shipped PDF's ToC and index match the page numbers actually printed in it.
 
 ## Step 5 — Inspect the rendered PDF
 
@@ -157,7 +164,7 @@ grep -n "Overfull \\\\hbox" guide/output/pagenum.log
 
 `Overfull \hbox` means a line is wider than its column/page and will visibly clip past the margin in the PDF — most often an unhyphenatable compound term (e.g. `Authentication/authorization`) stuck in an auto-sized table column. This is a real, exact defect, not a false positive: if it fires, the fix is in the Markdown source (rephrase the cell, shorten the term, or narrow the table), not a pandoc flag — flag it back to `update-guide` rather than patching around it here. This log check catches width problems; it does not replace visually checking page breaks, since pdflatex doesn't warn about an otherwise-valid page break landing at an awkward spot.
 
-Then open the final, index-updated `guide/output/claude-api-web-app-guide.pdf` and check what only shows up once it's paginated:
+Then open the final, index-updated `guide/output/claude-api-features-<version>.pdf` and check what only shows up once it's paginated:
 
 - Every heading in the fixed pagination convention (step 3) actually starts a fresh page, and the sections meant to share one (Title+Revision History+Abstract; Introduction+How to Use This Guide; Glossary+Topical Index) do share it rather than each forcing their own break.
 - Glossary+Topical Index and Introduction are allowed to spill onto a second page if they're long — the convention guarantees a *fresh* page, not a strict one-page limit, and content should never be trimmed just to force a page count.
@@ -178,10 +185,10 @@ If something fails here, it's usually a Markdown authoring fix (narrower table, 
 
 ## Step 6 — Clean up
 
-Once the PDF in step 5 is accepted, delete everything under `guide/output/` except the final `claude-api-web-app-guide.pdf` — the Dockerfile, `pdf-header.tex`, the working copy, every `pagenum.*` file, and any other scratch file picked up along the way:
+Once the PDF in step 5 is accepted, delete everything under `guide/output/` except this run's target PDF (from step 2, `claude-api-features-<version>.pdf`) — the Dockerfile, `pdf-header.tex`, the working copy, every `pagenum.*` file, and any other scratch file picked up along the way. This also removes any differently-named PDF a previous, separate revision might have left behind — `guide/output/` only ever holds the current revision's deliverable, not an accumulating history of past ones (that history lives in `## Revision History`, not as files):
 
 ```
-find guide/output -mindepth 1 ! -name 'claude-api-web-app-guide.pdf' -delete
+find guide/output -mindepth 1 ! -name 'claude-api-features-<version>.pdf' -delete
 ```
 
-`guide/output/` is gitignored either way, so leaving the intermediates around wouldn't leak into git — this is purely about not handing back a folder cluttered with build byproducts. The final deliverable, `guide/output/claude-api-web-app-guide.pdf`, is a build artifact rather than a source file, so it stays out of git too; hand it to wherever the guide gets published from. If the revision doesn't pass review after all, it's fine to leave `guide/output/` as-is (or wipe it entirely with `rm -rf guide/output`) and start over from step 3 once fixes land.
+`guide/output/` is gitignored either way, so leaving the intermediates around wouldn't leak into git — this is purely about not handing back a folder cluttered with build byproducts. The final deliverable is a build artifact rather than a source file, so it stays out of git too; hand it to wherever the guide gets published from. If the revision doesn't pass review after all, it's fine to leave `guide/output/` as-is (or wipe it entirely with `rm -rf guide/output`) and start over from step 3 once fixes land — that's exactly the situation step 2's collision check is there for.

@@ -8,7 +8,7 @@ The story flow: start from a conventional web app architecture, introduce a back
 
 ## Publication Deliverable
 
-- Write the finished guide as `guide/claude-api-web-app-guide.md`.
+- Write the finished guide as `guide/guide.md`.
 - Treat that file as the canonical publication source and keep it self-contained so it can be read directly in a Markdown viewer or converted to PDF without requiring this repository, its application, or its internal documentation.
 - Use repository examples only as evidence and inspiration. Reproduce all context needed to understand an example inside the guide, using portable snippets, diagrams, and explanations rather than links to local source files.
 - Keep images and other publication assets under `guide/assets/` and reference them from the guide with paths relative to the guide itself, such as `assets/example.png`. The guide lives in `guide/`, so a repo-root-relative `guide/assets/...` path would not resolve when the document is opened directly in a Markdown viewer.
@@ -314,7 +314,7 @@ Cover engineering rigor:
 ## Writing Sessions
 
 1. [x] **Architecture And Narrative**
-   - Initialize `guide/claude-api-web-app-guide.md` with the complete heading structure and publication metadata before drafting chapters.
+   - Initialize `guide/guide.md` with the complete heading structure and publication metadata before drafting chapters.
    - Define audience, thesis, terminology, and app architecture.
    - Output: intro plus architecture chapter.
 2. [x] **Core Claude API Features**
@@ -333,7 +333,7 @@ Cover engineering rigor:
    - Test strategy, deterministic model substitutes, error handling, operational checklist.
    - Output: chapter 13.
 7. [x] **Self-Contained Assembly**
-   - Assemble and reconcile all completed chapters in `guide/claude-api-web-app-guide.md` against the document framework.
+   - Assemble and reconcile all completed chapters in `guide/guide.md` against the document framework.
    - Add the title page, abstract, table of contents, introduction, reading paths, glossary, synthesis chapter, conclusion, references, appendices, and topical index.
    - Replace dependencies on repo knowledge with inline context, portable examples, or publication assets.
 8. [x] **Editorial Pass**
@@ -357,7 +357,7 @@ Cover engineering rigor:
 - The paper is about Claude API usage inside web applications, not Claude Code/CLI.
 - The repo is a reference implementation only.
 - Code examples should be portable TypeScript/pseudocode and JSON snippets.
-- The canonical output is one self-contained Markdown document at `guide/claude-api-web-app-guide.md`, with publication assets under `guide/assets/`.
+- The canonical output is one self-contained Markdown document at `guide/guide.md`, with publication assets under `guide/assets/`.
 - The Markdown should use a single H1, ordered heading levels, fenced code blocks with language identifiers, relative asset links, accessible alt text, and tables narrow enough to render legibly in PDF.
 - During drafting, screenshot placeholders should use a consistent, searchable Markdown-comment convention such as:
 
