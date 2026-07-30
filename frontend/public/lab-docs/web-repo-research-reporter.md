@@ -84,11 +84,13 @@ to:
       "items": {
         "type": "object",
         "properties": { "claim": { "type": "string" }, "source": { "type": "string" } },
-        "required": ["claim", "source"]
+        "required": ["claim", "source"],
+        "additionalProperties": false
       }
     }
   },
-  "required": ["summary", "findings"]
+  "required": ["summary", "findings"],
+  "additionalProperties": false
 }
 ```
 
