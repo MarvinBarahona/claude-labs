@@ -43,17 +43,14 @@ Purpose: [transferable concept illustrated]
 -->
 ```
 
-## Before considering an update done
-
-- No `SCREENSHOT TODO` you introduced is left unresolved without either a real image in place or a deliberate decision to drop the figure.
-- Internal links (table of contents, cross-references, topical index) still resolve.
-- Any technical claim you added or changed is accurate against current documentation and dated if it may drift.
-- The addition reads as generalized guidance, not a restatement of one lab's specific implementation.
-
 ## Where content usually comes from
 
 - `write-lab-doc` may surface a lesson while writing or refreshing a lab's in-app doc — see that skill's guide-alignment step.
 - A direct request to add or expand a chapter, appendix, or index entry.
+
+## Before considering an edit done
+
+Finishing an edit here is not the same as cutting a new revision. Once you're done adding or changing content, hand off to `revise-guide` for the pre-publication checks, version/date bump, and PDF render — don't run those steps here.
 
 ## About `guide/plan.md`
 

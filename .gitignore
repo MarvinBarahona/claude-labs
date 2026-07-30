@@ -8,6 +8,7 @@ node_modules/
 # Build output
 dist/
 build/
+guide/output/
 
 # Playwright test output
 e2e/test-results/
