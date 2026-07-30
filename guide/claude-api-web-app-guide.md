@@ -4,9 +4,9 @@
 
 ## Revision History
 
-| Version | Date | Author | Changelog |
-|---|---|---|---|
-| 0.1 | 2026-07-27 | Marvin Barahona | Initial draft |
+| Version | Date | Changelog |
+|------------|--------------|:----------------------------------------------------------------------:|
+| 0.1 | 2026-07-27 | Initial draft |
 
 ## Abstract
 
