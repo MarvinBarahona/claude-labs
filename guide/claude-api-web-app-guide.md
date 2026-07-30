@@ -16,30 +16,7 @@ This guide develops those concerns from a conventional web architecture into pro
 
 The examples use portable TypeScript and JSON rather than a particular framework. They are informed by a working playground, but the playground is evidence—not a template. The goal is to help you design the smallest dependable AI capability that fits your product.
 
-## Table of Contents
-
-1. [Introduction](#introduction)
-2. [How to Use This Guide](#how-to-use-this-guide)
-3. [Glossary](#glossary)
-4. [Why AI Features Need Product Architecture](#1-why-ai-features-need-product-architecture)
-5. [Reference Web Application Architecture](#2-reference-web-application-architecture)
-6. [Foundations: Messages API in a Web Application](#3-foundations-messages-api-in-a-web-application)
-7. [Structured Outputs](#4-structured-outputs)
-8. [Custom Backend Tools](#5-custom-backend-tools)
-9. [Workflows Before Agents](#6-workflows-before-agents)
-10. [Files, Documents, Citations, and Caching](#7-files-documents-citations-and-caching)
-11. [Code Execution and Generated Artifacts](#8-code-execution-and-generated-artifacts)
-12. [Web Search and MCP Connectors](#9-web-search-and-mcp-connectors)
-13. [Vision Features](#10-vision-features)
-14. [Extended Thinking](#11-extended-thinking)
-15. [Agents as a Deliberate Exception](#12-agents-as-a-deliberate-exception)
-16. [Testing and Operational Hardening](#13-testing-and-operational-hardening)
-17. [Putting It Together](#putting-it-together)
-18. [Production Readiness Checklist](#production-readiness-checklist)
-19. [Conclusion](#conclusion)
-20. [References and Further Reading](#references-and-further-reading)
-21. [Appendices](#appendices)
-22. [Topical Index](#topical-index)
+<!-- PAGEBREAK -->
 
 ## Introduction
 
@@ -77,6 +54,8 @@ Accordingly, this guide extracts patterns and counterexamples rather than presen
 
 Read Chapters 1 and 2 first if you are establishing architecture or reviewing a design. Read Chapters 3 through 6 in order if you are implementing a first feature: messages lead naturally to typed results, tools, and then controlled multi-call workflows. Chapters 7 through 12 can be read independently when a product need requires a particular input or capability. Chapter 13 and the production checklist should accompany every implementation, not wait for a final hardening phase.
 
+A sensible adoption path mirrors that same chapter order: ship one well-bounded message feature, add streaming only where users benefit, introduce structured output for code-owned results, expose narrow read tools, compose known stages into workflows, and reserve agents for tasks whose path remains genuinely unknowable. At each step, add the corresponding tests, evaluation cases, telemetry, and rollback control before adding more autonomy.
+
 The examples use these conventions:
 
 - **Application contract** means a type owned by your product, even when it contains selected Claude response metadata.
@@ -84,6 +63,34 @@ The examples use these conventions:
 - TypeScript examples emphasize boundaries and control flow; adapt framework wiring to your stack.
 - JSON examples omit irrelevant fields for readability.
 - A warning identifies a failure mode with operational consequences. An optional pattern is useful in some products but not required by the reference architecture.
+
+<!-- PAGEBREAK -->
+
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [How to Use This Guide](#how-to-use-this-guide)
+3. [Glossary](#glossary)
+4. [Topical Index](#topical-index)
+5. [Why AI Features Need Product Architecture](#1-why-ai-features-need-product-architecture)
+6. [Reference Web Application Architecture](#2-reference-web-application-architecture)
+7. [Foundations: Messages API in a Web Application](#3-foundations-messages-api-in-a-web-application)
+8. [Structured Outputs](#4-structured-outputs)
+9. [Custom Backend Tools](#5-custom-backend-tools)
+10. [Workflows Before Agents](#6-workflows-before-agents)
+11. [Files, Documents, Citations, and Caching](#7-files-documents-citations-and-caching)
+12. [Code Execution and Generated Artifacts](#8-code-execution-and-generated-artifacts)
+13. [Web Search and MCP Connectors](#9-web-search-and-mcp-connectors)
+14. [Vision Features](#10-vision-features)
+15. [Extended Thinking](#11-extended-thinking)
+16. [Agents as a Deliberate Exception](#12-agents-as-a-deliberate-exception)
+17. [Testing and Operational Hardening](#13-testing-and-operational-hardening)
+18. [Putting It Together](#putting-it-together)
+19. [Production Readiness Checklist](#production-readiness-checklist)
+20. [References and Further Reading](#references-and-further-reading)
+21. [Appendices](#appendices)
+
+<!-- PAGEBREAK -->
 
 ## Glossary
 
@@ -114,6 +121,36 @@ The examples use these conventions:
 **Turn** — One user-visible interaction. A turn may require one or many Claude API calls.
 
 **Workflow** — An application-directed sequence of model calls and ordinary code, such as routing, chaining, parallelization, or evaluator-optimizer.
+
+## Topical Index
+
+- [Agents](#12-agents-as-a-deliberate-exception)
+- [API errors](#test-the-application-error-taxonomy)
+- [Application contracts](#expose-an-application-owned-turn-envelope)
+- [Authorization](#system-boundary)
+- [Bounding external content cost](#bound-content-whose-size-you-dont-control)
+- [Citations](#enable-citations-as-a-data-contract)
+- [Code execution](#8-code-execution-and-generated-artifacts)
+- [Content blocks](#3-foundations-messages-api-in-a-web-application)
+- [Error taxonomy](#appendix-b-error-taxonomy)
+- [Evaluations](#add-semantic-evaluations)
+- [Files and documents](#7-files-documents-citations-and-caching)
+- [Hosted and server tools](#9-web-search-and-mcp-connectors)
+- [MCP](#connect-mcp-servers-with-least-privilege)
+- [Messages](#3-foundations-messages-api-in-a-web-application)
+- [Observability](#observability-without-accidental-disclosure)
+- [Prompt caching](#cache-the-stable-document-prefix)
+- [Refusals and stop reasons](#handle-valid-http-responses-that-are-not-valid-results)
+- [Skills](#add-skills-when-repetition-justifies-them)
+- [Streaming](#add-streaming-for-user-perceived-progress)
+- [Structured outputs](#4-structured-outputs)
+- [Testing matrix](#appendix-c-testing-matrix)
+- [Thinking and effort](#11-extended-thinking)
+- [Tool use](#5-custom-backend-tools)
+- [Vision](#10-vision-features)
+- [Workflows](#6-workflows-before-agents)
+
+<!-- PAGEBREAK -->
 
 ## 1. Why AI Features Need Product Architecture
 
@@ -179,6 +216,8 @@ If these cases collapse into one generic error, users receive misleading feedbac
 Latency, token use, data retention, accessibility, and evaluation are not cleanup tasks. They affect the initial interaction. A long-running workflow needs visible progress and cancellation semantics. A citation feature needs a keyboard-accessible way to inspect sources. A tool with side effects needs idempotency or confirmation. A high-context feature needs budgets and cache-aware context construction.
 
 The architectural goal is not to eliminate model uncertainty. It is to contain uncertainty inside a system whose permissions, contracts, and outcomes remain understandable.
+
+<!-- PAGEBREAK -->
 
 ## 2. Reference Web Application Architecture
 
@@ -351,6 +390,8 @@ Prompts, tool arguments, documents, and outputs may contain sensitive data. Defa
 - Traces preserve every call without mutation.
 - Logs and traces have an explicit sensitive-data policy.
 
+<!-- PAGEBREAK -->
+
 ## 3. Foundations: Messages API in a Web Application
 
 The Messages API is the foundation beneath the richer patterns in this guide. It accepts conversational turns and returns the next assistant message. The API is stateless: your application supplies the relevant history on every request. That fact determines where conversation state lives, how it is authorized, and how its size is controlled.
@@ -522,6 +563,8 @@ Unit tests should prove request construction, top-level system-prompt placement,
 
 In production, measure time to first content, time to completion, cancellation rate, stop reasons, usage, and error class. These reveal different problems; total latency alone does not.
 
+<!-- PAGEBREAK -->
+
 ## 4. Structured Outputs
 
 Free text is appropriate when a person will interpret the answer. When application code needs fields, enums, arrays, or nested records, use structured output. Prompting Claude to “return JSON” is not the same guarantee: malformed JSON, missing fields, and inconsistent types remain possible.
@@ -641,6 +684,8 @@ Unit tests should assert the exact schema, selected model, token budget, domain 
 Integration tests should intercept the real SDK request and verify the `output_config.format` wire shape. Frontend tests should render every enum and empty-list state, show safe errors, and never depend on raw provider blocks. Contract fixtures should include stop reason and usage so tests exercise the whole envelope.
 
 In production, track schema version, cold/warm latency, stop reason, validation outcome, and retry count. Evaluate semantic correctness separately from structural validity: a perfectly valid `priority: "urgent"` can still be the wrong classification.
+
+<!-- PAGEBREAK -->
 
 ## 5. Custom Backend Tools
 
@@ -818,6 +863,8 @@ Unit tests should cover tool definitions, registry dispatch, unknown names, argu
 Integration tests should intercept both Claude and external-service traffic, proving the exact assistant/tool-result history across multiple rounds. Frontend tests should render ordered activity and terminal failure without exposing sensitive arguments. Browser tests should use deterministic trajectories: no-tool answer, one successful tool, parallel tools, self-correction after a failed result, and cap exhaustion.
 
 In production, record tool name, duration, outcome class, round number, and correlation identifiers—not unrestricted arguments or results. Alert on rising error rates, repeated calls with the same arguments, cap exhaustion, and unexpected use of consequential tools.
+
+<!-- PAGEBREAK -->
 
 ## 6. Workflows Before Agents
 
@@ -1018,6 +1065,8 @@ Caption: Figure 3. A fixed workflow exposes stage outcomes and termination crite
 Purpose: Show how routing, chaining, parallel evaluation, and a capped optimizer become legible product state.
 -->
 
+<!-- PAGEBREAK -->
+
 ## 7. Files, Documents, Citations, and Caching
 
 Document features combine several concerns that are easy to conflate: moving bytes to Claude, representing a document in a message, grounding claims with citations, retaining conversation state, and avoiding repeated processing. Design each concern explicitly.
@@ -1153,6 +1202,8 @@ Unit tests should cover inline and uploaded sources, upload reuse, document-befo
 
 Production telemetry should include source type, page/byte count, upload reuse, cache read/write tokens, citation count, session age, and failure class while excluding document contents by default.
 
+<!-- PAGEBREAK -->
+
 ## 8. Code Execution and Generated Artifacts
 
 Code execution is useful when a task is better solved by computation than by prose: analyze a dataset, create a chart, transform files, or verify a calculation. Claude writes and runs code inside an Anthropic-managed container, and the response records tool activity and generated files.
@@ -1274,6 +1325,8 @@ Handle source-data failure, upload failure, unsupported tool/model combination, 
 Unit tests should verify dataset minimization and serialization, upload and `container_upload` shape, tool selection, block pairing, stdout/stderr mapping, file extraction, size/type policy, download authorization, and optional skill attachment. Integration tests should intercept Files and Messages endpoints and include a realistic generated-file round trip. Frontend tests should cover no-code, failed-code, multiple-command, image-preview, and generic-download states. Browser tests should use deterministic fixtures rather than execute arbitrary live code.
 
 Production telemetry should track upload size, tool version, container duration, command count, return codes, artifact count/bytes, download outcomes, and skill version—without logging dataset contents or generated files by default.
+
+<!-- PAGEBREAK -->
 
 ## 9. Web Search and MCP Connectors
 
@@ -1413,6 +1466,8 @@ Unit tests should assert the selected tool versions, search caps, domain policy,
 
 Production telemetry should include tool version, searches and MCP calls, domains contacted when available, result-error types, pause continuations, latency, and usage. Monitor remote MCP schema changes and tool additions as dependency changes, not ordinary runtime noise.
 
+<!-- PAGEBREAK -->
+
 ## 10. Vision Features
 
 Vision features send one or more images as typed content blocks alongside a text instruction. Useful products are narrower than “describe this image”: compare two versions, extract visible attributes for review, explain a chart, inspect damage, or answer questions about a screenshot.
@@ -1506,6 +1561,8 @@ Handle unsupported format, corrupt decode, animated input, excessive dimensions 
 Unit tests should cover every source mode, content ordering and labels, media sniffing, dimension/count boundaries, preprocessing metadata, multi-image request shape, stop reasons, and streaming terminal behavior. Integration tests should intercept image fetch/upload and Messages calls without embedding sensitive fixtures. Frontend tests should render ordered thumbnails, preparation and analysis states, transformation warnings, accessible results, and failures. Browser tests should include one single-image task and one true comparison.
 
 Evaluate vision quality on a representative labeled set, including difficult lighting, blur, rotation, small text, and near-duplicate images. Production telemetry should record image count, dimensions, bytes, preparation transforms, model profile, latency, usage, and failure class while keeping image content out of ordinary logs.
+
+<!-- PAGEBREAK -->
 
 ## 11. Extended Thinking
 
@@ -1654,6 +1711,8 @@ Handle unsupported mode/model combinations, invalid manual budgets, insufficient
 Unit tests should assert exact profile-to-request mapping, model held constant, block extraction, unchanged thinking-block replay, usage mapping, and stop-reason handling. Integration tests should include realistic thinking and redacted-thinking fixtures. Frontend tests should distinguish disabled, omitted, summarized, failed, and truncated runs. Benchmark tests should use a frozen evaluation set and report repeatable aggregate statistics rather than assert exact model prose.
 
 In production, monitor reasoning profile, task class, latency, usage, tool calls, quality proxy, and user outcome. Re-evaluate profiles when models or defaults change; yesterday's high-effort advantage may become tomorrow's unnecessary cost.
+
+<!-- PAGEBREAK -->
 
 ## 12. Agents as a Deliberate Exception
 
@@ -1832,6 +1891,8 @@ Before release, confirm that:
 - quality and safety evaluations run continuously after model or tool changes.
 
 An agent earns its complexity when its freedom to choose steps produces measurable value. Otherwise, convert the observed successful trajectories into a simpler workflow.
+
+<!-- PAGEBREAK -->
 
 ## 13. Testing and Operational Hardening
 
@@ -2038,6 +2099,8 @@ Before calling a feature ready, confirm:
 - observability excludes sensitive content by default; and
 - rollout, rollback, and dependency-change procedures exist.
 
+<!-- PAGEBREAK -->
+
 ## Putting It Together
 
 The preceding patterns are most useful when composed around one user outcome. Consider a support-response assistant for a complex customer case. An agent could be given broad access and told to “resolve the case,” but the useful steps are known well enough to build a controlled workflow.
@@ -2177,6 +2240,10 @@ Before implementation, ask:
 
 A strong design can answer all eight without referring to hidden prompt behavior.
 
+The best next experiment is rarely "make it more agentic." It is usually to identify the largest remaining uncertainty—quality, data access, latency, user trust, or workflow fit—and build the smallest measured experiment that resolves it.
+
+<!-- PAGEBREAK -->
+
 ## Production Readiness Checklist
 
 Use this checklist as a release gate. Assign an owner and evidence link for each applicable item; “not applicable” should include a reason.
@@ -2284,26 +2351,7 @@ Use this checklist as a release gate. Assign an owner and evidence link for each
 - [ ] Expansion criteria include quality, safety, cost, latency, and support load.
 - [ ] A post-launch review records decisions and converts observed successful agent paths into workflows where appropriate.
 
-## Conclusion
-
-A dependable Claude feature is a normal product system with one unusual component. The model can interpret ambiguous input, generate language, choose tools, and adapt to evidence; the application still owns identity, permissions, state, contracts, limits, side effects, failure semantics, and user experience.
-
-The durable design principles are straightforward:
-
-1. Start with the user workflow and its completion criteria.
-2. Keep the Claude boundary on the backend behind a narrow, testable adapter.
-3. Prefer the least autonomous pattern that fits: message, structured output, tool, workflow, then agent.
-4. Treat a user turn as a distributed operation with explicit progress and termination.
-5. Preserve typed content blocks, stop reasons, usage, and complete immutable call traces.
-6. Keep tool authority smaller than model flexibility, and distinguish recoverable tool errors from failed turns.
-7. Bound calls, tokens, time, context, cost, and side effects before execution.
-8. Test orchestration deterministically and evaluate model behavior semantically.
-9. Make sources, uncertainty, partial results, and human approval visible.
-10. Revisit every model- or tool-specific assumption as the platform evolves.
-
-A sensible adoption path mirrors the chapters: ship one well-bounded message feature, add streaming only where users benefit, introduce structured output for code-owned results, expose narrow read tools, compose known stages into workflows, and reserve agents for tasks whose path remains genuinely unknowable. At each step, add the corresponding tests, evaluation cases, telemetry, and rollback control before adding more autonomy.
-
-The best next experiment is rarely “make it more agentic.” It is usually to identify the largest remaining uncertainty—quality, data access, latency, user trust, or workflow fit—and build the smallest measured experiment that resolves it.
+<!-- PAGEBREAK -->
 
 ## References and Further Reading
 
@@ -2335,6 +2383,8 @@ The guide prioritizes official Anthropic sources for API behavior and marks vola
 
 Model names, tool versions, limits, availability, beta headers, pricing, and retention can change. Recheck the relevant linked page during implementation and again before publication or release.
 
+<!-- PAGEBREAK -->
+
 ## Appendices
 
 ### Appendix A: Portable Request and Response Examples
@@ -2363,6 +2413,8 @@ Preserve the response as typed content blocks plus metadata rather than flatteni
 
 For structured output, define the schema at the API boundary and validate the parsed value again before domain use. For client tools, return every `tool_result` with the matching `tool_use_id` in the next user message; group parallel results together.
 
+<!-- PAGEBREAK -->
+
 ### Appendix B: Error Taxonomy
 
 | Error class | Detect at | Retry? | Public behavior |
@@ -2377,6 +2429,8 @@ For structured output, define the schema at the API boundary and validate the pa
 | Stream interruption | Stream accumulator | Conditional | Retain confirmed content; expose retry |
 | Evaluation failure | Release/runtime quality gate | No blind retry | Quarantine, review, or fall back |
 
+<!-- PAGEBREAK -->
+
 ### Appendix C: Testing Matrix
 
 | Capability | Unit | Integration | Frontend/browser | Evaluation |
@@ -2388,6 +2442,8 @@ For structured output, define the schema at the API boundary and validate the pa
 | Workflows | Branch and state transitions | Checkpoint/recovery | Durable progress and retry | End-to-end task completion |
 | Agents | Budgets, permissions, termination | Multi-step trace replay | Inspect/cancel/approve | Success, safety, cost, and path quality |
 
+<!-- PAGEBREAK -->
+
 ### Appendix D: Capability Comparison
 
 | Pattern | Who controls the next step? | Typical calls | Best fit | Principal risk |
@@ -2398,31 +2454,3 @@ For structured output, define the schema at the API boundary and validate the pa
 | Server tool | Model/provider within configuration | 1+ | Hosted search or execution | Provider-side cost and data exposure |
 | Workflow | Application state machine | Fixed/bounded | Known multi-stage business process | Hidden branch and recovery complexity |
 | Agent | Model within strict budgets | Variable | Open-ended tasks with unknown paths | Unpredictable actions, cost, and latency |
-
-## Topical Index
-
-- [Agents](#12-agents-as-a-deliberate-exception)
-- [API errors](#test-the-application-error-taxonomy)
-- [Application contracts](#expose-an-application-owned-turn-envelope)
-- [Authorization](#system-boundary)
-- [Bounding external content cost](#bound-content-whose-size-you-dont-control)
-- [Citations](#enable-citations-as-a-data-contract)
-- [Code execution](#8-code-execution-and-generated-artifacts)
-- [Content blocks](#3-foundations-messages-api-in-a-web-application)
-- [Error taxonomy](#appendix-b-error-taxonomy)
-- [Evaluations](#add-semantic-evaluations)
-- [Files and documents](#7-files-documents-citations-and-caching)
-- [Hosted and server tools](#9-web-search-and-mcp-connectors)
-- [MCP](#connect-mcp-servers-with-least-privilege)
-- [Messages](#3-foundations-messages-api-in-a-web-application)
-- [Observability](#observability-without-accidental-disclosure)
-- [Prompt caching](#cache-the-stable-document-prefix)
-- [Refusals and stop reasons](#handle-valid-http-responses-that-are-not-valid-results)
-- [Skills](#add-skills-when-repetition-justifies-them)
-- [Streaming](#add-streaming-for-user-perceived-progress)
-- [Structured outputs](#4-structured-outputs)
-- [Testing matrix](#appendix-c-testing-matrix)
-- [Thinking and effort](#11-extended-thinking)
-- [Tool use](#5-custom-backend-tools)
-- [Vision](#10-vision-features)
-- [Workflows](#6-workflows-before-agents)
