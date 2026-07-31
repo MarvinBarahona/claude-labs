@@ -404,26 +404,15 @@ Anthropic's [Messages API reference](https://platform.claude.com/docs/en/api/mes
 This is Chapter 2's system boundary applied to the simplest case: the backend, not the browser, constructs the request.
 
 ```ts
-interface SendTurnInput {
-  conversationId: string;
-  text: string;
-  stream: boolean;
-}
+interface SendTurnInput { conversationId: string; text: string; stream: boolean }
 
 async function buildRequest(input: SendTurnInput): Promise<ClaudeRequest> {
-  const history = await conversations.getAuthorizedHistory(
-    input.conversationId,
-    currentUser.id,
-  );
-
+  const history = await conversations.getAuthorizedHistory(input.conversationId, currentUser.id);
   return {
     model: modelPolicy.forFeature("support-assistant"),
     max_tokens: 1_200,
     system: SUPPORT_SYSTEM_PROMPT,
-    messages: [
-      ...history,
-      { role: "user", content: [{ type: "text", text: input.text }] },
-    ],
+    messages: [...history, { role: "user", content: [{ type: "text", text: input.text }] }],
   };
 }
 ```
@@ -580,31 +569,19 @@ interface TriageResult {
 ### Build, parse, and validate the request
 
 ```ts
-async function triage(text: string): Promise<TurnEnvelope<TriageResult>> {
-  const request: ClaudeRequest = {
-    model: modelPolicy.forFeature("ticket-triage"),
-    max_tokens: 800,
-    system: "Extract ticket facts. Do not invent unsupported actions.",
-    messages: [{ role: "user", content: text }],
-    output_config: {
-      format: {
-        type: "json_schema",
-        schema: triageSchema,
-      },
-    },
-  };
+const request: ClaudeRequest = {
+  model: modelPolicy.forFeature("ticket-triage"),
+  max_tokens: 800,
+  system: "Extract ticket facts. Do not invent unsupported actions.",
+  messages: [{ role: "user", content: text }],
+  output_config: { format: { type: "json_schema", schema: triageSchema } },
+};
 
-  const response = await claude.createMessage(request);
-  assertStructuredCompletion(response);
-  const textBlock = response.content.find(
-    (block): block is TextBlock => block.type === "text",
-  );
-  if (!textBlock) throw new InvalidModelResponse("Missing structured text block");
-
-  const parsed: unknown = JSON.parse(textBlock.text);
-  const result = validateTriageResult(parsed);
-  return buildEnvelope(result, request, response);
-}
+const response = await claude.createMessage(request);
+assertStructuredCompletion(response);
+const textBlock = response.content.find((b): b is TextBlock => b.type === "text");
+if (!textBlock) throw new InvalidModelResponse("Missing structured text block");
+const result = validateTriageResult(JSON.parse(textBlock.text));
 ```
 
 Schema-constrained output strengthens the provider response, but runtime validation remains useful at your trust boundary. It protects against integration regressions, unsupported stop conditions, accidental calls without the schema, and later application changes. The guard for a missing or malformed result is cheap insurance, not redundant paranoia: the schema guarantee covers the model's output, not every edge case in the surrounding SDK, network, or version behavior. Generate the TypeScript type, schema, and validator from one source when your tooling supports it; otherwise test that they stay aligned.
@@ -856,29 +833,10 @@ Chaining creates a validation or persistence opportunity at each stage boundary;
 Keep stage inputs and outputs explicit. Do not pass one growing bag of strings and provider responses through the pipeline.
 
 ```ts
-interface RoutedRequest {
-  category: "billing" | "technical" | "account";
-  request: SupportRequest;
-}
-
-interface DraftCandidate {
-  text: string;
-  attempt: number;
-}
-
-interface Grade {
-  criterion: "accuracy" | "tone" | "policy";
-  passed: boolean;
-  feedback: string;
-}
-
-interface WorkflowResult {
-  route: RoutedRequest["category"];
-  answer: string;
-  grades: Grade[];
-  attempts: number;
-  passed: boolean;
-}
+interface RoutedRequest { category: "billing" | "technical" | "account"; request: SupportRequest }
+interface DraftCandidate { text: string; attempt: number }
+interface Grade { criterion: "accuracy" | "tone" | "policy"; passed: boolean; feedback: string }
+interface WorkflowResult { route: RoutedRequest["category"]; answer: string; grades: Grade[]; attempts: number; passed: boolean }
 ```
 
 A workflow stage can use free text, structured output, tools, or ordinary deterministic code. Use structured output for routing and grading because downstream code owns those decisions. Use prose for a draft intended for a person. Use normal code for policy checks that do not need model judgment.
@@ -1176,9 +1134,8 @@ This is a server-executed tool. Your backend enables it and interprets its respo
 A sandbox should not depend on reaching your database or private network. Assemble the smallest authorized dataset on the backend, serialize it to a suitable format, upload it, and attach it with a `container_upload` block.
 
 ```ts
-const dataset = Buffer.from(JSON.stringify({ rows: authorizedRows }));
 const uploaded = await claude.uploadFile({
-  bytes: dataset,
+  bytes: Buffer.from(JSON.stringify({ rows: authorizedRows })),
   mediaType: "application/json",
   filename: "dataset.json",
 });
@@ -1187,15 +1144,13 @@ const request: ClaudeRequest = {
   model: modelPolicy.forFeature("data-analysis"),
   max_tokens: 4_000,
   tools: [{ type: CURRENT_CODE_EXECUTION_TOOL, name: "code_execution" }],
-  messages: [
-    {
-      role: "user",
-      content: [
-        { type: "container_upload", file_id: uploaded.id },
-        { type: "text", text: analysisPrompt },
-      ],
-    },
-  ],
+  messages: [{
+    role: "user",
+    content: [
+      { type: "container_upload", file_id: uploaded.id },
+      { type: "text", text: analysisPrompt },
+    ],
+  }],
 };
 ```
 
@@ -1326,24 +1281,14 @@ For the Messages API, an MCP request declares a named remote server and adds an 
 const request: ClaudeRequest = {
   model,
   max_tokens: 3_000,
-  mcp_servers: [
-    {
-      type: "url",
-      name: "knowledge",
-      url: config.approvedMcpUrl,
-      authorization_token: resolvedToken,
-    },
-  ],
+  mcp_servers: [{ type: "url", name: "knowledge", url: config.approvedMcpUrl, authorization_token: resolvedToken }],
   tools: [
     webSearchTool,
     {
       type: "mcp_toolset",
       mcp_server_name: "knowledge",
       default_config: { enabled: false },
-      configs: {
-        search_docs: { enabled: true },
-        read_doc: { enabled: true },
-      },
+      configs: { search_docs: { enabled: true }, read_doc: { enabled: true } },
     },
   ],
   messages: [{ role: "user", content: question }],
@@ -1388,6 +1333,7 @@ Counts are useful operational metadata, not proof of research quality. Preserve 
 For a machine-rendered brief, structured output can constrain the final answer while server tools gather evidence, subject to current feature compatibility.
 
 ```ts
+// Same schema shape as Chapter 4's structured output, one level deeper:
 const briefSchema = {
   type: "object",
   properties: {
@@ -1396,10 +1342,7 @@ const briefSchema = {
       type: "array",
       items: {
         type: "object",
-        properties: {
-          claim: { type: "string" },
-          sourceUrl: { type: "string" },
-        },
+        properties: { claim: { type: "string" }, sourceUrl: { type: "string" } },
         required: ["claim", "sourceUrl"],
         additionalProperties: false,
       },
@@ -1559,24 +1502,8 @@ Thinking support differs by model generation. Some current models recommend or r
 ```ts
 type ReasoningProfile =
   | { mode: "default" }
-  | {
-      mode: "adaptive";
-      effort: "low" | "medium" | "high";
-      display: "omitted" | "summarized";
-    }
-  | {
-      mode: "manual";
-      budgetTokens: number;
-      display: "omitted" | "summarized";
-    };
-
-function applyReasoningProfile(
-  request: ClaudeRequest,
-  profile: ReasoningProfile,
-  capabilities: ModelCapabilities,
-): ClaudeRequest {
-  return capabilities.buildReasoningRequest(request, profile);
-}
+  | { mode: "adaptive"; effort: "low" | "medium" | "high"; display: "omitted" | "summarized" }
+  | { mode: "manual"; budgetTokens: number; display: "omitted" | "summarized" };
 ```
 
 Do not infer support from a model name with scattered string checks. Maintain a tested capability table sourced from current provider documentation. Reject unsupported combinations before the network call and log the resolved profile.
@@ -1730,36 +1657,19 @@ The loop resembles custom tool use, but its purpose is open-ended progress towar
 The loop has the same shape as Chapter 5's tool-use loop — reassign the request each round, push every call onto the trace, execute requested tools — with one addition: a budget check across every resource that can grow, evaluated before each call rather than after.
 
 ```ts
-const limits = {
-  maxModelCalls: 12,
-  maxCustomToolCalls: 20,
-  maxWallTimeMs: 90_000,
-  maxEstimatedCostUsd: 1.00,
-};
+const limits = { maxModelCalls: 12, maxCustomToolCalls: 20, maxWallTimeMs: 90_000, maxEstimatedCostUsd: 1.00 };
 
-// request, calls, activity, startedAt, customToolCalls carry state across rounds, as in Chapter 5.
 for (let modelCall = 1; modelCall <= limits.maxModelCalls; modelCall += 1) {
-  assertWithinTimeAndCost(startedAt, calls, limits);
-  const response = await claude.createMessage(request);
-  calls.push({ modelCall, request, response });
-
-  if (response.stop_reason !== "tool_use") {
-    return finalizeAgent(response, calls, activity, { limitReached: null });
-  }
-
-  const requested = response.content.filter(isClientToolUse);
+  assertWithinTimeAndCost(startedAt, calls, limits); // checked before every call, not after
+  // ...request/response/stop_reason handling exactly as Chapter 5's loop, plus:
   if (customToolCalls + requested.length > limits.maxCustomToolCalls) {
-    return finalizeAgent(response, calls, activity, {
-      limitReached: "custom_tool_calls",
-    });
+    return finalizeAgent(response, calls, activity, { limitReached: "custom_tool_calls" });
   }
-
-  // ...execute requested tools and reassign request, exactly as in Chapter 5.
   customToolCalls += requested.length;
 }
 ```
 
-Define precisely what a cap counts. Model calls, client-tool executions, server-tool activity, and loop rounds are different. Check a budget before performing the action it limits, then return a truthful incomplete status. Do not present the last partial text as a normal successful answer merely because a loop ended.
+Full implementation in [Appendix C](#appendix-c-reference-implementations). Define precisely what a cap counts. Model calls, client-tool executions, server-tool activity, and loop rounds are different. Check a budget before performing the action it limits, then return a truthful incomplete status. Do not present the last partial text as a normal successful answer merely because a loop ended.
 
 SDK tool runners can manage standard message history, execution, error wrapping, and iteration caps. Use one when its lifecycle matches your needs; retain a manual loop for custom approval, telemetry, mixed execution policy, or unusual recovery. Anthropic's [Tool Runner guide](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner) documents current behavior and `max_iterations` support (accessed 2026-07-27).
 
@@ -2421,5 +2331,49 @@ async function runWorkflow(input: SupportRequest): Promise<WorkflowResult> {
   }
 
   return resultOf(routed, latest, grades, false);
+}
+```
+
+### The capped agent loop (Chapter 12)
+
+```ts
+const limits = {
+  maxModelCalls: 12,
+  maxCustomToolCalls: 20,
+  maxWallTimeMs: 90_000,
+  maxEstimatedCostUsd: 1.00,
+};
+
+async function runAgent(initial: ClaudeRequest): Promise<AgentResult> {
+  let request = initial;
+  const calls: AgentCall[] = [];
+  const activity: ToolActivity[] = [];
+  const startedAt = Date.now();
+  let customToolCalls = 0;
+
+  for (let modelCall = 1; modelCall <= limits.maxModelCalls; modelCall += 1) {
+    assertWithinTimeAndCost(startedAt, calls, limits);
+    const response = await claude.createMessage(request);
+    calls.push({ modelCall, request, response });
+
+    if (response.stop_reason !== "tool_use") {
+      return finalizeAgent(response, calls, activity, { limitReached: null });
+    }
+
+    const requested = response.content.filter(isClientToolUse);
+    if (customToolCalls + requested.length > limits.maxCustomToolCalls) {
+      return finalizeAgent(response, calls, activity, {
+        limitReached: "custom_tool_calls",
+      });
+    }
+
+    const results = await executeAndRecord(requested, activity);
+    customToolCalls += requested.length;
+    request = appendUnmodifiedAssistantAndResults(request, response, results);
+  }
+
+  return finalizeAgent(lastResponse(calls), calls, activity, {
+    limitReached: "model_calls",
+  });
 }
 ```
