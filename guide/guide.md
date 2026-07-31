@@ -39,12 +39,10 @@ The examples use portable TypeScript and JSON rather than a particular framework
 - [12. Agents as a Deliberate Exception: Open-Ended Investigation, Bounded](#12-agents-as-a-deliberate-exception-open-ended-investigation-bounded)
 - [13. Testing and Operational Hardening](#13-testing-and-operational-hardening)
 - [Putting It Together](#putting-it-together)
-- [Production Readiness Checklist](#production-readiness-checklist)
 - [References](#references)
 - [Appendix A: Portable Request and Response Examples](#appendix-a-portable-request-and-response-examples)
-- [Appendix B: Error Taxonomy](#appendix-b-error-taxonomy)
-- [Appendix C: Testing Matrix](#appendix-c-testing-matrix)
-- [Appendix D: Capability Comparison](#appendix-d-capability-comparison)
+- [Appendix B: Production Readiness Checklist](#appendix-b-production-readiness-checklist)
+- [Appendix C: Reference Implementations](#appendix-c-reference-implementations)
 
 <!-- PAGEBREAK -->
 
@@ -87,7 +85,7 @@ Nothing in this guide depends on knowing that reference implementation exists. E
 
 ## How to Use This Guide
 
-Read Chapters 1 and 2 first if you are establishing architecture or reviewing a design. Read Chapters 3 through 6 in order if you are implementing a first feature: messages lead naturally to typed results, tools, and then controlled multi-call workflows. Chapters 7 through 12 can be read independently when a product need requires a particular input or capability. Chapter 13 and the production checklist should accompany every implementation, not wait for a final hardening phase.
+Read Chapters 1 and 2 first if you are establishing architecture or reviewing a design. Read Chapters 3 through 6 in order if you are implementing a first feature: messages lead naturally to typed results, tools, and then controlled multi-call workflows. Chapters 7 through 12 can be read independently when a product need requires a particular input or capability. Chapter 13 should accompany every implementation, not wait for a final hardening phase; [Appendix B](#appendix-b-production-readiness-checklist) turns its practices into a starting checklist to adapt.
 
 A sensible adoption path mirrors that same chapter order: ship one well-bounded message feature, add streaming only where users benefit, introduce structured output for code-owned results, expose narrow read tools, compose known stages into workflows, and reserve agents for tasks whose path remains genuinely unknowable. At each step, add the corresponding tests, evaluation cases, telemetry, and rollback control before adding more autonomy.
 
@@ -121,7 +119,7 @@ The examples use these conventions:
 
 **Custom tool** — An application-defined capability described to Claude with a name and input schema, then executed by your backend.
 
-**Error taxonomy** — A fixed classification of failure kinds (validation, provider failure, recoverable tool error, mid-stream failure, refusal, cap) mapped to retry ownership and user-facing behavior. See [Appendix B](#appendix-b-error-taxonomy).
+**Error taxonomy** — A fixed classification of failure kinds (validation, provider failure, recoverable tool error, mid-stream failure, refusal, cap) mapped to retry ownership and user-facing behavior. See [Testing and Operational Hardening](#test-the-application-error-taxonomy).
 
 **Evaluations** — Versioned, repeatable checks of a model-integrated feature's output quality, combining deterministic checks with human or model-graded review, run and compared across releases rather than eyeballed once. See [Testing and Operational Hardening](#add-semantic-evaluations).
 
@@ -147,7 +145,7 @@ The examples use these conventions:
 
 **Structured output** — Model output constrained by a JSON schema so application code can consume a typed result instead of extracting facts from prose. See [Chapter 4](#4-structured-outputs-from-free-text-to-trusted-data).
 
-**Testing matrix** — The set of unit, integration, frontend, and evaluation checks a given capability needs, since no single test level catches every failure mode. See [Appendix C](#appendix-c-testing-matrix).
+**Testing matrix** — The set of unit, integration, frontend, and evaluation checks a given capability needs, since no single test level catches every failure mode. See [Build a layered verification strategy](#build-a-layered-verification-strategy).
 
 **Thinking and effort** — Extended thinking exposes a model's intermediate reasoning as its own content block type; effort controls trade response quality against latency and cost independently of it. See [Chapter 11](#11-extended-thinking-is-deeper-reasoning-worth-the-cost).
 
@@ -200,13 +198,7 @@ The Messages API itself is stateless — every request stands alone — and the 
 
 ### Choose the least autonomous fitting pattern
 
-| Need | Prefer | Why |
-|---|---|---|
-| Explain, rewrite, summarize | One message | Minimal moving parts |
-| Return fields consumed by code | Structured output | Explicit, validatable contract |
-| Read or act through backend capabilities | Custom tools | Application controls execution |
-| Perform a known multi-step process | Fixed workflow | Predictable order and bounded cost |
-| Navigate an unknown sequence of steps | Bounded agent | Model can choose, within explicit limits |
+A message suffices to explain, rewrite, or summarize. Structured output takes over the moment code needs to consume a field rather than parse prose. Custom tools hand Claude a specific, application-controlled action. A fixed workflow composes known stages in a known order. An agent is reserved for the one case none of those fit: a sequence of steps that cannot be known in advance. The full comparison — including typical call count and principal risk per pattern — is the [decision guide](#decision-guide) in Putting It Together.
 
 An agent is not a more advanced default. It is a deliberate exception for tasks whose useful sequence cannot be known in advance. Most product flows are easier to test and operate as messages, tools, or fixed workflows.
 
@@ -411,9 +403,9 @@ The Messages API is the foundation beneath the richer patterns in this guide. It
 
 Anthropic's [Messages API reference](https://platform.claude.com/docs/en/api/messages/create) documents single-turn and stateless multi-turn requests. It also makes an easy-to-miss distinction: your system prompt belongs in the top-level `system` parameter, not in the first message. Some current models additionally accept a `system`-role message later in the array, as an operator channel for instructions that arrive mid-conversation. Treat that as a model-specific capability to verify rather than as an alternative home for the system prompt itself. (Accessed 2026-07-27.)
 
-### Start with an application endpoint
+### Build the request on the backend, from server-owned history
 
-Do not accept an arbitrary provider request from the browser. Define the choices your product supports and construct the Claude request on the backend.
+This is Chapter 2's system boundary applied to the simplest case: the backend, not the browser, constructs the request.
 
 ```ts
 interface SendTurnInput {
@@ -440,21 +432,7 @@ async function buildRequest(input: SendTurnInput): Promise<ClaudeRequest> {
 }
 ```
 
-The endpoint owns authorization, model configuration, token budgets, and the system prompt. The browser supplies user intent and interaction preferences—not arbitrary model identifiers, system instructions, or tool definitions unless those are intentionally user-configurable product features.
-
-### Treat history as server-validated state
-
-For a prototype, the browser can send the visible transcript. In a product, prefer a conversation identifier and backend-owned history when messages affect permissions, billing, auditability, or later actions. A client-supplied transcript can be edited, omit prior instructions, or include content the current user is not entitled to submit.
-
-Before every call:
-
-- authorize access to the conversation;
-- validate new content;
-- select only history required for the turn;
-- preserve content-block types needed by later tool or citation flows; and
-- enforce context and cost budgets through truncation, summarization, retrieval, or a combination.
-
-Do not flatten every assistant message to text if later turns need non-text blocks. Conversely, do not persist and resend all response metadata blindly. Store a deliberate conversational representation.
+The browser supplies user intent, not model identifiers, system instructions, or tool definitions. History deserves the same treatment: a client-supplied transcript can be edited, omit prior instructions, or include content the user isn't entitled to submit, so prefer a conversation identifier and backend-owned history whenever messages affect permissions, billing, auditability, or later actions. Before every call: authorize access to the conversation, validate new content, select only the history the turn needs, preserve content-block types later tool or citation flows depend on, and enforce context/cost budgets through truncation, summarization, retrieval, or some combination. Don't flatten every assistant message to text if a later turn needs its non-text blocks, and don't persist and resend all response metadata blindly.
 
 ### Centralize model configuration
 
@@ -501,36 +479,19 @@ Never assume `content[0]` is text. Content is a typed block array, and later fea
 
 Streaming helps when users benefit from reading an answer as it arrives. It adds protocol and state complexity, so a short classification or extraction may be clearer as one atomic result.
 
-Claude streams Messages responses as Server-Sent Events. The sequence begins with `message_start`, opens each indexed content block, emits deltas, closes the block, reports message deltas, and ends with `message_stop`. `message_start`'s own nested message always carries an empty `content: []` — content blocks arrive only through the `content_block_start`/`content_block_delta`/`content_block_stop` events that follow, never seeded on `message_start` itself. Streams may contain `ping`, error, and future event types, so consumers must tolerate events they do not use. See Anthropic's [streaming guide](https://platform.claude.com/docs/en/build-with-claude/streaming) (accessed 2026-07-27).
+Claude streams Messages responses as Server-Sent Events — see Anthropic's [streaming guide](https://platform.claude.com/docs/en/build-with-claude/streaming) for the full event sequence (accessed 2026-07-27). One gotcha the sequence doesn't make obvious: `message_start`'s own nested message always carries an empty `content: []` — content blocks arrive only through the `content_block_start`/`content_block_delta`/`content_block_stop` events that follow, never seeded on `message_start` itself. Streams may also contain `ping`, error, and future event types, so consumers must tolerate events they don't use.
 
 ```ts
-async function streamTurn(input: SendTurnInput, writer: EventWriter) {
-  const request = await buildRequest(input);
-  const accumulator = new MessageAccumulator();
-
-  try {
-    for await (const event of claude.streamMessage(request)) {
-      accumulator.accept(event);
-      if (event.type === "content_block_delta" &&
-          event.delta.type === "text_delta") {
-        writer.send({ type: "text_delta", text: event.delta.text });
-      }
-      // Ignore unknown events for rendering, but retain them in an authorized trace.
-    }
-
-    const response = accumulator.finalMessage();
-    await conversations.appendCompletedTurn(input.conversationId, input.text, response);
-    writer.send({
-      type: "turn_complete",
-      envelope: buildEnvelope(extractText(response), request, response),
-    });
-  } catch (error) {
-    writer.send({ type: "turn_error", error: toPublicError(error) });
+for await (const event of claude.streamMessage(request)) {
+  accumulator.accept(event); // must reconstruct every block type, not only text
+  if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+    writer.send({ type: "text_delta", text: event.delta.text });
   }
 }
+writer.send({ type: "turn_complete", envelope: buildEnvelope(extractText(accumulator.finalMessage()), request, accumulator.finalMessage()) });
 ```
 
-The accumulator must reconstruct every supported content block and top-level delta, not only visible text. Official SDK accumulation helpers are a good choice when they fit the adapter. A public frontend contract should normally translate provider events into stable application events so it can also represent custom-tool activity and terminal outcomes.
+Full implementation, including error handling, in [Appendix C](#appendix-c-reference-implementations). Official SDK accumulation helpers are a good choice when they fit the adapter. A public frontend contract should normally translate provider events into stable application events so it can also represent custom-tool activity and terminal outcomes.
 
 ### Parse browser streams incrementally
 
@@ -574,9 +535,9 @@ Account for browser cancellation, proxy buffering and idle timeouts, a connectio
 
 ### Testing the Messages foundation
 
-Unit tests should prove request construction, top-level system-prompt placement, model resolution, history ordering, content-block extraction, stop-reason handling, and provider-error translation. Integration tests should intercept the SDK HTTP call and verify normal responses, API errors, and streamed reconstruction. Frontend tests should split frames across arbitrary chunks, combine frames, cover unknown events, and assert that only completion commits the canonical answer. Browser tests should exercise pending, streaming, completed, cancelled, and failed states against deterministic responses.
+Beyond Chapter 13's layered strategy, this feature's distinctive cases are system-prompt placement, history ordering, content-block extraction, SSE frame splitting across arbitrary chunk boundaries, unknown-event tolerance, and the full pending/streaming/completed/cancelled/failed state machine.
 
-In production, measure time to first content, time to completion, cancellation rate, stop reasons, usage, and error class. These reveal different problems; total latency alone does not.
+In production, time-to-first-content and cancellation rate matter as much as total latency — they reveal different problems.
 
 <!-- PAGEBREAK -->
 
@@ -708,11 +669,9 @@ Compatibility matters. At the time of writing, Anthropic documents JSON outputs 
 
 ### Testing structured output
 
-Unit tests should assert the exact schema, selected model, token budget, domain mapping, and distinct paths for refusal, truncation, missing text, malformed JSON, and validation failure. Although constrained decoding should prevent ordinary schema violations, negative tests protect the adapter and fakes.
+Beyond Chapter 13's layered strategy, this feature's distinctive cases are the exact schema and `output_config.format` wire shape, plus the refusal/truncation/missing-text/malformed-JSON/validation-failure paths — negative tests still matter even though constrained decoding should prevent ordinary schema violations.
 
-Integration tests should intercept the real SDK request and verify the `output_config.format` wire shape. Frontend tests should render every enum and empty-list state, show safe errors, and never depend on raw provider blocks. Contract fixtures should include stop reason and usage so tests exercise the whole envelope.
-
-In production, track schema version, cold/warm latency, stop reason, validation outcome, and retry count. Evaluate semantic correctness separately from structural validity: a perfectly valid `priority: "urgent"` can still be the wrong classification.
+In production, track schema version and cold/warm latency, and evaluate semantic correctness separately from structural validity: a perfectly valid `priority: "urgent"` can still be the wrong classification.
 
 <!-- PAGEBREAK -->
 
@@ -765,42 +724,18 @@ When Claude calls a client tool, the response has `stop_reason: "tool_use"` and 
 ```ts
 const MAX_TOOL_ROUNDS = 6;
 
-async function runToolTurn(initial: ClaudeRequest): Promise<TurnEnvelope<string>> {
-  let request = initial;
-  const calls: CallTrace[] = [];
+for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+  const response = await claude.createMessage(request);
+  calls.push({ request, response });
+  if (response.stop_reason !== "tool_use") return finalize(response, calls);
 
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    const response = await claude.createMessage(request);
-    calls.push({ request, response });
-
-    if (response.stop_reason !== "tool_use") {
-      return {
-        ...buildEnvelope(extractText(response), request, response),
-        calls,
-      };
-    }
-
-    const requested = response.content.filter(isToolUseBlock);
-    if (requested.length === 0) {
-      throw new InvalidModelResponse("tool_use stop without a tool_use block");
-    }
-
-    const results = await executeToolBatch(requested);
-    request = {
-      ...request,
-      messages: [
-        ...request.messages,
-        { role: "assistant", content: response.content },
-        { role: "user", content: results },
-      ],
-    };
-  }
-
-  throw new ToolLoopLimitExceeded(MAX_TOOL_ROUNDS);
+  const results = await executeToolBatch(response.content.filter(isToolUseBlock));
+  request = { ...request, messages: [...request.messages, assistantTurn(response), userTurn(results)] };
 }
+throw new ToolLoopLimitExceeded(MAX_TOOL_ROUNDS);
 ```
 
-The request is reassigned rather than mutated so every trace entry remains an accurate snapshot. A production loop also needs caps on rounds, total tool calls, wall-clock time, and possibly spend. Reaching a cap is a controlled incomplete outcome, not permission to continue indefinitely.
+Full implementation in [Appendix C](#appendix-c-reference-implementations). The request is reassigned rather than mutated so every trace entry remains an accurate snapshot. A production loop also needs caps on rounds, total tool calls, wall-clock time, and possibly spend. Reaching a cap is a controlled incomplete outcome, not permission to continue indefinitely.
 
 Write the cap into the loop's condition from the start. An unbounded `for (;;)` that plans to "add a cap later" is a common and easy mistake, and a stuck or adversarial tool loop will find that gap in production long before a code reviewer does.
 
@@ -895,11 +830,9 @@ Purpose: Illustrate the separation between user-safe progress, backend execution
 
 ### Test and operate custom tools
 
-Unit tests should cover tool definitions, registry dispatch, unknown names, argument validation, authorization, success, recoverable `is_error`, transport failure, multiple calls, immutable traces, stop-reason branches, and every cap. Verify that all results appear in one user message with the correct identifiers.
+Beyond Chapter 13's layered strategy, this feature's distinctive cases are registry dispatch and unknown-name rejection, the recoverable-`is_error`-versus-transport-failure distinction, every cap, and that all results land in one user message with the correct identifiers. Deterministic browser trajectories should cover no-tool, one tool, parallel tools, self-correction after a failed result, and cap exhaustion.
 
-Integration tests should intercept both Claude and external-service traffic, proving the exact assistant/tool-result history across multiple rounds. Frontend tests should render ordered activity and terminal failure without exposing sensitive arguments. Browser tests should use deterministic trajectories: no-tool answer, one successful tool, parallel tools, self-correction after a failed result, and cap exhaustion.
-
-In production, record tool name, duration, outcome class, round number, and correlation identifiers—not unrestricted arguments or results. Alert on rising error rates, repeated calls with the same arguments, cap exhaustion, and unexpected use of consequential tools.
+In production, record tool name, duration, outcome, and round (never unrestricted arguments or results), and alert on rising error rates, repeated identical calls, and unexpected use of consequential tools.
 
 <!-- PAGEBREAK -->
 
@@ -913,15 +846,14 @@ Anthropic's [Building Effective AI Agents](https://www.anthropic.com/engineering
 
 ### Recognize the four reusable patterns
 
-**Routing** classifies an input and selects a specialized path. It works when categories are stable enough to define and different categories benefit from different prompts, models, data, or policies.
+| Pattern | What it does | Works when |
+|---|---|---|
+| Routing | Classifies input, selects a specialized path | Categories are stable and prompts/models/data differ by category |
+| Chaining | Feeds one stage's output into the next | A task decomposes into ordered transformations (extract, draft, refine) |
+| Parallelization | Runs independent work concurrently, aggregates it | Work is genuinely independent, within combined rate limits |
+| Evaluator-optimizer | Alternates generation and review until a threshold/cap | Success criteria are clear and feedback can improve the next attempt |
 
-**Chaining** feeds one stage into the next. It works when a task decomposes into ordered transformations, such as extract, draft, then refine. Each boundary creates an opportunity to validate or persist an intermediate artifact.
-
-**Parallelization** runs independent work concurrently and aggregates it. It works for independent retrieval, several evaluation criteria, or multiple candidate solutions. It does not help when calls share a hidden dependency or when their combined rate exceeds service limits.
-
-**Evaluator-optimizer** alternates generation and review until a quality threshold or cap is reached. It works when success criteria can be stated clearly and evaluator feedback can improve the next attempt.
-
-These patterns compose. A support workflow might route a request once, draft and refine a response in sequence, grade tone and policy in parallel, and retry the drafting chain only when a grader fails.
+Chaining creates a validation or persistence opportunity at each stage boundary; parallelization stops helping the moment calls share a hidden dependency. These patterns compose: a support workflow might route once, draft and refine in sequence, grade tone and policy in parallel, and retry the drafting chain only when a grader fails.
 
 ### Model the workflow as typed stages
 
@@ -1015,30 +947,16 @@ Collect traces in deterministic logical order even when promises resolve in a di
 ```ts
 const MAX_ATTEMPTS = 3;
 
-async function runWorkflow(input: SupportRequest): Promise<WorkflowResult> {
-  const routed = await route(input);
-  let feedback: string[] = [];
-  let latest!: DraftCandidate;
-  let grades: Grade[] = [];
-
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    latest = await draftAndRefine(routed, feedback, attempt);
-    grades = await grade(latest);
-
-    if (grades.every((item) => item.passed)) {
-      return resultOf(routed, latest, grades, true);
-    }
-
-    feedback = grades
-      .filter((item) => !item.passed)
-      .map((item) => `${item.criterion}: ${item.feedback}`);
-  }
-
-  return resultOf(routed, latest, grades, false);
+for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+  latest = await draftAndRefine(routed, feedback, attempt);
+  grades = await grade(latest);
+  if (grades.every((item) => item.passed)) return resultOf(routed, latest, grades, true);
+  feedback = grades.filter((item) => !item.passed).map((item) => `${item.criterion}: ${item.feedback}`);
 }
+return resultOf(routed, latest, grades, false);
 ```
 
-A cap is part of the product contract. The final result must say whether it passed, how many attempts ran, and what feedback remains. Do not label the last attempt successful merely because the loop ended.
+Full implementation in [Appendix C](#appendix-c-reference-implementations). A cap is part of the product contract. The final result must say whether it passed, how many attempts ran, and what feedback remains. Do not label the last attempt successful merely because the loop ended.
 
 Evaluator prompts need a specific rubric and structured response. Watch for evaluators that reward superficial keyword changes, disagree with human judgment, or approve their own preferred writing style rather than the product requirement. Calibrate against a human-reviewed set and track pass rates by criterion.
 
@@ -1082,11 +1000,9 @@ For long workflows, consider a durable job model rather than holding one request
 
 ### Test the graph, not only each prompt
 
-Unit-test every stage with deterministic model results, then test orchestration trajectories: each route, first-pass success, one feedback retry, conflicting graders, branch failure, retry exhaustion, and call ordering. Assert exact call counts so an accidental extra model call cannot silently change cost and latency.
+Beyond Chapter 13's layered strategy, test the graph itself: every route, first-pass success, one feedback retry, conflicting graders, branch failure, retry exhaustion, and exact call counts — an accidental extra model call should never pass silently. The frontend must distinguish “completed and passed,” “completed at cap,” and “failed.”
 
-Integration tests should verify schemas, cache boundaries, model profiles, and external clients at the wire boundary. Frontend tests should render stage progress and clearly distinguish “completed and passed,” “completed at cap,” and “failed.” Browser tests need only a small set of deterministic representative trajectories.
-
-In production, record latency and usage per stage and for the whole workflow, route distribution, attempts, criterion pass rates, cache behavior, and terminal status. Compare those metrics with user outcomes. A workflow that passes its model evaluator but produces low user acceptance needs a better rubric or design, not simply more retries.
+In production, compare per-stage metrics (route distribution, attempts, pass rates, cache behavior) against user outcomes: a workflow that passes its own evaluator but produces low user acceptance needs a better rubric or design, not more retries.
 
 ### Workflow design checklist
 
@@ -1245,11 +1161,11 @@ A stable Files API identifier helps keep request bytes and cache prefixes stable
 
 ### Document failure modes and testing
 
-Handle unsupported type, oversized or encrypted file, failed upload, stale file identifier, provider deletion, extraction failure, session expiry, cache miss, uncitable scan, and a response without usable text. A citation-free answer can be either a valid outcome or a product failure depending on the promise made to users; encode that decision. An oversized document should not be silently truncated to fit a limit — cutting pages invalidates the exact page numbers its citations point to. Warn instead, sized to the real cost and latency impact, and let the user proceed informed (see Chapter 2's "Bound content whose size you don't control"). Set that threshold from an actual worst-case estimate rather than a round number: processing cost scales with what a document contains, not only its byte count, and a text-heavy file can differ several-fold in real cost from a dense, image-heavy one of the same page count. Estimate the worst realistic case your product accepts and price the warning threshold from that, so the number means something concrete instead of being guessed.
+Handle a stale file identifier, provider-side deletion, a cache miss, and a scanned document with no extractable text to cite. A citation-free answer can be either a valid outcome or a product failure depending on the promise made to users; encode that decision. An oversized document should not be silently truncated to fit a limit — cutting pages invalidates the exact page numbers its citations point to. Warn instead, sized to the real cost and latency impact, and let the user proceed informed (see Chapter 2's "Bound content whose size you don't control"). Set that threshold from an actual worst-case estimate rather than a round number: processing cost scales with what a document contains, not only its byte count, and a text-heavy file can differ several-fold in real cost from a dense, image-heavy one of the same page count. Estimate the worst realistic case your product accepts and price the warning threshold from that, so the number means something concrete instead of being guessed.
 
-Unit tests should cover inline and uploaded sources, upload reuse, document-before-question ordering, citation enablement and normalization, history sanitization, cache-control placement, first versus follow-up requests, delivery-mode changes, session authorization, and expiration. Integration tests should intercept file upload and Messages calls. Frontend tests should render multiple sources and citation types accessibly. Browser tests should ask at least one follow-up to prove session and cache behavior rather than testing only the initial upload.
+Beyond Chapter 13's layered strategy, this feature's distinctive cases are citation enablement/normalization, history sanitization (the strip-and-rebuild transform above), cache-control placement, and delivery-mode changes across first versus follow-up requests — and at least one browser test needs a real follow-up turn, not just the initial upload, to prove session and cache behavior.
 
-Production telemetry should include source type, page/byte count, upload reuse, cache read/write tokens, citation count, session age, and failure class while excluding document contents by default.
+Production telemetry should include source type, upload reuse, cache read/write tokens, citation count, and session age, while excluding document contents by default.
 
 <!-- PAGEBREAK -->
 
@@ -1371,11 +1287,11 @@ Never make a generated chart the only accessible representation of its findings.
 
 ### Failure modes and verification
 
-Handle source-data failure, upload failure, unsupported tool/model combination, container timeout, command failure, missing result pair, output too large, failed download, unsafe artifact, and partial success where analysis text exists but artifact creation failed. Decide whether partial artifacts are retained and make that status visible.
+Handle a missing result pair (a block-pairing failure), an unsafe generated artifact, and partial success where analysis text exists but artifact creation failed. Decide whether partial artifacts are retained and make that status visible.
 
-Unit tests should verify dataset minimization and serialization, upload and `container_upload` shape, tool selection, block pairing, stdout/stderr mapping, file extraction, size/type policy, download authorization, and optional skill attachment. Integration tests should intercept Files and Messages endpoints and include a realistic generated-file round trip. Frontend tests should cover no-code, failed-code, multiple-command, image-preview, and generic-download states. Browser tests should use deterministic fixtures rather than execute arbitrary live code.
+Beyond Chapter 13's layered strategy, this feature's distinctive cases are `container_upload` shape and dataset minimization, stdout/stderr/return-code mapping and block pairing by identifier, download authorization for generated artifacts, and optional skill attachment — with a realistic generated-file round trip in integration tests and deterministic fixtures, never live code execution, in browser tests.
 
-Production telemetry should track upload size, tool version, container duration, command count, return codes, artifact count/bytes, download outcomes, and skill version—without logging dataset contents or generated files by default.
+Production telemetry should track container duration, command count, return codes, artifact count/bytes, and skill version, without logging dataset contents or generated files by default.
 
 <!-- PAGEBREAK -->
 
@@ -1517,9 +1433,9 @@ When streaming, forward user-meaningful search/MCP activity without exposing cre
 
 ### Test and operate research connectors
 
-Unit tests should assert the selected tool versions, search caps, domain policy, MCP URL/name mapping, allowlisted tools, secret exclusion, structured schema, activity counters, result errors, pause handling, and no unnecessary custom-tool loop. Integration tests should intercept the Messages request and use fixtures containing successful and failed web/MCP result blocks. Frontend tests should render safe external links, activity counts, partial-result warnings, and no-result states.
+Beyond Chapter 13's layered strategy, this feature's distinctive case is the one this chapter opened with: fixtures need a successful response with an embedded tool-result error, not just transport failures, since that's the only realistic way to exercise the actual failure mode. Also verify domain/allowlist policy, secret exclusion, activity counters, and that server-executed activity never spawns an unnecessary custom-tool loop.
 
-Production telemetry should include tool version, searches and MCP calls, domains contacted when available, result-error types, pause continuations, latency, and usage. Monitor remote MCP schema changes and tool additions as dependency changes, not ordinary runtime noise.
+Production telemetry should include tool version, search/MCP call counts, result-error types, and latency; treat remote MCP schema or tool changes as dependency changes, not runtime noise.
 
 <!-- PAGEBREAK -->
 
@@ -1615,11 +1531,11 @@ Treat visible text in images as untrusted input. A screenshot can contain prompt
 
 ### Vision failure modes and testing
 
-Handle unsupported format, corrupt decode, animated input, excessive dimensions or bytes, too many images, source-fetch timeout, fewer images than the workflow requires, provider rejection, answer without text, and partial upload cleanup. Do not silently compare fewer images than the user selected; that changes the task.
+Handle animated input and an answer with no text at all — and the case worth calling out specifically: never silently compare fewer images than the user actually selected, since that changes the task the user asked for.
 
-Unit tests should cover every source mode, content ordering and labels, media sniffing, dimension/count boundaries, preprocessing metadata, multi-image request shape, stop reasons, and streaming terminal behavior. Integration tests should intercept image fetch/upload and Messages calls without embedding sensitive fixtures. Frontend tests should render ordered thumbnails, preparation and analysis states, transformation warnings, accessible results, and failures. Browser tests should include one single-image task and one true comparison.
+Beyond Chapter 13's layered strategy, this feature's distinctive cases are the per-image and multi-image resolution/dimension boundaries, preprocessing metadata (the resize/downscale transforms actually applied), and at least one browser test that's a true multi-image comparison, not just a single-image task.
 
-Evaluate vision quality on a representative labeled set, including difficult lighting, blur, rotation, small text, and near-duplicate images. Production telemetry should record image count, dimensions, bytes, preparation transforms, model profile, latency, usage, and failure class while keeping image content out of ordinary logs.
+Evaluate quality on a labeled set including difficult lighting, blur, rotation, and small text. Production telemetry should record dimensions, preparation transforms, and model profile while keeping image content out of ordinary logs.
 
 <!-- PAGEBREAK -->
 
@@ -1700,24 +1616,8 @@ Parallel comparison reduces wall-clock time but changes load conditions. For rig
 A response can contain thinking-related blocks followed by text blocks. Parse by type.
 
 ```ts
-function summarizeRun(response: ClaudeMessage): RunResult {
-  const answer = response.content
-    .filter(isTextBlock)
-    .map((block) => block.text)
-    .join("");
-
-  const thinking = response.content
-    .filter(isThinkingBlock)
-    .map((block) => block.thinking)
-    .join("\n\n") || null;
-
-  return {
-    answer,
-    thinking,
-    usage: mapUsage(response.usage),
-    stopReason: response.stop_reason,
-  };
-}
+const answer = response.content.filter(isTextBlock).map((b) => b.text).join("");
+const thinking = response.content.filter(isThinkingBlock).map((b) => b.thinking).join("\n\n") || null;
 ```
 
 Display configuration matters. An omitted setting can allow thinking while returning no readable thinking text; a summarized setting returns a presentation suitable for inspection where supported. Treat returned thinking as model output, not a complete audit trail or proof that the final answer is correct. Do not expose it automatically to end users: it can confuse, disclose sensitive prompt context, or create a false sense of certainty.
@@ -1765,11 +1665,11 @@ Avoid declaring a winner from latency or token count alone. Show the quality/cos
 
 ### Reasoning failure modes and testing
 
-Handle unsupported mode/model combinations, invalid manual budgets, insufficient output budget, thinking omitted by configuration, redacted blocks, modified-history rejection, truncation, stream reconstruction, and one failed run in a comparison batch. Decide whether a partial comparison remains useful or the whole benchmark fails.
+Handle thinking omitted by configuration, redacted blocks, a modified-history rejection (the API verifies these blocks come back unchanged), and one failed run in a comparison batch. Decide whether a partial comparison remains useful or the whole benchmark fails.
 
-Unit tests should assert exact profile-to-request mapping, model held constant, block extraction, unchanged thinking-block replay, usage mapping, and stop-reason handling. Integration tests should include realistic thinking and redacted-thinking fixtures. Frontend tests should distinguish disabled, omitted, summarized, failed, and truncated runs. Benchmark tests should use a frozen evaluation set and report repeatable aggregate statistics rather than assert exact model prose.
+Beyond Chapter 13's layered strategy, this feature's distinctive case is verifying thinking blocks replay completely unchanged through a tool loop, plus realistic redacted-thinking fixtures and the disabled/omitted/summarized/truncated frontend states. Benchmark tests need a frozen evaluation set reporting repeatable aggregate statistics, never an assertion on exact model prose.
 
-In production, monitor reasoning profile, task class, latency, usage, tool calls, quality proxy, and user outcome. Re-evaluate profiles when models or defaults change; yesterday's high-effort advantage may become tomorrow's unnecessary cost.
+In production, re-evaluate reasoning profiles whenever models or defaults change — yesterday's high-effort advantage can become tomorrow's unnecessary cost.
 
 <!-- PAGEBREAK -->
 
@@ -1831,6 +1731,8 @@ Tool results are observations, not instructions. Keep external and repository co
 
 The loop resembles custom tool use, but its purpose is open-ended progress toward a goal. Bound every resource that can grow.
 
+The loop has the same shape as Chapter 5's tool-use loop — reassign the request each round, push every call onto the trace, execute requested tools — with one addition: a budget check across every resource that can grow, evaluated before each call rather than after.
+
 ```ts
 const limits = {
   maxModelCalls: 12,
@@ -1839,37 +1741,25 @@ const limits = {
   maxEstimatedCostUsd: 1.00,
 };
 
-async function runAgent(initial: ClaudeRequest): Promise<AgentResult> {
-  let request = initial;
-  const calls: AgentCall[] = [];
-  const activity: ToolActivity[] = [];
-  const startedAt = Date.now();
-  let customToolCalls = 0;
+// request, calls, activity, startedAt, customToolCalls carry state across rounds, as in Chapter 5.
+for (let modelCall = 1; modelCall <= limits.maxModelCalls; modelCall += 1) {
+  assertWithinTimeAndCost(startedAt, calls, limits);
+  const response = await claude.createMessage(request);
+  calls.push({ modelCall, request, response });
 
-  for (let modelCall = 1; modelCall <= limits.maxModelCalls; modelCall += 1) {
-    assertWithinTimeAndCost(startedAt, calls, limits);
-    const response = await claude.createMessage(request);
-    calls.push({ modelCall, request, response });
-
-    if (response.stop_reason !== "tool_use") {
-      return finalizeAgent(response, calls, activity, { limitReached: null });
-    }
-
-    const requested = response.content.filter(isClientToolUse);
-    if (customToolCalls + requested.length > limits.maxCustomToolCalls) {
-      return finalizeAgent(response, calls, activity, {
-        limitReached: "custom_tool_calls",
-      });
-    }
-
-    const results = await executeAndRecord(requested, activity);
-    customToolCalls += requested.length;
-    request = appendUnmodifiedAssistantAndResults(request, response, results);
+  if (response.stop_reason !== "tool_use") {
+    return finalizeAgent(response, calls, activity, { limitReached: null });
   }
 
-  return finalizeAgent(lastResponse(calls), calls, activity, {
-    limitReached: "model_calls",
-  });
+  const requested = response.content.filter(isClientToolUse);
+  if (customToolCalls + requested.length > limits.maxCustomToolCalls) {
+    return finalizeAgent(response, calls, activity, {
+      limitReached: "custom_tool_calls",
+    });
+  }
+
+  // ...execute requested tools and reassign request, exactly as in Chapter 5.
+  customToolCalls += requested.length;
 }
 ```
 
@@ -1938,11 +1828,9 @@ Long runs are better modeled as jobs with persisted checkpoints, cancellation, a
 
 ### Test trajectories and adversarial behavior
 
-Unit tests should cover no-tool completion, each tool, several tools in one response, recoverable errors, unknown tools, mixed server/client activity, pause continuation, every stop reason, each budget, cancellation, repeated-no-progress detection, approval, immutable traces, and final-answer extraction.
+Beyond Chapter 13's layered strategy, this feature's distinctive cases are every budget (calls, tool executions, time, cost), repeated-no-progress detection, approval pauses, and mixed server/client activity — with deterministic fixtures throughout, since a live model won't choose the same path twice in CI.
 
-Integration tests should intercept multi-call Messages trajectories and real external-client boundaries. Browser tests should use deterministic fixtures for a successful investigation, cap exhaustion, and approval pause. Never rely on a live model to choose the exact same path in CI.
-
-Evaluation must measure outcome quality, evidence coverage, unnecessary calls, repeated actions, unsafe attempts, latency, cost, and human intervention. Include adversarial tool content, misleading files, missing data, dependency errors, and goals that should be refused. A capable happy path is insufficient evidence for production autonomy.
+Evaluation must measure outcome quality, evidence coverage, unnecessary or repeated calls, and unsafe attempts against adversarial tool content and goals that should be refused. A capable happy path is not evidence of production autonomy.
 
 ### Operational checklist for an agent
 
@@ -2008,11 +1896,7 @@ A fake is not evidence that the real adapter serializes correctly. That belongs 
 
 ### Keep automated tests credential-free
 
-No unit, integration, frontend, or browser test should require a real API key. Use placeholders only where startup configuration validates that a variable exists; ensure no real network route can consume them. CI secrets should not be needed for deterministic application tests.
-
-Real-model evaluations are a separate, explicitly invoked workload with their own credential, dataset, budget, retention policy, and result store. Never make a pull request's correctness depend on nondeterministic prose from a live model.
-
-An interactive fake/demo mode is also separate from test injection. Demo mode lets a running application behave plausibly without credentials. Tests bind fakes directly and script exact trajectories. Do not multiply every feature test across “fake mode” and “real mode” when shared binding and real-adapter tests already cover that switch.
+No unit, integration, frontend, or browser test should require a real API key — CI secrets shouldn't be needed for deterministic application tests. Real-model evaluations are a separate, explicitly invoked workload with their own credential and budget; never make a pull request's correctness depend on nondeterministic prose from a live model. An interactive fake/demo mode is a third, distinct thing from test injection — don't multiply every feature test across "fake mode" and "real mode" when shared binding and real-adapter tests already cover that switch.
 
 ### Test requests as product contracts
 
@@ -2080,11 +1964,7 @@ Anthropic's [API error guide](https://platform.claude.com/docs/en/api/errors) do
 
 ### Retry only operations that are safe to repeat
 
-The official SDK retries some connection, timeout, conflict, rate-limit, and server failures by default. Know the adapter's configured retry count before adding another retry layer; nested retries can multiply latency and load.
-
-Use exponential backoff with jitter for transient failures and honor `retry-after`. Anthropic's [rate-limit guide](https://platform.claude.com/docs/en/api/rate-limits) describes request/token limits, acceleration limits, and response headers (accessed 2026-07-27). Do not hard-code organization limits into feature code.
-
-Retry read-only calls more freely than side effects. Use idempotency keys, preconditions, and persisted operation state for custom tools that write. Never invisibly restart a response after partial text reached the user; the replacement can differ. Surface a retry action or resume from a documented checkpoint.
+Know the SDK's own default retry count — it already retries some connection, timeout, conflict, rate-limit, and server failures — before adding another retry layer; nested retries multiply latency and load. Honor `retry-after` and current [rate-limit](https://platform.claude.com/docs/en/api/rate-limits) headers rather than hard-coding organization limits (accessed 2026-07-27). Retry read-only calls more freely than side effects; use idempotency keys for tools that write, and never invisibly restart a response after partial text has already reached the user — surface a retry action instead.
 
 ### Detect a broken credential before it costs money
 
@@ -2092,25 +1972,11 @@ A missing or revoked credential should fail fast and visibly, not surface for th
 
 ### Test the frontend as a state machine
 
-For every AI interaction, cover:
-
-- initial and input-validation states;
-- queued/preparing state;
-- provisional streaming content;
-- tool or workflow activity;
-- canonical completion;
-- valid empty/partial result;
-- cancellation;
-- retriable and non-retriable errors; and
-- a second run that replaces or preserves prior results intentionally.
-
-Keep the result region mounted with shaped placeholders when removing it would cause layout jumps. Verify focus movement, live-region behavior, keyboard access to citations/downloads, color-independent status, and reduced-motion behavior. Tests should use semantic roles and product-facing labels rather than brittle DOM positions.
+On top of the ordinary loading/error/cancellation states any async UI needs, an AI feature adds its own: provisional streaming content, tool or workflow activity, valid empty/partial results, and a second run that intentionally replaces or preserves prior results. Keep the result region mounted with shaped placeholders to avoid layout jumps, and verify keyboard access to citations/downloads and color-independent status using semantic roles, not brittle DOM positions.
 
 ### Keep browser tests narrow and realistic
 
-Browser E2E catches failures that isolated component tests cannot: routing, proxying, real fetch streaming, content security headers, focus, downloads, and integration between shared components. Run it against a fully started deterministic stack and assert the environment is fake before the suite begins.
-
-Give each major feature one representative happy path plus only browser-specific critical failures. Do not repeat every backend edge case through clicks. When a DOM change affects selectors or structure, inspect the browser spec as well as the component test; they are different consumers of the markup.
+Browser E2E catches what component tests can't — real fetch streaming, proxying, downloads — so run it against a fully started deterministic stack, asserting the environment is fake before the suite begins. Give each feature one representative happy path plus only browser-specific critical failures; don't repeat every backend edge case through clicks.
 
 ### Add semantic evaluations
 
@@ -2139,32 +2005,13 @@ Run dependency, static-analysis, and secret-scanning tools alongside application
 
 ### Verify builds and production topology
 
-A passing unit suite does not prove compilation, lint, assets, or deployment packaging. Run the actual type check/build, lint, backend integration suite, frontend compilation, and browser suite used by CI. Verify non-code runtime assets such as Skill files and templates exist in the built artifact.
-
-Test the production path for proxy buffering, SSE timeouts, maximum request sizes, body parsing, download headers, cancellation propagation, and graceful shutdown. Load-test representative token and concurrency profiles with deterministic substitutes first; use carefully budgeted real-model tests only for provider-facing behavior.
+A passing unit suite doesn't prove compilation, lint, or packaging — run the actual build/lint/CI suite, and verify non-code runtime assets like Skill files exist in the built artifact. Test the production path specifically for SSE timeouts, proxy buffering, and streaming cancellation, and load-test with deterministic substitutes before spending budget on real-model load tests.
 
 ### Observe and roll out safely
 
 Correlate one user turn across model calls, tools, data sources, and streaming. Record model/profile, prompt and schema versions, stop reason, usage, cache behavior, latency by stage, retry count, tool outcomes, cap status, and provider request IDs. Keep prompt/content capture off by default or subject to explicit redaction, consent, access, and retention controls.
 
-Release behind a flag or limited cohort. Define rollback and degradation: disable a risky tool, switch to a simpler workflow, return a non-AI path, or queue work for later. Monitor quality signals alongside latency, errors, and cost. A technically healthy endpoint can still produce a poor product outcome.
-
-### Verification checklist for every AI feature
-
-Before calling a feature ready, confirm:
-
-- application contracts and stop reasons are explicit;
-- unit tests cover request decisions and all orchestration branches;
-- integration tests prove the real SDK wire shape without network access;
-- frontend tests cover the full interaction state machine;
-- browser tests cover the critical real transport journey;
-- no automated suite uses a real credential;
-- deterministic fakes fail on unscripted calls;
-- retries, timeouts, cancellation, and idempotency are defined;
-- semantic evaluations meet predeclared quality and safety thresholds;
-- security, privacy, accessibility, cost, and latency have owners;
-- observability excludes sensitive content by default; and
-- rollout, rollback, and dependency-change procedures exist.
+Release behind a flag or limited cohort. Define rollback and degradation: disable a risky tool, switch to a simpler workflow, return a non-AI path, or queue work for later. Monitor quality signals alongside latency, errors, and cost. A technically healthy endpoint can still produce a poor product outcome. [Appendix B](#appendix-b-production-readiness-checklist) turns the practices in this chapter into a starting checklist.
 
 <!-- PAGEBREAK -->
 
@@ -2311,9 +2158,69 @@ The best next experiment is rarely "make it more agentic." It is usually to iden
 
 <!-- PAGEBREAK -->
 
-## Production Readiness Checklist
+## References
 
-Use this checklist as a release gate. Assign an owner and evidence link for each applicable item; “not applicable” should include a reason.
+The guide prioritizes official Anthropic sources for API behavior and marks volatile claims with access dates. All links below were accessed 2026-07-27.
+
+- [Messages API reference](https://platform.claude.com/docs/en/api/messages/create) — canonical request, content, system-prompt, and stateless conversation contract.
+- [Streaming Messages](https://platform.claude.com/docs/en/build-with-claude/streaming) — SSE event sequence, deltas, ping/error events, and accumulation guidance.
+- [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — JSON outputs, strict tools, schema limitations, invalid-output cases, and compatibility.
+- [Stop reasons and fallback](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons) — meanings and continuation behavior for completion, truncation, tool use, pause, and refusal.
+- [Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls) — client-tool lifecycle, result ordering, identifiers, and `is_error` semantics.
+- [Parallel tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use) — execution choices and the required grouping of parallel results.
+- [Server tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/server-tools) — hosted execution, mixed client/server turns, continuation, and domain controls.
+- [Files API](https://platform.claude.com/docs/en/build-with-claude/files) — file upload, reuse, container inputs, generated-file download, deletion, and retention considerations.
+- [PDF support](https://platform.claude.com/docs/en/build-with-claude/pdf-support) — supported PDF delivery, limits, visual processing, and optimization guidance.
+- [Citations](https://platform.claude.com/docs/en/build-with-claude/citations) — citable document types, location formats, token behavior, and feature compatibility.
+- [Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — cache boundaries, TTLs, eligibility, invalidation, and usage reporting.
+- [Code execution](https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool) — sandbox execution, uploaded inputs, result blocks, and generated files.
+- [Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) — prebuilt and custom Skills, container attachment, and current prerequisites.
+- [Web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool) — search versions, use caps, domain filtering, localization, and result errors.
+- [MCP connector](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector) — remote server configuration, toolsets, authorization, MCP result behavior, and the connector's current release status and platform availability.
+- [Vision](https://platform.claude.com/docs/en/build-with-claude/vision) — image sources, ordering, formats, limits, resolution tiers, visual-token cost, and known limitations.
+- [Coordinates and bounding boxes](https://platform.claude.com/docs/en/build-with-claude/vision-coordinates) — how images are resized and padded, and how to map returned coordinates back to an original.
+- [Extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) — model-specific thinking modes, blocks, budgets, tool-use continuity, and compatibility.
+- [Effort](https://platform.claude.com/docs/en/build-with-claude/effort) — response-wide effort controls and their interaction with adaptive thinking.
+- [Tool Runner](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner) — SDK-managed tool loops, error wrapping, iteration caps, and customization points.
+- [API errors](https://platform.claude.com/docs/en/api/errors) — HTTP errors, typed SDK exceptions, retry behavior, request identifiers, and payload limits.
+- [Rate limits](https://platform.claude.com/docs/en/api/rate-limits) — request/token limit semantics, `retry-after`, cache-aware accounting, and monitoring headers.
+- [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) — architectural distinction between workflows and agents and guidance on composing simple patterns.
+
+Model names, tool versions, limits, availability, beta headers, pricing, and retention can change. Recheck the relevant linked page during implementation and again before publication or release.
+
+<!-- PAGEBREAK -->
+
+## Appendix A: Portable Request and Response Examples
+
+Use these shapes as contract examples, not copy-paste production configuration. Select a current model and confirm supported parameters in the official documentation.
+
+```json
+{
+  "model": "<configured-model-id>",
+  "max_tokens": 512,
+  "system": "Answer from the supplied context. State when evidence is insufficient.",
+  "messages": [{ "role": "user", "content": "Summarize the refund policy." }]
+}
+```
+
+Preserve the response as typed content blocks plus metadata rather than flattening it immediately:
+
+```json
+{
+  "id": "msg_...",
+  "content": [{ "type": "text", "text": "..." }],
+  "stop_reason": "end_turn",
+  "usage": { "input_tokens": 120, "output_tokens": 44 }
+}
+```
+
+For structured output, define the schema at the API boundary and validate the parsed value again before domain use. For client tools, return every `tool_result` with the matching `tool_use_id` in the next user message; group parallel results together.
+
+<!-- PAGEBREAK -->
+
+## Appendix B: Production Readiness Checklist
+
+This is a starting list, not a validated release process drawn from operating every one of these patterns at scale — treat each item as a prompt to make a deliberate decision for your own product and risk tolerance, not a mandate to satisfy. Some items won't apply to a given feature; that's a legitimate answer, not a gap.
 
 ### Product contract
 
@@ -2420,102 +2327,103 @@ Use this checklist as a release gate. Assign an owner and evidence link for each
 
 <!-- PAGEBREAK -->
 
-## References
+## Appendix C: Reference Implementations
 
-The guide prioritizes official Anthropic sources for API behavior and marks volatile claims with access dates. All links below were accessed 2026-07-27.
+Each chapter shows a shortened version of these to keep its focus on the lesson, not the boilerplate. The full versions are here for anyone who wants a closer look at how the pieces fit together.
 
-- [Messages API reference](https://platform.claude.com/docs/en/api/messages/create) — canonical request, content, system-prompt, and stateless conversation contract.
-- [Streaming Messages](https://platform.claude.com/docs/en/build-with-claude/streaming) — SSE event sequence, deltas, ping/error events, and accumulation guidance.
-- [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs) — JSON outputs, strict tools, schema limitations, invalid-output cases, and compatibility.
-- [Stop reasons and fallback](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons) — meanings and continuation behavior for completion, truncation, tool use, pause, and refusal.
-- [Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls) — client-tool lifecycle, result ordering, identifiers, and `is_error` semantics.
-- [Parallel tool use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/parallel-tool-use) — execution choices and the required grouping of parallel results.
-- [Server tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/server-tools) — hosted execution, mixed client/server turns, continuation, and domain controls.
-- [Files API](https://platform.claude.com/docs/en/build-with-claude/files) — file upload, reuse, container inputs, generated-file download, deletion, and retention considerations.
-- [PDF support](https://platform.claude.com/docs/en/build-with-claude/pdf-support) — supported PDF delivery, limits, visual processing, and optimization guidance.
-- [Citations](https://platform.claude.com/docs/en/build-with-claude/citations) — citable document types, location formats, token behavior, and feature compatibility.
-- [Prompt caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) — cache boundaries, TTLs, eligibility, invalidation, and usage reporting.
-- [Code execution](https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool) — sandbox execution, uploaded inputs, result blocks, and generated files.
-- [Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) — prebuilt and custom Skills, container attachment, and current prerequisites.
-- [Web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool) — search versions, use caps, domain filtering, localization, and result errors.
-- [MCP connector](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector) — remote server configuration, toolsets, authorization, MCP result behavior, and the connector's current release status and platform availability.
-- [Vision](https://platform.claude.com/docs/en/build-with-claude/vision) — image sources, ordering, formats, limits, resolution tiers, visual-token cost, and known limitations.
-- [Coordinates and bounding boxes](https://platform.claude.com/docs/en/build-with-claude/vision-coordinates) — how images are resized and padded, and how to map returned coordinates back to an original.
-- [Extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) — model-specific thinking modes, blocks, budgets, tool-use continuity, and compatibility.
-- [Effort](https://platform.claude.com/docs/en/build-with-claude/effort) — response-wide effort controls and their interaction with adaptive thinking.
-- [Tool Runner](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner) — SDK-managed tool loops, error wrapping, iteration caps, and customization points.
-- [API errors](https://platform.claude.com/docs/en/api/errors) — HTTP errors, typed SDK exceptions, retry behavior, request identifiers, and payload limits.
-- [Rate limits](https://platform.claude.com/docs/en/api/rate-limits) — request/token limit semantics, `retry-after`, cache-aware accounting, and monitoring headers.
-- [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) — architectural distinction between workflows and agents and guidance on composing simple patterns.
+### The streamed turn (Chapter 3)
 
-Model names, tool versions, limits, availability, beta headers, pricing, and retention can change. Recheck the relevant linked page during implementation and again before publication or release.
+```ts
+async function streamTurn(input: SendTurnInput, writer: EventWriter) {
+  const request = await buildRequest(input);
+  const accumulator = new MessageAccumulator();
 
-<!-- PAGEBREAK -->
+  try {
+    for await (const event of claude.streamMessage(request)) {
+      accumulator.accept(event);
+      if (event.type === "content_block_delta" &&
+          event.delta.type === "text_delta") {
+        writer.send({ type: "text_delta", text: event.delta.text });
+      }
+      // Ignore unknown events for rendering, but retain them in an authorized trace.
+    }
 
-## Appendix A: Portable Request and Response Examples
-
-Use these shapes as contract examples, not copy-paste production configuration. Select a current model and confirm supported parameters in the official documentation.
-
-```json
-{
-  "model": "<configured-model-id>",
-  "max_tokens": 512,
-  "system": "Answer from the supplied context. State when evidence is insufficient.",
-  "messages": [{ "role": "user", "content": "Summarize the refund policy." }]
+    const response = accumulator.finalMessage();
+    await conversations.appendCompletedTurn(input.conversationId, input.text, response);
+    writer.send({
+      type: "turn_complete",
+      envelope: buildEnvelope(extractText(response), request, response),
+    });
+  } catch (error) {
+    writer.send({ type: "turn_error", error: toPublicError(error) });
+  }
 }
 ```
 
-Preserve the response as typed content blocks plus metadata rather than flattening it immediately:
+### The tool-use loop (Chapter 5)
 
-```json
-{
-  "id": "msg_...",
-  "content": [{ "type": "text", "text": "..." }],
-  "stop_reason": "end_turn",
-  "usage": { "input_tokens": 120, "output_tokens": 44 }
+```ts
+const MAX_TOOL_ROUNDS = 6;
+
+async function runToolTurn(initial: ClaudeRequest): Promise<TurnEnvelope<string>> {
+  let request = initial;
+  const calls: CallTrace[] = [];
+
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    const response = await claude.createMessage(request);
+    calls.push({ request, response });
+
+    if (response.stop_reason !== "tool_use") {
+      return {
+        ...buildEnvelope(extractText(response), request, response),
+        calls,
+      };
+    }
+
+    const requested = response.content.filter(isToolUseBlock);
+    if (requested.length === 0) {
+      throw new InvalidModelResponse("tool_use stop without a tool_use block");
+    }
+
+    const results = await executeToolBatch(requested);
+    request = {
+      ...request,
+      messages: [
+        ...request.messages,
+        { role: "assistant", content: response.content },
+        { role: "user", content: results },
+      ],
+    };
+  }
+
+  throw new ToolLoopLimitExceeded(MAX_TOOL_ROUNDS);
 }
 ```
 
-For structured output, define the schema at the API boundary and validate the parsed value again before domain use. For client tools, return every `tool_result` with the matching `tool_use_id` in the next user message; group parallel results together.
+### The evaluator-optimizer loop (Chapter 6)
 
-<!-- PAGEBREAK -->
+```ts
+const MAX_ATTEMPTS = 3;
 
-## Appendix B: Error Taxonomy
+async function runWorkflow(input: SupportRequest): Promise<WorkflowResult> {
+  const routed = await route(input);
+  let feedback: string[] = [];
+  let latest!: DraftCandidate;
+  let grades: Grade[] = [];
 
-| Error class | Detect at | Retry? | Public behavior |
-|---|---|---:|---|
-| Request validation | Backend boundary | No | Field-level correction |
-| Authentication/authorization | Backend and tool runtime | No | Reauthenticate or deny safely |
-| Provider rate limit/overload | API adapter | Yes, bounded | Preserve input; show delayed/retry state |
-| Recoverable tool result | Orchestrator | Model may adapt | Continue with visible degraded status |
-| Tool transport/runtime failure | Tool adapter | Only if safe | Fail or offer retry without duplicating effects |
-| Refusal | Stop reason/content | No automatic retry | Explain limitation and safe alternatives |
-| Output/context cap | Stop reason/budget | Only with explicit continuation policy | Mark partial result |
-| Stream interruption | Stream accumulator | Conditional | Retain confirmed content; expose retry |
-| Evaluation failure | Release/runtime quality gate | No blind retry | Quarantine, review, or fall back |
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    latest = await draftAndRefine(routed, feedback, attempt);
+    grades = await grade(latest);
 
-<!-- PAGEBREAK -->
+    if (grades.every((item) => item.passed)) {
+      return resultOf(routed, latest, grades, true);
+    }
 
-## Appendix C: Testing Matrix
+    feedback = grades
+      .filter((item) => !item.passed)
+      .map((item) => `${item.criterion}: ${item.feedback}`);
+  }
 
-| Capability | Unit | Integration | Frontend/browser | Evaluation |
-|---|---|---|---|---|
-| Messages | Request builder, parser | Adapter and error mapping | Submit/loading/result/error | Helpfulness and correctness |
-| Streaming | Event reducer, terminal rules | Arbitrary chunk boundaries | Cancel, reconnect, partial output | Final-output parity |
-| Structured output | Schema and domain validation | Invalid/refusal/capped cases | Render validation states | Field-level accuracy |
-| Client tools | Argument validation, loop caps | Tool-result round trips | Tool activity and approval | Tool choice and argument quality |
-| Workflows | Branch and state transitions | Checkpoint/recovery | Durable progress and retry | End-to-end task completion |
-| Agents | Budgets, permissions, termination | Multi-step trace replay | Inspect/cancel/approve | Success, safety, cost, and path quality |
-
-<!-- PAGEBREAK -->
-
-## Appendix D: Capability Comparison
-
-| Pattern | Who controls the next step? | Typical calls | Best fit | Principal risk |
-|---|---|---:|---|---|
-| Message | Application/user | 1 | Drafting, Q&A, transformation | Treating prose as a contract |
-| Structured output | Application | 1 | Typed extraction and decisions | Schema-valid but wrong values |
-| Client tool loop | Model within app policy | 2+ | Dynamic access to private actions/data | Excess authority or unbounded loops |
-| Server tool | Model/provider within configuration | 1+ | Hosted search or execution | Provider-side cost and data exposure |
-| Workflow | Application state machine | Fixed/bounded | Known multi-stage business process | Hidden branch and recovery complexity |
-| Agent | Model within strict budgets | Variable | Open-ended tasks with unknown paths | Unpredictable actions, cost, and latency |
+  return resultOf(routed, latest, grades, false);
+}
+```
