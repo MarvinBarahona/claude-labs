@@ -9,6 +9,7 @@
 | Version | Date | Changelog |
 |------------|--------------|:----------------------------------------------------------------------:|
 | 0.1 | 2026-07-27 | Initial draft |
+| 1.0 | 2026-07-31 | First publish: ten feature chapters plus architecture, testing, and figures |
 
 ## Abstract
 
