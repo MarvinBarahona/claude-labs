@@ -30,18 +30,23 @@ Reserve this for durable, transferable lessons — a pattern, tradeoff, failure 
 The guide has exactly one variable element — its numbered chapters — inside an otherwise fixed skeleton, always in this order:
 
 1. Title and subtitle
-2. Abstract
-3. Table of Contents
-4. Introduction
-5. Numbered chapters — the variable content
-6. References
-7. Appendices — only the ones actually needed, see below
+2. Revision History
+3. Abstract
+4. Table of Contents
+5. Introduction
+6. Numbered chapters — the variable content
+7. Putting It Together
+8. References
+9. Appendices — only the ones actually needed, see below
 
 Every item except the numbered chapters is a fixed section: it always exists, always in this position, and is never itself numbered.
 
+- **Revision History** is a single table of version, date, and changelog. `revise-guide` owns its contents — don't add a row here as part of a content edit.
+- **Putting It Together** closes the numbered chapters by composing them around one representative feature. It absorbed what used to be a Conclusion, so it is a fixed section rather than a chapter, and it carries no number.
+
 - **Abstract** is at most 3 paragraphs. Its job is to quickly orient a new reader on what the guide is and get them interested enough to keep reading — not to summarize every chapter.
 - **Introduction** is one section, kept short. It covers who the guide assumes you are, the central question, how the chapters are organized, scope and non-goals, suggested reading order and adoption path, and the two recurring terms (application contract, provider type). It does not carry a learning-objectives list, and there is no separate "How to Use This Guide" section — that content was folded in here.
-- **Table of Contents** is a plain bullet list (`-`), never an ordered list — fixed sections are never numbered, and a chapter or appendix that already carries a number in its own heading (e.g. "3. Structured Outputs...", "Appendix A: ...") keeps that number because it's in the heading text, not because the ToC re-numbers it. Entries start from Introduction — the Title, Abstract, and the Table of Contents itself aren't listed as entries in it.
+- **Table of Contents** is a plain bullet list (`-`), never an ordered list — fixed sections are never numbered, and a chapter or appendix that already carries a number in its own heading (e.g. "3. Structured Outputs...", "Appendix A: ...") keeps that number because it's in the heading text, not because the ToC re-numbers it. Entries start from Introduction — the Title, Revision History, Abstract, and the Table of Contents itself aren't listed as entries in it. Putting It Together and References are.
 
 ## Formatting conventions
 
