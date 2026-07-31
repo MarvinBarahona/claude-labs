@@ -16,7 +16,7 @@ Only run this once the edits for the revision are actually finished. If content 
 Work through all of these against `guide/guide.md` before touching version metadata or rendering anything:
 
 - No `SCREENSHOT TODO` is left unresolved — each either has a real image in place at its `assets/` path (see `update-guide`'s resolution step) or a deliberate decision to drop the figure and its dependent prose.
-- Internal links (table of contents, cross-references, glossary) and image paths still resolve.
+- Internal links (table of contents, cross-references) and image paths still resolve, and every `Chapter N` mention in running prose still names the chapter it means — a renumbering leaves those pointing at the wrong chapter while every link still resolves.
 - Every technical claim about model/API behavior or limits is accurate against current Anthropic documentation and dated where it may drift.
 - Code and request/response examples match the API shape described in the cited documentation.
 - No repo-specific names, slugs, routes, or file paths leaked in, except where the repo is explicitly and deliberately named as an optional case study.
@@ -50,7 +50,9 @@ Convert the Markdown to PDF with a containerized `pandoc` so no local install is
 
 Don't delete or regenerate anything under `guide/output/` mid-process. Every file created along the way (the Dockerfile, `pdf-header.tex`, the working copy, every `pagenum.*` intermediate, any other scratch file a render or a debugging step needs) stays in place until step 6's final cleanup — later steps re-read earlier output (page numbers from `pagenum.aux`, warnings from `pagenum.log`), and deleting early just forces redoing work that's already done. Create whatever temporary files rendering or troubleshooting actually needs; nothing here is limited to a fixed named set.
 
-**Fixed pagination convention.** The guide has a fixed front-matter layout and a "each major section starts on its own page" rule for everything after it: Title+Revision History+Abstract share page 1, and every other fixed section, chapter, Putting It Together, Production Readiness Checklist, References, and each Appendix gets its own page from there on — Table of Contents, Introduction, How to Use This Guide, and Glossary (which also serves as the topical index — see `update-guide`) each start fresh. This is encoded as an `<!-- PAGEBREAK -->` HTML comment on its own line immediately before every heading that should start fresh — invisible on GitHub (comments don't render), meaningless to a plain Markdown reader, but this step turns it into a real page break for the PDF. `update-guide` is responsible for keeping a marker in place before any new chapter/appendix-level heading; step 1 checks that.
+**Fixed pagination convention.** The guide has a fixed front-matter layout and a "each major section starts on its own page" rule for everything after it: Title+Revision History+Abstract share page 1, and every other `##` section gets its own page from there on — Table of Contents, Introduction, each numbered chapter, Putting It Together, References, and any Appendix. This is encoded as an `<!-- PAGEBREAK -->` HTML comment on its own line immediately before every heading that should start fresh — invisible on GitHub (comments don't render), meaningless to a plain Markdown reader, but this step turns it into a real page break for the PDF. `update-guide` is responsible for keeping a marker in place before any new chapter/appendix-level heading; step 1 checks that.
+
+This convention costs roughly half a page of trailing whitespace per section, which is the intended trade. If a page-count target is ever in play, note that removing or merging a section saves that whitespace on top of its own content — but never delete a `PAGEBREAK` to reclaim it while leaving the section in place.
 
 **Centering convention.** The title and subtitle are wrapped in a paired `<!-- CENTER -->` / `<!-- /CENTER -->` HTML comment — same idea as `PAGEBREAK`, invisible on GitHub, meaningless to a plain Markdown reader, resolved into real LaTeX centering only in this working copy at render time.
 
@@ -123,14 +125,14 @@ docker run --rm -v "${PWD}/guide:/data" -w /data claude-labs-guide-pdf \
 (On Windows Git Bash, prefix the command with `MSYS_NO_PATHCONV=1` — otherwise Git Bash rewrites the `/data` container path into a bogus host path before Docker ever sees it.)
 
 - Keeping the container's working directory at `/data` (mapped to `guide/` itself, not `guide/output/`) is required, not incidental — the guide's images use guide-relative paths like `assets/example.png`, and those only resolve if pandoc runs from `guide/`. The input (`output/source.md`) and output (`output/claude-api-features-<version>.pdf`) living one level down, as paths relative to that same working directory, doesn't disturb that resolution.
-- `-f markdown+gfm_auto_identifiers` is required, not optional: without it, pandoc generates its own heading identifiers instead of GitHub-style slugs, and every internal link the guide's own anchors depend on — table of contents, cross-references, topical index — silently breaks in the PDF (LaTeX logs it as `Hyper reference ... undefined`) even though the same anchors resolve fine when the file is read as plain Markdown. Confirm the render log has no `undefined` hyper reference warnings before moving on.
+- `-f markdown+gfm_auto_identifiers` is required, not optional: without it, pandoc generates its own heading identifiers instead of GitHub-style slugs, and every internal link the guide's own anchors depend on — table of contents, cross-references — silently breaks in the PDF (LaTeX logs it as `Hyper reference ... undefined`) even though the same anchors resolve fine when the file is read as plain Markdown. Confirm the render log has no `undefined` hyper reference warnings before moving on.
 - Do not pass `--toc`: the guide already has its own hand-authored `## Table of Contents` section, kept as ordinary Markdown so it also works on GitHub. Pandoc's `--toc` inserts a second, auto-generated table of contents (`\tableofcontents`) ahead of it, so the PDF ends up with two. The manual section is the only one that should exist in either output.
 - `-V colorlinks=true -V linkcolor=blue -V urlcolor=blue` makes every hyperlink — internal cross-references and external URLs alike — render in blue instead of unstyled black text, so a reader can tell something is a link before clicking it. `colorlinks=true` also removes hyperref's default behavior of drawing a colored box around links, which looks worse in print than plain colored text.
 - If a figure is missing or a `SCREENSHOT TODO` slipped through, pandoc will still render — that's what step 1 is for, not this step.
 
-## Step 4 — Add page numbers to the Table of Contents and Glossary (second pass, same working copy)
+## Step 4 — Add page numbers to the Table of Contents (second pass, same working copy)
 
-Both the Table of Contents (`## Table of Contents`) and the Glossary (`## Glossary`, which also serves as the topical index — see `update-guide`) link to a section anchor but have no page numbers in the source — Markdown has no concept of a page, and page numbers shift on nearly any edit (a paragraph added, an image resized, a page-break marker moved). Storing them in `guide/guide.md` would make them go stale the moment anything upstream of an entry changes, silently, with nothing to catch it. So they are never written to the tracked source — only injected into `guide/output/source.md`, the same working copy from step 3, on the fly, every time, for both sections in the same pass.
+The Table of Contents (`## Table of Contents`) links to a section anchor but has no page numbers in the source — Markdown has no concept of a page, and page numbers shift on nearly any edit (a paragraph added, an image resized, a page-break marker moved). Storing them in `guide/guide.md` would make them go stale the moment anything upstream of an entry changes, silently, with nothing to catch it. So they are never written to the tracked source — only injected into `guide/output/source.md`, the same working copy from step 3, on the fly, every time.
 
 Compile the intermediate LaTeX from that working copy — it already has the page breaks applied, which matters here: discovering page numbers from a version *without* the page breaks would give numbers that don't match the final, paginated PDF.
 
@@ -156,11 +158,11 @@ Run `pdflatex` twice — the first pass writes `output/pagenum.aux`, the second 
 grep -oE "newlabel\{<slug>\}\{\{[^}]*\}\{[0-9]+\}" guide/output/pagenum.aux | head -1
 ```
 
-pulls the exact page. Collect one of these per anchor used in `## Table of Contents` and per anchor used in `## Glossary` — both sections need this, separately, since they're different lists pointing at different (and sometimes overlapping) anchors.
+pulls the exact page. Collect one of these per anchor used in `## Table of Contents`.
 
-Edit `guide/output/source.md`'s `## Table of Contents` list and, separately, its `## Glossary` list, appending `— p. <N>` to each entry using the numbers just collected. Bound each edit to its own section (stop at the next `## ` heading) — the two sections can share an anchor (e.g. both link to a chapter), and each occurrence needs its own correct page number, not each other's. `guide/guide.md` itself is never edited by this step.
+Edit `guide/output/source.md`'s `## Table of Contents` list, appending `— p. <N>` to each entry using the numbers just collected. Bound the edit to that section (stop at the next `## ` heading). `guide/guide.md` itself is never edited by this step.
 
-Re-render the final PDF from the working copy with the exact step 3 render command (`output/source.md -o output/claude-api-features-<version>.pdf`), so the shipped PDF's ToC and index match the page numbers actually printed in it.
+Re-render the final PDF from the working copy with the exact step 3 render command (`output/source.md -o output/claude-api-features-<version>.pdf`), so the shipped PDF's ToC matches the page numbers actually printed in it.
 
 ## Step 5 — Inspect the rendered PDF
 
@@ -176,9 +178,9 @@ If this environment can't render PDF pages for visual inspection (no `pdftoppm`/
 
 Then open the final, index-updated `guide/output/claude-api-features-<version>.pdf` and check what only shows up once it's paginated:
 
-- Every heading in the fixed pagination convention (step 3) actually starts a fresh page, and the one pairing meant to share one (Title+Revision History+Abstract) does share it, while Table of Contents, Introduction, How to Use This Guide, and Glossary each start their own.
+- Every heading in the fixed pagination convention (step 3) actually starts a fresh page, and the one pairing meant to share one (Title+Revision History+Abstract) does share it.
 - The title and subtitle actually render centered, not left-aligned — confirms the `CENTER` marker substitution took effect.
-- Glossary and Introduction are allowed to spill onto a second page if they're long — the convention guarantees a *fresh* page, not a strict one-page limit, and content should never be trimmed just to force a page count.
+- Any section is allowed to spill onto a further page if it's long — the convention guarantees a *fresh* page, not a strict one-page limit, and content should never be trimmed just to force a page count.
 - No paragraph is split with only a line or two stranded at the top or bottom of a page — confirm the `pdf-header.tex` penalties actually took effect; if a bad break still slipped through, rephrase or resize the surrounding content rather than fighting it in LaTeX.
 - Page breaks don't land mid-code-block or split a table awkwardly.
 - Code blocks wrap or shrink instead of clipping off the page edge.
@@ -188,9 +190,8 @@ Then open the final, index-updated `guide/output/claude-api-features-<version>.p
 - Images are legible at their rendered size and resolution.
 - The body text is set in the professional serif face configured in `pdf-header.tex`, not the default Computer Modern — if any text looks blank/missing, that's the `nullfont` fallback from a font package that didn't load; rebuild `claude-labs-guide-pdf` and check the log for `not loadable`.
 - Every content page shows a page number in the **bottom-right** corner, not centered.
-- Both the Table of Contents and the Glossary show page numbers, and those numbers match where each entry actually lands.
+- The Table of Contents shows page numbers, those numbers match where each entry actually lands, and it is usable as navigation rather than merely present.
 - Internal cross-reference links and external URLs are visibly colored (blue), not plain black text indistinguishable from body prose.
-- The Glossary and Table of Contents are usable as navigation, not just present.
 
 If something fails here, it's usually a Markdown authoring fix (narrower table, shorter code lines, split paragraph, a missing or misplaced `PAGEBREAK` marker) rather than a pandoc flag — fix it in the source and re-render from step 3. Once these checks are done, move straight to step 6 — cleanup is automatic and doesn't wait for a separate explicit approval.
 

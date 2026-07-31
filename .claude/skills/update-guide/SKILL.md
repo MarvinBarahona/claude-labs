@@ -7,6 +7,12 @@ description: Use this skill to add or update content in guide/guide.md, this rep
 
 `guide/guide.md` is a separate publication, not part of the app: a self-contained practitioner guide on using the Claude API in a web application, written for a reader who will never open this repo. It draws on lessons learned building this repo's labs, but the repo is evidence, not a template — everything added here must stay portable.
 
+## Who the guide is written for
+
+Assume a reader who already builds and operates web applications **and already uses the Claude API** — they have made Messages calls, read a `stop_reason`, and wired up a tool. This governs every edit: don't re-explain the API surface, restate what a content block or a streaming event is, or walk through a lifecycle the official docs already own. Link to the relevant Anthropic page and spend the words on what that page doesn't say — the product decision, the tradeoff, the failure mode, the thing that only shows up once the feature is real.
+
+The same test applies to non-Claude material. General web-application engineering the audience already knows (layered testing, feature flags, dependency injection) belongs in the guide only where Claude changes the answer.
+
 ## Precondition
 
 Reserve this for durable, transferable lessons — a pattern, tradeoff, failure mode, or architectural decision that would help someone building an unrelated application. Not every lab detail or in-app doc update belongs here; most won't.
@@ -15,8 +21,8 @@ Reserve this for durable, transferable lessons — a pattern, tradeoff, failure 
 
 - Generalize: no repo-specific names, slugs, routes, or file paths, except where the repo is explicitly and deliberately named as an optional case study.
 - Examples are portable TypeScript/pseudocode/JSON, not tied to this repo's actual stack.
-- Playground-only affordances (a fake mode, an inspector panel, and the like) may appear only as optional testing/debugging ideas, never as product requirements.
-- Define any non-obvious term at first use, or add it to the Glossary chapter.
+- Playground-only affordances (a fake mode, an inspector panel, and the like) may appear only as optional testing/debugging ideas, never as product requirements. In particular, the guide's testing material never mentions a whole-app fake mode: the transferable rule is that no automated test should need a real Claude key or make a real Claude call, and substituting the Claude client at its interface is what carries that. Other dependencies are left as an ordinary engineering judgment — a real test database instance is frequently the better choice, so don't generalize the Claude rule into "mock every external system."
+- Define any non-obvious term at first use, in the prose where it's used. There is no glossary to add it to.
 - Cite claims about model/API behavior or limits against current Anthropic documentation and record an access date next to the citation — that behavior can change.
 
 ## Guide structure
@@ -27,16 +33,15 @@ The guide has exactly one variable element — its numbered chapters — inside 
 2. Abstract
 3. Table of Contents
 4. Introduction
-5. How to Use This Guide
-6. Glossary — also serves as the topical index, see below
-7. Numbered chapters — the variable content
-8. References
-9. Appendices — only the ones actually needed, see below
+5. Numbered chapters — the variable content
+6. References
+7. Appendices — only the ones actually needed, see below
 
 Every item except the numbered chapters is a fixed section: it always exists, always in this position, and is never itself numbered.
 
 - **Abstract** is at most 3 paragraphs. Its job is to quickly orient a new reader on what the guide is and get them interested enough to keep reading — not to summarize every chapter.
-- **Table of Contents** is a plain bullet list (`-`), never an ordered list — fixed sections are never numbered, and a chapter or appendix that already carries a number in its own heading (e.g. "3. Foundations...", "Appendix A: ...") keeps that number because it's in the heading text, not because the ToC re-numbers it. Entries start from Introduction — the Title, Abstract, and the Table of Contents itself aren't listed as entries in it.
+- **Introduction** is one section, kept short. It covers who the guide assumes you are, the central question, how the chapters are organized, scope and non-goals, suggested reading order and adoption path, and the two recurring terms (application contract, provider type). It does not carry a learning-objectives list, and there is no separate "How to Use This Guide" section — that content was folded in here.
+- **Table of Contents** is a plain bullet list (`-`), never an ordered list — fixed sections are never numbered, and a chapter or appendix that already carries a number in its own heading (e.g. "3. Structured Outputs...", "Appendix A: ...") keeps that number because it's in the heading text, not because the ToC re-numbers it. Entries start from Introduction — the Title, Abstract, and the Table of Contents itself aren't listed as entries in it.
 
 ## Formatting conventions
 
@@ -50,10 +55,9 @@ Every item except the numbered chapters is a fixed section: it always exists, al
 
 ## Renaming a heading breaks every link that points at it
 
-Internal links (Table of Contents, Glossary, inline cross-references) resolve from GitHub-style heading slugs — `revise-guide` renders with `gfm_auto_identifiers` for exactly this reason. Any heading rename is therefore also an anchor rename, and every place linking to the old anchor needs the same edit, in the same pass:
+Internal links (Table of Contents, inline cross-references) resolve from GitHub-style heading slugs — `revise-guide` renders with `gfm_auto_identifiers` for exactly this reason. Any heading rename is therefore also an anchor rename, and every place linking to the old anchor needs the same edit, in the same pass. Update the Table of Contents entry along with every inline cross-reference: some link with generic text like `[Chapter N]` and only need the anchor fixed, others link using the heading's own title text and need both the visible text and the anchor updated to match.
 
-- **Chapter (`##`) headings** are the safest to rename — for example, reframing a chapter title around a feature idea instead of a bare capability name. Update its Table of Contents entry, and any Glossary entry linking to it: some link with generic text like `[Chapter N]` and only need the anchor fixed, others link using the chapter's own title text and need both the visible text and the anchor updated to match.
-- **Subsection (`###`) headings are riskier to rename**: the Glossary routinely links a term directly to one specific subsection inside a chapter, not to the chapter as a whole. Prefer folding new material into an existing subsection's prose, or adding a brand-new subsection, over renaming one that something elsewhere already links to.
+**Renumbering a chapter is the expensive case.** Chapters are referred to by number in running prose across the whole guide ("as Chapter 4 covers"), not only through links, so inserting, removing, or merging a chapter means auditing every `Chapter N` mention in the file, not just the anchors. Grep for both the old anchor fragment and `Chapter N` afterwards, and re-read each hit in context — a reference that still resolves can now point at the wrong chapter, which no link check will catch.
 
 After any heading rename, grep the whole file for the old anchor fragment to confirm nothing still points at it — don't rely on remembering every place a heading gets referenced.
 
@@ -75,17 +79,15 @@ Purpose: [transferable concept illustrated]
 
 Once a real screenshot is supplied for a placeholder, resolve it here, in `guide/guide.md` itself: place the image file at the placeholder's `File:` path under `guide/assets/`, replace the whole comment block with a Markdown image using that path, the drafted `Alt:` text, and the drafted `Caption:` as visible text below the image, then remove the placeholder comment. If a figure turns out not to be worth capturing, remove the placeholder and any prose that depended on it instead of leaving it in place. Either way, no `SCREENSHOT TODO` should remain by the time `revise-guide` is asked to cut a revision — it checks for exactly that.
 
-## Glossary is the topical index
-
-There is one `## Glossary` section — not a separate Glossary and Topical Index. Introducing a term or concept worth surfacing updates this one list. Define genuinely non-obvious terminology inline; for a concept that's really discussed at length elsewhere in the guide, add a link to where it's covered instead of maintaining a second lookup list, e.g. `**Prompt caching** — a mechanism for reusing eligible, repeated prompt prefixes. See [Chapter 7](#7-files-documents-citations-and-caching) for the full pattern.` Never add a page number here — `revise-guide` computes and injects those into a disposable copy at render time; the tracked source only ever holds the anchor link.
-
 ## Appendices are optional and un-wrapped
 
 There is no `## Appendices` heading. Appendices aren't a section of their own — they're a sequence of independent fixed-type sections that begin directly at `## Appendix A: ...`, continue B, C, D... in order, and exist only when the guide actually needs one. Don't add a placeholder or empty appendix just to preserve a slot.
 
+The guide currently has none, deliberately. An appendix earns its place only by holding something the chapters genuinely can't: not a fuller version of a listing a chapter already excerpts, not a restatement of a chapter's practices as a checklist, and not example payloads a reader of this guide's audience can already picture. If a chapter's excerpt is too thin to follow, fix the excerpt.
+
 ## Sections that no longer exist
 
-The guide has no `## Conclusion` and no standalone `## Topical Index` — both were folded elsewhere (Conclusion's content into `How to Use This Guide` and `Putting It Together`; Topical Index into `Glossary`, see above). Don't recreate either, and don't leave a stray reference to one lying around in a ToC entry, cross-reference, or example — a reader who follows it will find nothing there.
+The guide has no `## Conclusion`, no `## How to Use This Guide`, no `## Glossary`, and no standalone `## Topical Index`. Each was folded elsewhere: Conclusion into `Putting It Together`, How to Use This Guide into `Introduction`, and Glossary and Topical Index dropped outright — a reader who already uses the Claude API doesn't need *content block* or *prompt caching* defined, and the handful of terms the guide actually coins are defined in the prose that uses them. Don't recreate any of them, and don't leave a stray reference to one lying around in a ToC entry, cross-reference, or example — a reader who follows it will find nothing there.
 
 ## Title, Abstract, and Introduction are checked on every content edit
 
