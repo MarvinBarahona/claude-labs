@@ -680,15 +680,9 @@ A tool loop can span several Claude calls and long stretches with no text deltas
 
 Tool definitions can also opt into eager input streaming, which delivers a tool's argument JSON incrementally as `input_json_delta` chunks instead of one complete blob at `content_block_stop`. That is useful for showing "looking up your order…" before the arguments are fully known, but the partial JSON is not parseable mid-flight: use it to drive an activity label, and wait for the completed block before validating or executing anything.
 
-<!-- SCREENSHOT TODO
-Capture: Live Tool-Use Console after a completed streamed repository-statistics question, with Tool Activity and the inspector's multi-call history visible.
-Setup: Use fake mode. Enable "Stream response", ask "What are the latest repo stats?", and wait for the final answer.
-Frame: Include the question/answer, resolved tool-activity item, and the inspector portion showing the tool-use call followed by the final call. Exclude the navigation, inline lab documentation, browser chrome, configured repository name if it is sensitive, and verbose payload fields not needed to see ordering.
-File: assets/custom-tool-loop-and-trace.png (relative to this document, which lives in guide/)
-Alt: Tool-use interface showing a resolved backend tool activity and an ordered two-call trace ending in an answer.
-Caption: Figure 1. The product can expose safe activity while protected tooling retains the complete tool-use and tool-result trajectory.
-Purpose: Illustrate the separation between user-safe progress, backend execution, and an immutable multi-call trace.
--->
+![Tool-use interface showing a resolved backend tool activity and an ordered two-call trace ending in an answer.](assets/custom-tool-loop-and-trace.png)
+
+Figure 1. The product can expose safe activity while protected tooling retains the complete tool-use and tool-result trajectory.
 
 In production, record tool name, duration, outcome, and round — never unrestricted arguments or results — and alert on rising error rates, repeated identical calls, and unexpected use of consequential tools.
 
@@ -813,15 +807,9 @@ Test the graph itself, not only each prompt: every route, first-pass success, on
 
 Before choosing an agent, ask whether the useful paths can be enumerated; whether each stage can have a typed input, output, and success condition; whether independent branches can be identified safely; whether retries can use actionable feedback under a hard cap; and whether a human can understand the full call trace. If the answers are mostly yes, a workflow will be more dependable than an open-ended agent.
 
-<!-- SCREENSHOT TODO
-Capture: Workflow Gallery after the fake-mode issue finishes, showing the route, final draft, criterion results, iteration count, and pass state.
-Setup: Use fake mode. Open Workflow Gallery, keep the automatically selected issue, select Run, and wait for completion.
-Frame: Include only the interactive result panel from the issue selector through the grading and iteration summary. Exclude navigation, inline lab documentation, browser chrome, and the raw inspector payload.
-File: assets/fixed-workflow-result.png (relative to this document, which lives in guide/)
-Alt: Workflow result displaying a routed category, refined draft, three grading criteria, iteration count, and final pass state.
-Caption: Figure 2. A fixed workflow exposes stage outcomes and termination criteria instead of presenting a multi-call pipeline as one opaque answer.
-Purpose: Show how routing, chaining, parallel evaluation, and a capped optimizer become legible product state.
--->
+![Workflow result displaying a routed category, refined draft, three grading criteria, iteration count, and final pass state.](assets/fixed-workflow-result.png)
+
+Figure 2. A fixed workflow exposes stage outcomes and termination criteria instead of presenting a multi-call pipeline as one opaque answer.
 
 <!-- PAGEBREAK -->
 
@@ -900,15 +888,9 @@ Citations can produce several text blocks, each with its own supporting referenc
 
 Citations and JSON structured outputs are incompatible in one response, because citations must interleave with text; the pair is rejected rather than degraded. If the product needs both grounded prose and typed fields, use separate calls or a workflow with a clear handoff rather than forcing them into one response.
 
-<!-- SCREENSHOT TODO
-Capture: Document Research Assistant after a cited first answer, with one citation disclosure open and the running-notes panel visible.
-Setup: Use fake mode. Start a session with arXiv ID 2301.00234, ask "What is this paper about?", wait for completion, then activate one citation marker to reveal its quoted text and page range.
-Frame: Include the paper title, question and answer, open citation disclosure, and notes panel. Exclude navigation, inline lab documentation, inspector payloads, browser chrome, and any source URL or metadata not needed for the citation relationship.
-File: assets/cited-document-answer.png (relative to this document, which lives in guide/)
-Alt: Document question-answer interface with an answer citation expanded to show quoted source text and pages, alongside structured running notes.
-Caption: Figure 3. Citation UX keeps the supporting passage attached to the claim and available without relying on hover.
-Purpose: Demonstrate accessible claim-to-source inspection and the distinction between grounded prose and separately maintained structured state.
--->
+![Document question-answer interface with an answer citation expanded to show quoted source text and pages, alongside structured running notes.](assets/cited-document-answer.png)
+
+Figure 3. Citation UX keeps the supporting passage attached to the claim and available without relying on hover.
 
 ### Own multi-turn session state
 
@@ -1076,15 +1058,9 @@ A useful result view separates:
 
 Never make a generated chart the only accessible representation of its findings. Include text or a data table, useful alt text, and keyboard-accessible downloads.
 
-<!-- SCREENSHOT TODO
-Capture: Data & Code Sandbox after an analysis run that produced at least one generated file, with the execution detail expanded and the artifact's download affordance visible.
-Setup: Use fake mode. Run the default dataset analysis and wait for completion, then expand the executed-code/output section.
-Frame: Include the interpretation text, the expanded code and stdout region, and the artifact entry with its filename, type, size, and download action. Exclude navigation, inline lab documentation, browser chrome, and raw inspector payloads.
-File: assets/code-execution-result-layers.png (relative to this document, which lives in guide/)
-Alt: A code-execution result separating the written interpretation, the executed code and its output, and a downloadable generated file.
-Caption: Figure 4. A code-execution result view separates interpretation, execution detail, and artifacts, so non-developers and debuggers can each find what they need.
-Purpose: Show the transferable layering of one job's answer, its execution evidence, and its deliverables.
--->
+![A code-execution result separating the written interpretation, the executed code and its output, and a downloadable generated file.](assets/code-execution-result-layers.png)
+
+Figure 4. A code-execution result view separates interpretation, execution detail, and artifacts, so non-developers and debuggers can each find what they need.
 
 ### Failure modes
 
@@ -1313,15 +1289,9 @@ Expose derived metadata such as "resized before analysis" or "many-image limit a
 
 A vision result should include source thumbnails, labels, the model answer, and relevant transformations. Preserve aspect ratio and provide useful alt text based on known source metadata rather than using the model answer as the image alternative.
 
-<!-- SCREENSHOT TODO
-Capture: Vision Lab after a completed two-image comparison, with both labeled thumbnails and any preparation notice visible alongside the answer.
-Setup: Use fake mode. Attach two images, ask for a comparison of their visible differences, and wait for the answer.
-Frame: Include both labeled source thumbnails, any "resized before analysis" or multi-image limit notice, and the comparison answer. Exclude navigation, inline lab documentation, browser chrome, and inspector payloads.
-File: assets/multi-image-comparison-sources.png (relative to this document, which lives in guide/)
-Alt: A two-image comparison result showing both labeled source thumbnails and a notice that the images were resized before analysis, next to the model's answer.
-Caption: Figure 5. Labeled thumbnails and preparation notices let a user verify which inputs were actually analyzed, and in what form.
-Purpose: Show why a vision result must report its own preprocessing rather than leaving the user to assume the original bytes were sent.
--->
+![A two-image comparison result showing both labeled source thumbnails and a notice that the images were resized before analysis, next to the model's answer.](assets/multi-image-comparison-sources.png)
+
+Figure 5. Labeled thumbnails and preparation notices let a user verify which inputs were actually analyzed, and in what form.
 
 Vision is not precise measurement by default. Counting, fine spatial localization, tiny text, identity, synthetic-image detection, and specialized medical imagery have important limitations. Phrase the product promise accordingly, show uncertainty where it affects decisions, and require human verification for high-stakes outcomes.
 
@@ -1451,15 +1421,9 @@ A useful internal bench shows each profile's final answer, returned thinking sum
 
 Avoid declaring a winner from latency or token count alone. Show the quality/cost frontier and let the product team choose the lowest-cost profile that meets the acceptance threshold.
 
-<!-- SCREENSHOT TODO
-Capture: Extended Thinking Bench after a completed comparison run, showing at least two reasoning profiles side by side with their answers, latency, and usage.
-Setup: Use fake mode. Run the default task across the baseline and a higher-effort profile, and wait for every column to finish.
-Frame: Include the aligned per-profile columns with answer, returned thinking summary (or its "not returned" label), latency, usage, and stop reason. Exclude navigation, inline lab documentation, browser chrome, and raw request payloads.
-File: assets/reasoning-profile-comparison.png (relative to this document, which lives in guide/)
-Alt: Two reasoning profiles compared side by side, each showing its answer, latency, token usage, and stop reason.
-Caption: Figure 6. Holding everything but the reasoning profile constant turns "is thinking worth it here" into a comparison a team can actually read.
-Purpose: Show that the reasoning decision is a measured cost/quality tradeoff rather than a setting to leave switched on.
--->
+![Two reasoning profiles compared side by side, each showing its answer, latency, token usage, and stop reason.](assets/reasoning-profile-comparison.png)
+
+Figure 6. Holding everything but the reasoning profile constant turns "is thinking worth it here" into a comparison a team can actually read.
 
 Handle thinking omitted by configuration, redacted blocks, a modified-history rejection, and one failed run in a comparison batch — decide whether a partial comparison stays useful or the whole benchmark fails. Benchmarks need a frozen evaluation set reporting repeatable aggregate statistics, never an assertion on exact model prose.
 
@@ -1588,15 +1552,9 @@ interface AgentResult {
 
 A refusal, truncation, context limit, cap, cancellation, or approval pause is not ordinary completion. The UI should preserve useful partial work while stating why the run stopped and what the user can do next.
 
-<!-- SCREENSHOT TODO
-Capture: Agent Playground after a run that stopped at a budget rather than finishing, showing the activity trail and the explicit stopped-early status together.
-Setup: Use fake mode. Lower the model-call or tool-call budget enough to force a cap, start an investigation, and wait for the run to stop.
-Frame: Include the ordered tool-activity trail, whatever partial findings the run produced, and the status stating which limit was reached. Exclude navigation, inline lab documentation, browser chrome, and raw request payloads.
-File: assets/agent-capped-run-status.png (relative to this document, which lives in guide/)
-Alt: An agent run showing its sequence of tool activity, partial findings, and a status stating that it stopped because a budget was reached.
-Caption: Figure 7. A capped agent run reports the limit it hit and keeps the work it did, rather than presenting its last partial text as a finished answer.
-Purpose: Show that an agent's incomplete outcomes are a product state to design, not an error to hide.
--->
+![An agent run showing its sequence of tool activity, partial findings, and a status stating that it stopped because a budget was reached.](assets/agent-capped-run-status.png)
+
+Figure 7. A capped agent run reports the limit it hit and keeps the work it did, rather than presenting its last partial text as a finished answer.
 
 ### Put humans around consequential actions
 
