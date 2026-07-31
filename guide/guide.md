@@ -186,21 +186,27 @@ A terminal completion event gives the frontend one place to obtain final usage, 
 
 ### Separate custom tools from hosted tools
 
-For a **custom tool**, Claude requests an action; the backend validates and executes it, sends a tool result in another message, and continues until a non-tool terminal response or a loop limit. For a **hosted tool**, Anthropic executes the capability and returns its activity within the provider response; the backend does not implement that tool's function.
+|  | Custom tool | Hosted (server) tool |
+|--------------|-----------------------------|-----------------------------|
+| Executed by | Your backend | Anthropic, inside the request |
+| Your job | Validate, authorize, execute, return a `tool_result` | Read its activity from the response blocks |
+| Drives a loop? | Yes, until a non-tool stop reason or a cap | No |
 
 A turn may mix both. The backend should loop only for tool requests it owns. Other content blocks must be retained and interpreted by type rather than treated as unknown text.
 
 ### Bound content whose size you don't control
 
-A feature commonly receives external content in three shapes, and each needs a different bounding strategy. Using the wrong one either fails silently or can't actually reduce cost.
+External content arrives in three shapes, and each incurs its cost at a different point. Using the wrong lever either fails silently or cannot reduce anything.
 
-A **custom tool's own result** is yours before it ever reaches the model: minimize and truncate it deliberately, and return a `truncated: true`-style signal alongside the cut data rather than cutting silently. That signal lets the model act correctly on a partial result instead of assuming it's complete.
+| External content | Where its cost lands | The lever that works |
+|------------------|-------------------|-----------------------------|
+| A custom tool's own result | In your backend, before the model sees it | Minimize and truncate deliberately |
+| A hosted or MCP tool's result | Mid-generation, the moment the call resolves | Restrict the tool's configuration before the call |
+| A document or image block | On submission, and it cannot be cut safely | Warn on size and let the user proceed informed |
 
-A **hosted or MCP tool's result** is different: its cost is incurred the moment the tool call resolves, mid-generation, inside the same call that requested it. By the time your backend sees the response, that cost has already happened, so no amount of post-receipt truncation can reduce it. The only real lever is restricting what the tool's own configuration is allowed to do — an MCP toolset's operation allowlist, a search tool's domain and use caps — before the call runs, not after.
+Each lever has a catch. When truncating a tool result, return a `truncated: true`-style signal alongside the cut data rather than cutting silently, so the model acts on a partial result instead of assuming it is complete. For a hosted or MCP result, the restriction has to be an MCP toolset's operation allowlist or a search tool's domain and use caps, applied before the call runs — by the time your backend sees the response the cost has already happened. And a document cannot be trimmed to fit without corrupting what it represents: cutting a PDF's pages invalidates the exact page numbers its citations point to, so the mitigation is a warning sized to the real cost and latency impact, not a cap.
 
-A **document or image content block** can't be safely truncated at all without corrupting what it represents; cutting a PDF's pages, for instance, invalidates the exact page numbers its citations point to. The right mitigation there isn't capping or blocking the upload — it's a size-based warning that states the real cost and latency impact up front and lets the user proceed informed.
-
-The shared principle: decide where in the pipeline a given kind of content actually incurs its cost, and bound it there — not wherever happens to be most convenient to intercept.
+The shared principle: find where a kind of content actually incurs its cost, and bound it there — not wherever happens to be most convenient to intercept.
 
 ### Observability without accidental disclosure
 
@@ -728,18 +734,15 @@ function documentBlock(source: DocumentSource, title: string) {
 }
 ```
 
-Inline base64 is simple for a one-off, modest file and works without separately managed file lifecycle. It enlarges every request and repeats transfer when reused. The Files API suits repeated use and code-execution inputs: upload once, retain the returned identifier, and reference it later. It introduces storage lifecycle, platform availability, beta/version requirements, and retention implications. Anthropic's [Files API guide](https://platform.claude.com/docs/en/build-with-claude/files) documents upload, reference, download, and delete behavior (accessed 2026-07-27).
+|  | Inline base64 | Files API reference |
+|--------------|-----------------------------|-----------------------------|
+| Suits | A one-off, modest file | Repeated use and code-execution inputs |
+| Transfer | Enlarges every request, re-sent on reuse | Upload once, then reference by identifier |
+| Brings with it | No file lifecycle to manage | Storage lifecycle, platform availability, version requirements, retention |
 
-Treat delivery as backend policy, not a frontend serialization task. Validate media type, size, source ownership, and malware policy before upload. Store the original filename only as display metadata; never derive a filesystem path from it.
+Anthropic's [Files API guide](https://platform.claude.com/docs/en/build-with-claude/files) documents upload, reference, download, and delete behavior (accessed 2026-07-27).
 
-```ts
-interface ContentBlockBuilder {
-  buildDocument(
-    file: AuthorizedFile,
-    mode: "inline" | "files-api",
-  ): Promise<{ block: DocumentBlock; uploadedFileId?: string }>;
-}
-```
+Treat delivery as backend policy, not a frontend serialization task, and put both modes behind one builder that takes an authorized file plus a delivery mode and returns the document block (and any uploaded file identifier). Validate media type, size, source ownership, and malware policy before upload. Store the original filename only as display metadata; never derive a filesystem path from it.
 
 Cache uploaded identifiers by a stable content hash or application file record so a retry does not re-upload the same bytes. Record who owns the file, when it may be deleted, and whether the provider copy must be removed when the user deletes the source.
 
@@ -1164,7 +1167,14 @@ As of the access date, Anthropic documents an 8000-by-8000 maximum per image and
 
 A product commonly enforces its own stricter ceiling well before any documented threshold is reached — for example, dropping to a smaller maximum dimension the moment a request becomes multi-image rather than single-image, as a self-imposed safety margin against per-request cost and cross-platform portability, not because the provider requires it at that exact point. Compute whether your own cap actually changed anything for a given request — comparing what was received against your threshold — and surface that as a concrete note to the user rather than only stating the policy in documentation.
 
-Model resolution is not a single number. Models fall into resolution tiers, and the tier sets both the longest edge the model reads at full detail and the ceiling on how many visual tokens one image may consume. At the time of writing, Anthropic documents a high-resolution tier for its newer models—2576 pixels on the long edge and up to 4784 visual tokens—and a standard tier of 1568 pixels and 1568 visual tokens for the rest. The higher tier applies automatically on the models that have it; there is no header or client-side opt-in to add.
+Model resolution is not a single number. Models fall into resolution tiers, and the tier sets both the longest edge the model reads at full detail and the ceiling on how many visual tokens one image may consume. As of the access date, Anthropic documents two:
+
+| Tier | Long edge | Max visual tokens per image |
+|------------------------------|---------------|---------------|
+| High resolution, newer models | 2576 px | 4784 |
+| Standard, everything else | 1568 px | 1568 |
+
+The higher tier applies automatically on the models that have it; there is no header or client-side opt-in to add.
 
 Treat the tier as a cost decision as much as a fidelity one. Images are billed as visual tokens over a 28-pixel patch grid, roughly `ceil(width / 28) × ceil(height / 28)`, so the same photograph can consume several times more tokens on a high-resolution model than on a standard one. Resolve the tier from the same model profile that resolves the model identifier, and downsample deliberately when the extra detail cannot change the answer. Screenshots, dense documents, and small-text extraction are the cases that usually justify the higher tier.
 
