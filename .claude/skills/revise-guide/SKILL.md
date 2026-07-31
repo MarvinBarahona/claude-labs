@@ -33,7 +33,11 @@ Fix anything that fails before proceeding — don't render a PDF from a guide th
 `guide/guide.md` has a `## Revision History` table right below the title, with columns `Version | Date | Changelog` — no author column; the table records what changed and when, not who made the change. It's the single source of truth for version and date — there is no separate title-page metadata block to keep in sync with it. Every revision adds exactly one row. Propose both fields for the user to confirm or override:
 
 - Suggested version: increment from the highest version currently in the table (e.g. `0.1` → `0.2`), keeping a `(working draft)` suffix on the version number until told otherwise. Drop the suffix, and move toward `1.0`, only on explicit direction that the guide is past its working-draft phase.
-- Suggested changelog: one sentence, concrete about what actually changed since the last row — based on the edits made this session, or `git diff` against the guide file if the session doesn't have that context. Don't write a generic "updates" placeholder.
+- Suggested changelog: **one short sentence — this is a hard constraint, not a stylistic preference.** Aim for something that fits on a single line of the rendered table (roughly ten to fifteen words); never let it run past two. It still has to be concrete about what actually changed since the last row — based on the edits made this session, or `git diff` against the guide file if the session doesn't have that context — so "updates" and other generic placeholders don't qualify.
+
+  A revision that changed a lot does not earn a longer entry. Summarize at a higher altitude instead of enumerating: name the theme of the revision, not its contents. If one sentence genuinely cannot cover it, that usually means the revision bundles unrelated work that would have been better cut as two. The full detail lives in `git log`; this column exists so a reader scanning the table can tell revisions apart at a glance, and it stops doing that the moment entries become paragraphs.
+
+  This is the one field where the user's override still has a shape to respect. If a longer changelog is dictated, tighten it to fit rather than pasting it in — and say that you did.
 
 **Compute the target PDF filename and check for a collision before confirming.** The rendered PDF's name encodes the version: `claude-api-features-<version>.pdf`, with the version's dots replaced by dashes and any `(working draft)` suffix dropped — e.g. version `0.2 (working draft)` becomes `claude-api-features-0-2.pdf`. Check whether `guide/output/claude-api-features-<version>.pdf` already exists (most likely because a previous attempt at this exact version was left in place after step 5 didn't pass, per step 6's note that this is expected). If it does, ask the user:
 
@@ -184,7 +188,7 @@ Then open the final, index-updated `guide/output/claude-api-features-<version>.p
 - No paragraph is split with only a line or two stranded at the top or bottom of a page — confirm the `pdf-header.tex` penalties actually took effect; if a bad break still slipped through, rephrase or resize the surrounding content rather than fighting it in LaTeX.
 - Page breaks don't land mid-code-block or split a table awkwardly.
 - Code blocks wrap or shrink instead of clipping off the page edge.
-- The `## Revision History` table isn't a cramped, equal-width block — Version/Date stay narrow and Changelog fills the remaining width with centered text.
+- The `## Revision History` table isn't a cramped, equal-width block — Version/Date stay narrow and Changelog fills the remaining width with centered text. No changelog entry wraps past two lines; a three-line entry means step 2's length constraint was missed and the fix is to shorten the sentence, not to widen the column.
 - Every other table stays narrow enough to read without horizontal scrolling.
 - Callouts/admonitions (if any) render distinctly from body text.
 - Images are legible at their rendered size and resolution.
