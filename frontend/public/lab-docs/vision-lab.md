@@ -20,22 +20,46 @@ message as your instruction:
 }
 ```
 
-Up to 100 images are allowed per request, 5MB each. Claude's own image
-token cost works out to roughly `(width_px × height_px) / 750` — a large
-photo isn't free just because it's "one image."
+Up to 100 images are allowed per request on models with a 200k-token
+context window, and 600 on models with a larger one. Each image can be up
+to 10MB base64-encoded on the Claude API — partner platforms such as
+Bedrock and Google Cloud cap it lower, at 5MB. Claude bills images as
+visual tokens over a 28-pixel patch grid, so one image costs
+`ceil(width / 28) × ceil(height / 28)` tokens — a large photo isn't free
+just because it's "one image."
 
-## The dimension cap
+## What resolution Claude actually reads
 
-A single image can be up to 8000×8000px and Claude reads it at full
-resolution. The moment a **second** image is added to the same request,
-that per-image cap drops to 2000×2000px — anything larger gets silently
-downscaled before Claude ever sees it. This lab computes whether that cap
-actually applied to your specific request (`imageCount > 1` and at least
-one fetched image exceeds 2000px in either dimension) and shows a banner
-when it does, so the effect isn't invisible. Pick **Image Count: 1** and
-it never applies, regardless of how large that one image is; pick 2 or
-more and search for something likely to turn up a large photo to see it
-trigger.
+A single image can be submitted at up to 8000×8000px, but that's the
+largest size the API will *accept*, not the size Claude reads. Every model
+belongs to a resolution tier, and an image larger than its tier is
+downscaled — preserving aspect ratio — before the model sees it. Newer
+models read up to 2576px on the long edge and 4784 visual tokens per
+image; everything else reads up to 1568px and 1568 tokens. So an
+8000×8000 upload buys nothing but upload bandwidth, and the tier is also
+what decides whether small text in your image survives the trip.
+
+## The dimension cap (this lab's own rule)
+
+Anthropic's own multi-image rule starts above **20** images in one
+request: past that threshold a stricter per-image dimension limit applies,
+and an image over it is **rejected** with an `invalid_request_error`
+rather than quietly resized. The documented way to stay clear of it on
+every platform is to keep each image at or below 2000×2000px, or to keep
+the request to 20 or fewer image and document blocks.
+
+This lab applies a much more conservative version of that rule: it caps
+images at 2000×2000px as soon as a request contains **more than one**
+image. That threshold is this lab's own product decision, not an API
+requirement — a safety margin that keeps every request it builds
+comfortably portable without having to reason about the real limit. Since
+a silent downscale is indistinguishable from a model that simply missed a
+detail, the lab computes whether its cap actually changed anything for
+your specific request (`imageCount > 1` and at least one fetched image
+over 2000px in either dimension) and shows a banner when it did. Pick
+**Image Count: 1** and it never applies, however large that one image is;
+pick 2 or more and search for something likely to turn up a large photo
+to watch it trigger.
 
 ## Files API vs. Base64
 
