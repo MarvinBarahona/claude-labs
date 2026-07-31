@@ -103,35 +103,31 @@ The examples use these conventions:
 
 **Agent** — A model-directed loop in which Claude chooses the next action from available tools until it produces an answer or reaches an application-enforced limit. See [Chapter 12](#12-agents-as-a-deliberate-exception-open-ended-investigation-bounded).
 
-**API errors** — HTTP-level and typed SDK failures returned by the Claude API itself (validation, rate limits, transient 5xx conditions), distinct from a tool's own recoverable failure. See [Testing and Operational Hardening](#test-the-application-error-taxonomy).
+**API errors** — HTTP/SDK-level failures from the Claude API itself, distinct from a tool's own recoverable failure. See [Testing and Operational Hardening](#test-the-application-error-taxonomy).
 
 **Application contract** — A type owned by your product, even when it wraps selected Claude response metadata, as opposed to a provider type supplied by the Anthropic SDK. See [Reference Web Application Architecture](#expose-an-application-owned-turn-envelope).
 
-**Authorization** — The backend's responsibility to decide what a given request may access or do before it reaches Claude or an external system; never delegated to the browser or inferred from model output. See [Reference Web Application Architecture](#system-boundary).
-
-**Bounding external content cost** — Matching the truncation or restriction strategy to where a given kind of content actually incurs its cost — a tool's own result, a hosted/MCP tool call, or a document/image block each need a different approach. See [Reference Web Application Architecture](#bound-content-whose-size-you-dont-control).
+**Bounding external content cost** — Match the truncation/restriction strategy to where a kind of content actually incurs its cost, since a tool result, a hosted/MCP call, and a document each need a different approach. See [Reference Web Application Architecture](#bound-content-whose-size-you-dont-control).
 
 **Citations** — Exact supporting locations Claude returns alongside text blocks when a document is enabled for citations, expressed as page, character, or block ranges depending on document type. See [Files, Documents, Citations, and Caching](#enable-citations-as-a-data-contract).
 
-**Code execution** — A hosted tool that runs code inside Anthropic's sandboxed container, accepting uploaded inputs and returning result and generated-file content blocks. See [Chapter 8](#8-code-execution-and-generated-artifacts-from-raw-data-to-a-finished-deliverable).
+**Code execution** — A hosted tool that runs code inside Anthropic's sandboxed container, returning result and generated-file content blocks. See [Chapter 8](#8-code-execution-and-generated-artifacts-from-raw-data-to-a-finished-deliverable).
 
 **Content block** — A typed unit within a message, such as text, an image, a tool request, a tool result, or a thinking-related block. See [Chapter 3](#3-foundations-a-simple-conversational-assistant-with-the-messages-api).
 
-**Custom tool** — An application-defined capability described to Claude with a name and input schema, then executed by your backend.
+**Custom tool** — An application-defined capability described to Claude with a name and input schema, then executed by your backend. See [Chapter 5](#5-custom-backend-tools-giving-claude-real-actions-to-take).
 
 **Error taxonomy** — A fixed classification of failure kinds (validation, provider failure, recoverable tool error, mid-stream failure, refusal, cap) mapped to retry ownership and user-facing behavior. See [Testing and Operational Hardening](#test-the-application-error-taxonomy).
 
-**Evaluations** — Versioned, repeatable checks of a model-integrated feature's output quality, combining deterministic checks with human or model-graded review, run and compared across releases rather than eyeballed once. See [Testing and Operational Hardening](#add-semantic-evaluations).
+**Evaluations** — Versioned, repeatable checks of a model-integrated feature's output quality, compared across releases rather than eyeballed once. See [Testing and Operational Hardening](#add-semantic-evaluations).
 
-**Files and documents** — Content delivered to Claude as file references or inline documents rather than user-visible chat text, with their own upload, reuse, and citation considerations. See [Chapter 7](#7-files-documents-citations-and-caching-a-cited-research-assistant-over-your-documents).
+**Files and documents** — Content delivered to Claude as file references or inline documents rather than user-visible chat text. See [Chapter 7](#7-files-documents-citations-and-caching-a-cited-research-assistant-over-your-documents).
 
 **Hosted tool** — A capability executed within Anthropic's infrastructure, such as supported web search or code execution. See [Chapter 9](#9-web-search-and-mcp-connectors-a-scoped-cited-research-brief).
 
 **MCP** — Model Context Protocol, a protocol for exposing external tools and information sources to models through a standard interface. See [Connect MCP servers with least privilege](#connect-mcp-servers-with-least-privilege).
 
-**Message** — A role-bearing turn sent to or returned from the Messages API. A message contains one or more content blocks and operational metadata. See [Chapter 3](#3-foundations-a-simple-conversational-assistant-with-the-messages-api).
-
-**Observability** — Recording enough about a turn — path taken, timing, model/configuration, token usage, tools run, termination reason — to answer what happened, with sensitive payload content redacted by default. See [Reference Web Application Architecture](#observability-without-accidental-disclosure).
+**Message** — A role-bearing turn sent to or returned from the Messages API, containing one or more content blocks. See [Chapter 3](#3-foundations-a-simple-conversational-assistant-with-the-messages-api).
 
 **Prompt caching** — A mechanism for reusing eligible, repeated prompt prefixes so later requests can reduce processing work. See [Chapter 7](#cache-the-stable-document-prefix).
 
@@ -149,13 +145,13 @@ The examples use these conventions:
 
 **Thinking and effort** — Extended thinking exposes a model's intermediate reasoning as its own content block type; effort controls trade response quality against latency and cost independently of it. See [Chapter 11](#11-extended-thinking-is-deeper-reasoning-worth-the-cost).
 
-**Tool result** — Content returned to Claude after a custom tool request is executed. It can represent success or a recoverable failure.
+**Tool result** — Content returned to Claude after a custom tool request is executed; it can represent success or a recoverable failure. See [Chapter 5](#5-custom-backend-tools-giving-claude-real-actions-to-take).
 
 **Tool use** — A content block in which Claude requests invocation of a named tool with structured arguments. See [Chapter 5](#5-custom-backend-tools-giving-claude-real-actions-to-take).
 
 **Turn** — One user-visible interaction. A turn may require one or many Claude API calls.
 
-**Vision** — Sending one or more images as typed content blocks alongside a text instruction, for narrow tasks like comparison, attribute extraction, or chart explanation rather than open-ended description. See [Chapter 10](#10-vision-features-comparing-and-reading-across-multiple-images).
+**Vision** — Sending one or more images as typed content blocks alongside a text instruction. See [Chapter 10](#10-vision-features-comparing-and-reading-across-multiple-images).
 
 **Workflow** — An application-directed sequence of model calls and ordinary code, such as routing, chaining, parallelization, or evaluator-optimizer. See [Chapter 6](#6-workflows-before-agents-an-automated-support-triage-pipeline).
 
