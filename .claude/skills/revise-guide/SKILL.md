@@ -120,7 +120,7 @@ Render from the working copy, not the tracked source, from here on, into the tar
 
 ```
 docker run --rm -v "${PWD}/guide:/data" -w /data claude-labs-guide-pdf \
-  -f markdown+gfm_auto_identifiers \
+  -f markdown+gfm_auto_identifiers-implicit_figures \
   output/source.md -o output/claude-api-features-<version>.pdf \
   -V geometry:margin=1in --include-in-header=output/pdf-header.tex \
   -V colorlinks=true -V linkcolor=blue -V urlcolor=blue
@@ -130,6 +130,7 @@ docker run --rm -v "${PWD}/guide:/data" -w /data claude-labs-guide-pdf \
 
 - Keeping the container's working directory at `/data` (mapped to `guide/` itself, not `guide/output/`) is required, not incidental — the guide's images use guide-relative paths like `assets/example.png`, and those only resolve if pandoc runs from `guide/`. The input (`output/source.md`) and output (`output/claude-api-features-<version>.pdf`) living one level down, as paths relative to that same working directory, doesn't disturb that resolution.
 - `-f markdown+gfm_auto_identifiers` is required, not optional: without it, pandoc generates its own heading identifiers instead of GitHub-style slugs, and every internal link the guide's own anchors depend on — table of contents, cross-references — silently breaks in the PDF (LaTeX logs it as `Hyper reference ... undefined`) even though the same anchors resolve fine when the file is read as plain Markdown. Confirm the render log has no `undefined` hyper reference warnings before moving on.
+- `-implicit_figures` (the suppression on the same flag) is equally required, and its absence is the harder bug to spot because the PDF still renders. That extension turns an image alone in its paragraph into a LaTeX float and promotes the image's **alt text** into a printed caption. The guide's figures carry alt text for accessibility *and* a visible caption paragraph beneath, so with the extension on, every figure prints its alt text as "Figure N: ..." immediately followed by its real "Figure N. ..." caption — two captions per figure, verified — and the float drifts away from the prose it illustrates. Suppressing it keeps the image inline where it was written and leaves alt text doing its actual job. Expect the page count to grow slightly versus a float-based render; that is the images occupying their real position, not a regression.
 - Do not pass `--toc`: the guide already has its own hand-authored `## Table of Contents` section, kept as ordinary Markdown so it also works on GitHub. Pandoc's `--toc` inserts a second, auto-generated table of contents (`\tableofcontents`) ahead of it, so the PDF ends up with two. The manual section is the only one that should exist in either output.
 - `-V colorlinks=true -V linkcolor=blue -V urlcolor=blue` makes every hyperlink — internal cross-references and external URLs alike — render in blue instead of unstyled black text, so a reader can tell something is a link before clicking it. `colorlinks=true` also removes hyperref's default behavior of drawing a colored box around links, which looks worse in print than plain colored text.
 - If a figure is missing or a `SCREENSHOT TODO` slipped through, pandoc will still render — that's what step 1 is for, not this step.
@@ -142,7 +143,7 @@ Compile the intermediate LaTeX from that working copy — it already has the pag
 
 ```
 docker run --rm -v "${PWD}/guide:/data" -w /data claude-labs-guide-pdf \
-  -f markdown+gfm_auto_identifiers \
+  -f markdown+gfm_auto_identifiers-implicit_figures \
   output/source.md -o output/pagenum.tex \
   -V geometry:margin=1in --include-in-header=output/pdf-header.tex \
   -V colorlinks=true -V linkcolor=blue -V urlcolor=blue
