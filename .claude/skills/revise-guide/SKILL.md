@@ -17,7 +17,7 @@ Work through all of these against `guide/guide.md` before touching version metad
 
 - No `SCREENSHOT TODO` is left unresolved — each either has a real image in place at its `assets/` path (see `update-guide`'s resolution step) or a deliberate decision to drop the figure and its dependent prose.
 - Internal links (table of contents, cross-references) and image paths still resolve, and every `Chapter N` mention in running prose still names the chapter it means — a renumbering leaves those pointing at the wrong chapter while every link still resolves.
-- Every technical claim about model/API behavior or limits is accurate against current Anthropic documentation and dated where it may drift.
+- Every technical claim about model/API behavior or limits is accurate against current Anthropic documentation, and every link still resolves. **This is the check the guide's dating convention rests on.** The guide carries no per-claim access dates by design (`update-guide` forbids them); instead `References` states that every reference and link was checked on this revision's publication date. Cutting a revision without actually re-verifying makes that statement false for the whole document rather than stale in one paragraph, so this bullet is not a formality — work through the cited pages and confirm the numbers, names, and behaviors the guide asserts.
 - Code and request/response examples match the API shape described in the cited documentation.
 - No repo-specific names, slugs, routes, or file paths leaked in, except where the repo is explicitly and deliberately named as an optional case study.
 - The content reads as generalized guidance, not a restatement of one lab's specific implementation.

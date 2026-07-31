@@ -23,7 +23,7 @@ Reserve this for durable, transferable lessons — a pattern, tradeoff, failure 
 - Examples are portable TypeScript/pseudocode/JSON, not tied to this repo's actual stack.
 - Playground-only affordances (a fake mode, an inspector panel, and the like) may appear only as optional testing/debugging ideas, never as product requirements. In particular, the guide's testing material never mentions a whole-app fake mode: the transferable rule is that no automated test should need a real Claude key or make a real Claude call, and substituting the Claude client at its interface is what carries that. Other dependencies are left as an ordinary engineering judgment — a real test database instance is frequently the better choice, so don't generalize the Claude rule into "mock every external system."
 - Define any non-obvious term at first use, in the prose where it's used. There is no glossary to add it to.
-- Cite claims about model/API behavior or limits against current Anthropic documentation and record an access date next to the citation — that behavior can change.
+- Cite claims about model/API behavior or limits against current Anthropic documentation — that behavior can change. **Do not write a per-claim access date.** The guide carries one statement in `References` saying every reference was checked on the revision's publication date, and `revise-guide` is what re-verifies the links and stamps that date. A date next to an individual citation goes stale independently of the rest of the guide and creates exactly the drift that statement exists to prevent.
 
 ## Guide structure
 
