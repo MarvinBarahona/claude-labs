@@ -47,7 +47,11 @@ Every item except the numbered chapters is a fixed section: it always exists, al
 
 - Single H1 for the whole document; ordered heading levels beneath it.
 - Fenced code blocks with a language identifier.
-- Tables narrow enough to render legibly when converted to PDF.
+
+**The guide has two render targets: GitHub and the PDF.** Anything added has to work in both, which rules out more than it sounds like. Mermaid renders on GitHub but pandoc emits it into the PDF as raw source, so never use it. The two visual devices that survive both are Markdown pipe tables and ASCII diagrams in a ```` ```text ```` fence — prefer those, and don't reach for anything else without checking it renders in both.
+
+- Reach for a table when prose is comparing several things along the same axes; a three-way comparison spread over three paragraphs is almost always a table trying to get out. But check the page count after: a table is usually clearer than the prose it replaces and often *taller* in the PDF, so "shorter" and "better" don't automatically travel together.
+- Tables must stay narrow enough to render legibly in the PDF. Pandoc sizes a column proportionally to the dash count in its separator segment, not to its content, so weight the separator row deliberately (a short run for a label column, longer runs for prose columns) rather than writing a uniform `|---|---|---|`. Keep cells short and push nuance into the paragraph after the table; an unbreakable long cell is what produces an `Overfull \hbox`, which `revise-guide` treats as a real defect.
 - Images live under `guide/assets/` and are referenced with guide-relative paths (e.g. `assets/example.png`), never a repo-root-relative `guide/assets/...` path — the guide is read as a standalone file, not from the repo root.
 - Use **application contract** for a type owned by the product (even one wrapping provider metadata) and **provider type** for an Anthropic SDK request/response type, consistent with the rest of the guide.
 - The guide has a fixed PDF pagination: an `<!-- PAGEBREAK -->` marker — an HTML comment, invisible on GitHub — goes on its own line immediately before every fixed section and every chapter/appendix that should start a fresh page, except where two are deliberately paired to share one. Adding a new fixed section, chapter, or appendix without one leaves it silently sharing the previous section's page once rendered. Exact pairing and pagination mechanics are `revise-guide`'s call — see that skill for what the marker becomes at render time.
