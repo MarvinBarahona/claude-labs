@@ -101,16 +101,19 @@ An agent's call count is genuinely unpredictable — the same goal can take 2
 calls or 9 depending on what Claude decides it needs to check, which is the
 entire point of handing over control. That's why this loop needs a hard stop
 that a workflow doesn't: it cuts off after 10 total tool calls — both the 3
-custom tools and `ask_deepwiki` count toward it, since an MCP call still
-costs an extra round trip's worth of resent history even though it resolves
-inline — and returns `hitIterationCap: true`, shown as a banner above the
-run. The final answer still comes back, but it's whatever Claude had
-mid-investigation when the cap hit — not a conclusion it decided it was
-ready to give.
+custom tools and `ask_deepwiki` count toward it, since an MCP call is billed
+the moment it resolves, mid-generation, before the backend ever sees it — no
+post-receipt truncation reduces that cost, so it counts against the cap the
+same as a custom tool call — and returns `hitIterationCap: true`, shown as a
+banner above the run. The final answer still comes back, but it's whatever
+Claude had mid-investigation when the cap hit — not a conclusion it decided
+it was ready to give.
 
-The cap is checked once per round trip, not per tool call — a response
-requesting several tools at once can still push the total slightly past 10
-before that.
+The cap is checked once per round trip, not per tool call, by design — a
+response requesting several tools at once can still push the total slightly
+past 10 before the next check catches it. Tightening this to a hard,
+per-call cutoff would mean discarding a tool result the backend already paid
+for, so the loop accepts the small overrun instead.
 
 ## Bounding tool-result cost
 

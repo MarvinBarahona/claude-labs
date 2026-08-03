@@ -55,7 +55,9 @@ that's directly supported by something in the document:
 
 A PDF always cites by `page_location` (a plain-text document would cite by
 character offset instead) — `start_page_number`/`end_page_number` name
-the 1-indexed page range the `cited_text` came from. This lab renders each
+the 1-indexed page range the `cited_text` came from, with an **exclusive**
+end page: `start_page_number: 3, end_page_number: 4` above means the
+citation came from page 3 alone, not pages 3 and 4. This lab renders each
 citation as a small inline icon next to the text it supports, not a
 numbered `[1]`/`[2]` marker — citations are almost always exactly one per
 block, so numbering added noise without conveying anything. Click the icon

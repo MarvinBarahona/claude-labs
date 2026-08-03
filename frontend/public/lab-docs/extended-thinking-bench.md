@@ -46,7 +46,11 @@ much latency and output-token cost that thoroughness actually adds.
 
 ## Gotcha
 
-Adaptive thinking is incompatible with message prefilling and with a forced
-(non-`auto`) `tool_choice`. It also isn't a default-on setting for every
-call — it's worth reaching for once evals show plain prompting has plateaued,
-since it adds real latency and cost for every call it's turned on for.
+You can't prefill the assistant response while thinking is on — a request
+whose final turn is an assistant message is rejected outright, not merely
+discouraged. Forced (non-`auto`) `tool_choice` isn't a concern here, though:
+that restriction only applies to manual extended thinking (`type:
+"enabled"`); adaptive thinking, the mode this lab uses, supports forced tool
+use normally. Thinking also isn't a default-on setting for every call — it's
+worth reaching for once evals show plain prompting has plateaued, since it
+adds real latency and cost for every call it's turned on for.
