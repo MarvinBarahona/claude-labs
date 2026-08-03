@@ -10,6 +10,7 @@
 |------------|--------------|:----------------------------------------------------------------------:|
 | 0.1 | 2026-07-27 | Initial draft |
 | 1.0 | 2026-07-31 | First publish: ten feature chapters plus architecture, testing, and figures |
+| 1.1 | 2026-08-03 | Accuracy fixes against current docs, plus more findable section headings |
 
 ## Abstract
 
