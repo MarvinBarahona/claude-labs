@@ -57,6 +57,6 @@ This table is a summary pointer — whatever process currently carries out each 
 | Agent Playground | Feature | `agent-playground` | ✅ Done | [`agent-playground.md`](features/agent-playground.md) |
 | Agent Playground Tool Result Caps | Task | `agent-playground-tool-result-caps` | ✅ Done | [`agent-playground.md`](features/agent-playground.md) |
 | Document Research Assistant Large-File Warning | Task | `document-research-assistant-large-file-warning` | ✅ Done | [`document-research-assistant.md`](features/document-research-assistant.md) |
-| Web & Repo Research Reporter Billed Search Count | Task | `web-repo-research-reporter-billed-search-count` | 📝 Draft | [`task-web-repo-research-reporter-billed-search-count.md`](planning/task-web-repo-research-reporter-billed-search-count.md) |
+| Web & Repo Research Reporter Billed Search Count | Task | `web-repo-research-reporter-billed-search-count` | 📋 Planned | [`task-web-repo-research-reporter-billed-search-count.md`](planning/task-web-repo-research-reporter-billed-search-count.md) |
 
 
