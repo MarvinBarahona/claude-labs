@@ -7,6 +7,18 @@ description: Use this skill to close out a round of edits to guide/guide.md as a
 
 `update-guide` is for authoring: adding or changing content in `guide/guide.md`. This skill is for the separate act of turning a batch of those edits into a new numbered, dated, PDF-rendered revision. Run it after content edits are done, not while still drafting.
 
+## Execution: delegate to a subagent
+
+Do the actual work (Steps 1–6 below) inside an `Agent` call (`subagent_type: general-purpose`, run in the foreground — the calling conversation needs the result before it can continue) rather than running the steps directly. Give the subagent this skill's full content plus the specifics of the request — which edits prompted the revision, whether it's a version bump or a same-version re-render, any user-specified changelog or version override — as its prompt; a freshly spawned agent has no memory of the conversation that led here.
+
+Constrain the final report back — both what the subagent returns and what gets relayed to the user — to exactly these three things:
+
+1. **Files changed** — every file actually modified, by path, with a one-line description of the change (typically just `guide/guide.md`'s Revision History row; nothing else in the guide changes here, since content edits belong to `update-guide`).
+2. **Visual verification performed, if any** — per step 5, state plainly whether a `pdftoppm` spot-check happened and, if so, which page(s) and which specific question it settled. If neither exclusive scenario applied, or the tool wasn't available, say so and note that the full visual checklist is still the user's to do.
+3. **Output file path** — `guide/output/claude-api-features-<version>.pdf`.
+
+Nothing else from the run belongs in that report — not the docker build log, not a walkthrough of the pre-publication checklist, not intermediate file listings. This constraint is on the final summary only: the subagent still surfaces the decisions the steps below call for as they come up — version/changelog confirmation, the PDF-collision substitute-vs-new-revision choice, invoking the explicit preview exception — since those need the user's answer to proceed, not just a mention in the wrap-up.
+
 ## Precondition
 
 Only run this once the edits for the revision are actually finished. If content is still being drafted or a requested change hasn't been made yet, that's `update-guide`'s job — come back here afterward.
