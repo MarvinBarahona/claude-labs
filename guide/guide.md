@@ -79,9 +79,9 @@ A message suffices to explain, rewrite, or summarize. Structured output takes ov
 
 ### Decision guide
 
-Choose the least autonomous pattern that satisfies the product contract:
+Choose the least autonomous pattern that satisfies the product contract. The third column lists what each pattern typically grows into once it is carrying real traffic, roughly in the order the need appears — not a checklist to build up front:
 
-| Product need | Primary pattern | Add when needed | Avoid |
+| Product need | Primary pattern | What to add next | Avoid |
 |-------------------------------------------|--------------------------|--------------------------------------------------|------------------------------------|
 | A person reads one generated answer | Message | Streaming for long answers | Schema wrapping with no consumer |
 | Code consumes fields or a decision | Structured output | Runtime validation and semantic evaluation | Parsing informal prose |
@@ -130,7 +130,7 @@ The browser talks only to the application backend. The backend is the policy bou
 
 ### Put a narrow adapter around the SDK
 
-Feature services should depend on an application-owned interface rather than instantiate the Anthropic SDK. Keep the adapter thin: it should preserve useful SDK types and behavior while centralizing configuration and error translation.
+Feature services should depend on an application-owned interface rather than instantiate the Anthropic SDK. Keep the adapter thin: it should preserve the provider types and behavior worth keeping while centralizing configuration and error translation.
 
 ```ts
 interface ClaudeRequest {
@@ -329,37 +329,11 @@ const CAPABILITIES = {
 } as const satisfies Record<string, ModelCapabilities>;
 ```
 
-Reject an unsupported combination before the request is built, not after a production 400 explains it to you:
-
-```ts
-function buildFor(profile: keyof typeof CAPABILITIES, needs: FeatureNeeds): ClaudeRequest {
-  const caps = CAPABILITIES[profile];
-  if (needs.effort && !caps.effort.includes(needs.effort)) {
-    throw new UnsupportedConfiguration(`${profile} does not accept effort=${needs.effort}`);
-  }
-  if (needs.thinking && caps.thinking === "none") {
-    throw new UnsupportedConfiguration(`${profile} does not support thinking`);
-  }
-  return {
-    model: caps.model,
-    max_tokens: Math.min(needs.maxTokens, caps.maxOutputTokens),
-    betas: [...caps.betas, ...needs.betas],
-    system: needs.system,
-    messages: needs.messages,
-  };
-}
-```
+Reject an unsupported combination before the request is built, not after a production 400 explains it to you. One `buildFor(profile, needs)` helper carries that: it resolves the profile, throws an `UnsupportedConfiguration` when a feature asks for an effort level or thinking mode the profile does not list, clamps `max_tokens` to the profile's ceiling, and merges the profile's `betas` with any the feature adds.
 
 The table earns its place only if something keeps it honest, so test it as code rather than treating it as configuration:
 
 ```ts
-test("no profile claims an effort level it cannot use", () => {
-  for (const [name, caps] of Object.entries(CAPABILITIES)) {
-    if (caps.thinking === "none") expect(caps.effort, name).toHaveLength(0);
-    expect(caps.model, name).toBeTruthy();
-  }
-});
-
 test("every feature's declared needs are satisfiable by its profile", () => {
   for (const [feature, needs] of Object.entries(FEATURE_NEEDS)) {
     expect(() => buildFor(PROFILE_FOR[feature], needs), feature).not.toThrow();
@@ -367,7 +341,7 @@ test("every feature's declared needs are satisfiable by its profile", () => {
 });
 ```
 
-That second test is the one that pays off. It fails at build time when someone raises a feature's effort past what its profile allows, or points a feature at a cheaper profile that cannot do what the feature needs — both of which otherwise ship and fail on a user's request.
+This is the test that pays off. It fails at build time when someone raises a feature's effort past what its profile allows, or points a feature at a cheaper profile that cannot do what the feature needs — both of which otherwise ship and fail on a user's request. A companion test asserting the table's internal consistency, that no profile claims an effort level its thinking mode cannot use, is worth keeping too, but it only catches a typo in the table; this one catches a mismatch between the table and the product.
 
 Two details make this more than tidiness. First, an unsupported parameter is not always ignored: a sampling control accepted on one model tier can fail with a 400 on another because that tier does not expose the field at all, so "send it and let the model sort it out" is not a strategy. Second, opt-in feature headers are scoped to *every* call that touches the capability, not just the call that created the resource — an upload commonly succeeds without the header and the later message call referencing that file is what fails, which puts the error a long way from its cause. Carrying `betas` in the same record that resolves the model is what keeps those two facts in one place. Record the resolved configuration in telemetry so a later model migration can be evaluated, and expose a user-facing control for a parameter only on the profiles that actually accept it.
 
@@ -393,7 +367,7 @@ async function completeTurn(input: SendTurnInput): Promise<TurnEnvelope<string>>
 
 Decide explicitly whether multiple text blocks should be concatenated, rendered separately, or rejected for a particular contract, and inspect `stop_reason` before treating the result as complete — a token-limit stop is not a natural end.
 
-### Add streaming for user-perceived progress
+### Add streaming only where users read the answer as it arrives
 
 Streaming helps when users benefit from reading an answer as it arrives. It adds protocol and state complexity, so a short classification or extraction may be clearer as one atomic result.
 
@@ -502,7 +476,7 @@ const result = validateTriageResult(JSON.parse(textBlock.text));
 
 Schema-constrained output strengthens the provider response, but runtime validation remains useful at your trust boundary: the schema guarantee covers the model's output, not integration regressions, an accidental call that omits the schema, unsupported stop conditions, or later application changes. Generate the TypeScript type, schema, and validator from one source when your tooling supports it; otherwise test that they stay aligned. SDK parsing helpers reduce boilerplate — keep their use behind `ClaudeClient` so features stay testable and provider setup stays centralized.
 
-### Handle valid HTTP responses that are not valid results
+### Handle refusals, truncation, and other non-success stop reasons
 
 Schema compliance does not override every termination condition. Two cases in particular return a perfectly successful HTTP response carrying something that is not a usable result: a safety refusal comes back as HTTP 200 with `stop_reason: "refusal"` and text that may not match the requested schema, and a response stopped at `max_tokens` may contain incomplete JSON. Others exist — a turn can also stop because the context window was exhausted, or pause mid-way when server-side tools are involved — and the documented set grows over time, so consult the current [stop-reason reference](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons) rather than hard-coding the ones you happen to know.
 
@@ -512,6 +486,7 @@ That growth is the reason to write this check as an allowlist rather than a list
 function assertStructuredCompletion(response: ClaudeMessage): void {
   switch (response.stop_reason) {
     case "end_turn":
+    case "stop_sequence":
       return;
     case "refusal":
       throw new ModelRefusal(extractDisplayableText(response));
@@ -525,7 +500,7 @@ function assertStructuredCompletion(response: ClaudeMessage): void {
 }
 ```
 
-A blocklist that checks only for refusal and truncation quietly accepts every other reason as success, so the first unrecognized one reaches `JSON.parse` and surfaces as a parser defect somewhere far from its cause. The `default` branch is what turns that into a legible failure with a telemetry code you can search for. Treat refusal as a product-level outcome with appropriate UI language. Treat truncation and context exhaustion as incomplete generation; retry only under an explicit cap, and only when a larger output budget would actually change the result — retrying a context-window overflow with the same input will not.
+A blocklist that checks only for refusal and truncation quietly accepts every other reason as success, so the first unrecognized one reaches `JSON.parse` and surfaces as a parser defect somewhere far from its cause. The `default` branch is what turns that into a legible failure with a telemetry code you can search for. The allowlist's own cost is that it must be maintained: `stop_sequence` is a perfectly normal completion, and a feature that starts sending `stop_sequences` without adding it here will reject its own successful results. That is the right failure direction — loud and immediate rather than silent and downstream — but it is a real edit the first time a feature needs one. Treat refusal as a product-level outcome with appropriate UI language. Treat truncation and context exhaustion as incomplete generation; retry only under an explicit cap, and only when a larger output budget would actually change the result — retrying a context-window overflow with the same input will not.
 
 Keep distinct internal failures for absent text, JSON parsing, and runtime validation. They may share a safe user message, but separate telemetry codes make configuration bugs visible.
 
@@ -601,18 +576,18 @@ Execute the recognized tools, then append two turns: the complete assistant resp
 ```ts
 const MAX_TOOL_ROUNDS = 6;
 
-for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+for (let round = 1; round <= MAX_TOOL_ROUNDS; round += 1) {
   const response = await claude.createMessage(request);
   calls.push({ request, response });
   if (response.stop_reason !== "tool_use") return finalize(response, calls);
 
+  if (round === MAX_TOOL_ROUNDS) return finalizeCapped(response, calls, "tool_rounds"); // before executing
   const results = await executeToolBatch(response.content.filter(isToolUseBlock));
   request = { ...request, messages: [...request.messages, assistantTurn(response), userTurn(results)] };
 }
-throw new ToolLoopLimitExceeded(MAX_TOOL_ROUNDS);
 ```
 
-The request is reassigned rather than mutated so every trace entry remains an accurate snapshot. A production loop also needs caps on rounds, total tool calls, wall-clock time, and possibly spend; reaching a cap is a controlled incomplete outcome, not permission to continue indefinitely. Write the cap into the loop's condition from the start — an unbounded `for (;;)` that plans to "add a cap later" is a common mistake, and a stuck or adversarial tool loop will find that gap in production long before a code reviewer does.
+The request is reassigned rather than mutated so every trace entry remains an accurate snapshot. Where the cap check sits is the detail worth copying: it lands after the response is recorded but *before* the tools are run, because the final permitted round is the one that can do real damage. Execute there and you have committed side effects whose results the model will never see and the user will never get back — the worst of both outcomes, produced by a loop that looks correctly bounded. Reaching a cap is a controlled incomplete outcome, so it returns the trace and the reason rather than throwing them away; a production loop needs the same treatment for total tool calls, wall-clock time, and possibly spend. Write the cap into the loop's condition from the start — an unbounded `for (;;)` that plans to "add a cap later" is a common mistake, and a stuck or adversarial tool loop will find that gap in production long before a code reviewer does.
 
 Check every non-tool stop reason explicitly. `end_turn` can produce the final answer, while truncation, refusal, or other supported stop conditions need their own handling. A loop condition alone does not prove success.
 
@@ -669,7 +644,7 @@ async function executeToolBatch(blocks: ToolUseBlock[]) {
 }
 ```
 
-The `catch` inside the map is what makes that requirement hold. A bare `Promise.all(blocks.map(executeOneTool))` rejects the moment any single tool throws and discards the siblings that already settled, so one failing tool costs you the results of every tool that succeeded — and the next request is malformed for want of them. Catching per block, or using `Promise.allSettled` and converting rejections afterwards, keeps the one-result-per-request contract intact no matter which call fails.
+The `catch` inside the map is what makes that requirement hold. Map the blocks straight onto `executeOneTool` without it, and a bare `Promise.all` rejects the moment any single tool throws and discards the siblings that already settled, so one failing tool costs you the results of every tool that succeeded — and the next request is malformed for want of them. Catching per block, or using `Promise.allSettled` and converting rejections afterwards, keeps the one-result-per-request contract intact no matter which call fails.
 
 If a sequential batch stops after an earlier failure, still return `is_error: true` results for calls you deliberately skipped. For side effects, add confirmation, idempotency keys, precondition checks, and audit records. Consider separating read tools from propose/commit operations so Claude can plan without silently executing a consequential change.
 
@@ -786,7 +761,7 @@ interface WorkflowCall extends CallTrace {
 
 The product response can expose route, final artifact, grades, attempt count, and pass state without exposing raw prompts. Protected development tooling can show the complete trace. Report total usage as the sum across calls; showing only the final grader's tokens materially understates cost.
 
-### Reuse stable prefixes deliberately
+### Cache the shared prefix, but only where it repeats
 
 Workflows often repeat the same source document, policy, or case context across stages and attempts. Keep that shared prefix byte-stable and place variable stage instructions after it so prompt caching can apply where supported. Changing tool definitions, schemas, or earlier content can invalidate reuse, so measure cache reads rather than assuming them.
 
@@ -911,9 +886,9 @@ interface DocumentSession {
 
 On the first question, attach the document and question. On later questions, send the accepted history required for continuity. The backend — not the browser — authorizes the session and decides which document identifier and prior messages belong to it.
 
-Store a resendable form of assistant content. Provider response blocks can contain metadata that is output-only or unsuitable for a later request. Build an explicit `toConversationHistory(response)` transformation, test every supported block type, and retain citations separately for display if the request format does not accept the response annotation unchanged.
+Store a resendable form of assistant content. The provider types you get back can carry metadata that is output-only, or that a later request will not accept in the shape it was returned. Build an explicit `toConversationHistory(response)` transformation, test every supported block type, and retain citations separately for display if the request format does not accept the response annotation unchanged.
 
-In practice this is not an edge case — a document citation block commonly cannot be resent unchanged in a later request's history at all. Strip the citation annotations before storing that turn, keep only the cited text as ordinary content, and retain the full citation detail separately, keyed to that turn, for display. Rebuilding history from this clean representation avoids sending back a shape the next request may not accept.
+Citations are the block type worth checking rather than assuming, and the answer runs the opposite way from most people's instinct: the request format accepts citation annotations on a text block, so a cited assistant turn can normally be stored and resent exactly as it arrived, and `cited_text` returned that way is not billed as input. Storing a stripped copy is therefore a real cost, not a safe default — later turns lose the grounding the earlier ones established, and nothing fails loudly enough to point back at the decision. Keep citation detail separately only when your interface genuinely needs a different shape for display, and let a round-trip test, not caution, decide whether any given block type needs a lossy representation at all.
 
 When the same feature also lets Claude maintain its own scratch state across turns — running notes, a draft outline — that capability is usually a stateful custom tool with no meaningful `input_schema` of its own, the pattern Chapter 4 describes for a tool whose contract lives entirely in the system prompt rather than in a schema Claude can read. Keep that tool's system-prompt explanation and this chapter's document/citation handling independent: one governs how Claude finds grounded facts, the other governs how it accumulates its own working state.
 
@@ -936,7 +911,7 @@ Use response usage to distinguish cache creation from cache reads. A configured 
 
 A stable Files API identifier helps keep request bytes and cache prefixes stable, but file reuse and prompt caching solve different problems: the former avoids uploading bytes again; the latter avoids reprocessing an eligible prompt prefix.
 
-### Document failure modes
+### Handle document failure modes
 
 Handle a stale file identifier, provider-side deletion, a cache miss, and a scanned document with no extractable text to cite. A citation-free answer can be either a valid outcome or a product failure depending on the promise made to users; encode that decision.
 
@@ -1042,7 +1017,7 @@ Anthropic's [Agent Skills guide](https://platform.claude.com/docs/en/agents-and-
 
 Register custom skills during deployment or through a durable provisioning path, not once per application process without persistence. A lighter-weight alternative is lazy registration on first use, caching the resulting identifier for the process lifetime so a burst of concurrent first requests doesn't each try to register the same skill — either approach is fine, but registration is always a separate step from a request that merely references an already-registered skill by identifier. Version skill contents and record the version used by each turn. Making a skill available does not guarantee Claude used it: invocation is the model's own judgment call, informed by the skill's description field, and a reasonable request may simply not warrant it. Infer use only from documented execution evidence, and label heuristic detection as such.
 
-Combining code execution with a container skill requires stacking more than one opt-in feature header at once, not just the one for code execution itself ([Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)). Resolve the full set a given combination needs from the same capability table that resolves model and tool versions — the `betas` field Chapter 2 puts on that record exists for exactly this — rather than adding flags ad hoc as each new combination is discovered.
+Combining code execution with a container skill requires opt-in feature headers that neither capability demands on its own — code execution is generally available and asks for none ([Agent Skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview)). That is the part worth encoding rather than memorizing: the trigger is the combination, so a mental model of "which capability needs which header" is exactly the one that produces a 400 nobody can place. Resolve the full set a given combination needs from the same capability table that resolves model and tool versions — the `betas` field Chapter 2 puts on that record exists for exactly this — rather than adding flags ad hoc as each new combination is discovered.
 
 A skill is executable supply-chain material. Review helper scripts, pin dependencies where possible, restrict who can publish updates, and test the packaged files in the same runtime shape used in production.
 
@@ -1193,7 +1168,7 @@ Server-side tool loops can return a pause stop reason. Continue only under an ap
 - partial answer with failed sources; and
 - valid answer with no tool use.
 
-Continuing a conversation that already contains search results has its own trap, and it is the mirror image of the one Chapter 6 describes for citations. Hosted search results carry opaque encrypted fields that the provider decrypts on later turns to restore those results into Claude's context. Send the assistant's blocks back exactly as received, including that encrypted content; strip it, re-serialize it, or rebuild the block from just the parts your UI happened to need, and the next request fails validation outright. The two chapters therefore pull in opposite directions on the same instinct — a citation annotation commonly *cannot* be resent unchanged, while a search result *must* be — so "normalize provider blocks before storing them" is not a rule that survives contact with both. Decide per block type, and let the round-trip test for each one prove which it is.
+Continuing a conversation that already contains search results has its own trap, and it is the sharper-edged relative of the one Chapter 6 describes for citations. Hosted search results carry opaque encrypted fields that the provider decrypts on later turns to restore those results into Claude's context. Send the assistant's blocks back exactly as received, including that encrypted content; strip it, re-serialize it, or rebuild the block from just the parts your UI happened to need, and the next request fails validation outright. Both chapters therefore punish the same instinct — rebuilding a provider block from whichever parts your interface happened to need — but they punish it very differently. Drop a citation annotation and the next request still succeeds, quietly less grounded than it should be. Drop encrypted search content and the next request fails validation outright. The loud failure is the one you can afford; the silent one is why "normalize provider blocks before storing them" survives contact with neither chapter. Decide per block type, and let the round-trip test for each one prove what it needs.
 
 When streaming, forward user-meaningful search/MCP activity without exposing credentials or sensitive arguments. Accumulate every supported provider block and wait for the terminal envelope before treating the brief as canonical.
 
@@ -1340,7 +1315,7 @@ type ReasoningProfile =
 
 Do not infer support from a model name with scattered string checks. Maintain a tested capability table sourced from current provider documentation. Reject unsupported combinations before the network call and log the resolved profile.
 
-Anthropic's [thinking documentation](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) describes adaptive/manual modes, thinking blocks, tool-use continuity, and current compatibility.
+Anthropic's [thinking documentation](https://platform.claude.com/docs/en/build-with-claude/thinking) describes thinking blocks, tool-use continuity, streaming, and current compatibility. The fixed-budget manual mode it supersedes has [its own page](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) and is worth reading only if you are pinned to a model generation that offers nothing else — newer models reject that configuration outright, which makes it a migration concern rather than a design choice.
 
 ### Compare one variable at a time
 
@@ -1398,7 +1373,7 @@ request = {
 };
 ```
 
-Keep one thinking mode for the whole assistant turn. Forced tool choices can be incompatible with thinking on supported models, so validate tool configuration as part of the model profile. Assistant-message prefilling is not a compatibility question on current models — it is unsupported outright, as Chapter 3 covers — so a reasoning profile inherited from an older design should have dropped it already rather than carrying it forward as a flag to validate. Interleaved thinking behavior and required headers vary by model generation; use current capability metadata.
+Keep one thinking mode for the whole assistant turn. Forced tool choice is where the two modes actually diverge: a fixed-budget manual configuration accepts only automatic or disabled tool choice and rejects a forced one, while adaptive thinking permits forcing a tool normally. That makes it a validation keyed to the mode your profile already records, not a per-model lookup. Assistant-message prefilling is not a compatibility question on current models — it is unsupported outright, as Chapter 3 covers — so a reasoning profile inherited from an older design should have dropped it already rather than carrying it forward as a flag to validate. Interleaved thinking behavior and required headers vary by model generation; use current capability metadata.
 
 ### Measure the actual tradeoff
 
@@ -1698,7 +1673,7 @@ Network chunks do not equal SSE frames. Frontend parser tests must split every d
 
 Use distinct cases and public contracts:
 
-| Failure | Transport | Retry owner | User outcome |
+| Failure | How it surfaces | Retry owner | User outcome |
 |------------------------------|-----------------------------------|--------------------|--------------------------------------------|
 | Input validation | HTTP 4xx before model call | User or application | Correct input or permission |
 | Claude API failure | HTTP 5xx mapping or stream error | Backend policy | Retry later or degraded path |
@@ -1826,7 +1801,8 @@ The guide prioritizes official Anthropic sources for API behavior. Every referen
 - [MCP connector](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector) — remote server configuration, toolsets, authorization, MCP result behavior, and the connector's current release status and platform availability.
 - [Vision](https://platform.claude.com/docs/en/build-with-claude/vision) — image sources, ordering, formats, limits, resolution tiers, visual-token cost, and known limitations.
 - [Coordinates and bounding boxes](https://platform.claude.com/docs/en/build-with-claude/vision-coordinates) — how images are resized and padded, and how to map returned coordinates back to an original.
-- [Extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) — model-specific thinking modes, blocks, budgets, tool-use continuity, and compatibility.
+- [Thinking](https://platform.claude.com/docs/en/build-with-claude/thinking) — thinking blocks and response shape, display control, streaming, thinking with tool use, block preservation, and caching interactions.
+- [Extended thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) — the superseded fixed-budget manual mode, its per-model availability, and migration to adaptive thinking.
 - [Effort](https://platform.claude.com/docs/en/build-with-claude/effort) — response-wide effort controls and their interaction with adaptive thinking.
 - [Tool Runner](https://platform.claude.com/docs/en/agents-and-tools/tool-use/tool-runner) — SDK-managed tool loops, error wrapping, iteration caps, and customization points.
 - [API errors](https://platform.claude.com/docs/en/api/errors) — HTTP errors, typed SDK exceptions, retry behavior, request identifiers, and payload limits.
