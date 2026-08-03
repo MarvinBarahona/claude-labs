@@ -67,11 +67,12 @@ mkdir -p guide/output
 cp guide/guide.md guide/output/source.md
 ```
 
-**Build the render image once.** The stock `pandoc/latex` image is missing the font packages this guide's PDF uses (verified: `mathpazo`/`tgtermes`/etc. fail to load — the `.sty` loads but the actual Type 1 font metrics aren't installed, so text silently falls back to `nullfont` and prints as nothing). Write a small Dockerfile and build a tagged image from it — Docker's build cache makes every build after the first nearly instant, since the Dockerfile content never changes:
+**Build the render image once.** The stock `pandoc/latex` image is missing the font packages this guide's PDF uses (verified: `mathpazo`/`tgtermes`/etc. fail to load — the `.sty` loads but the actual Type 1 font metrics aren't installed, so text silently falls back to `nullfont` and prints as nothing). It also lacks `pdftoppm`, added here via `poppler-utils` for step 5's targeted page-image spot-checks — the base image is Alpine (verified via `/etc/os-release`), so that's `apk add`, not `apt-get`. Write a small Dockerfile and build a tagged image from it — Docker's build cache makes every build after the first nearly instant, since the Dockerfile content never changes:
 
 ```dockerfile
 FROM pandoc/latex
 RUN tlmgr update --self && tlmgr install collection-fontsrecommended tex-gyre
+RUN apk add --no-cache poppler-utils
 ```
 
 Save that as `guide/output/Dockerfile`, then:
@@ -179,7 +180,21 @@ grep -n "Overfull \\\\hbox" guide/output/pagenum.log
 
 `Overfull \hbox` means a line is wider than its column/page and will visibly clip past the margin in the PDF — most often an unhyphenatable compound term (e.g. `Authentication/authorization`) stuck in an auto-sized table column. This is a real, exact defect, not a false positive: if it fires, the fix is in the Markdown source (rephrase the cell, shorten the term, or narrow the table), not a pandoc flag — flag it back to `update-guide` rather than patching around it here. This log check catches width problems; it does not replace visually checking page breaks, since pdflatex doesn't warn about an otherwise-valid page break landing at an awkward spot.
 
-If this environment can't render PDF pages for visual inspection (no `pdftoppm`/`poppler-utils` available), the log-based checks above still run in full, but the visual checklist below has to be done by the user directly — say so plainly rather than silently skipping it or claiming the visual pass happened.
+**Targeted visual spot-checks via `pdftoppm`.** `claude-labs-guide-pdf` carries `poppler-utils` (see step 3), so a specific page can be rendered to a PNG and read directly:
+
+```
+docker run --rm -v "${PWD}/guide:/data" -w /data --entrypoint sh claude-labs-guide-pdf -c \
+  "pdftoppm -png -r 150 -f <page> -l <page> output/claude-api-features-<version>.pdf output/page"
+```
+
+Reach for this only to settle one specific, narrow question the log-based checks above can't answer on their own — never as a page-by-page walkthrough of the checklist below. Rendering and reading an image per page, every revision, is the expensive path (each image is a full multimodal read) and duplicates work the checklist already assigns to the user. The exclusive scenarios worth a spot-check:
+
+- This session's edits changed something whose *rendered* effect the source can't confirm — the `CENTER`/`PAGEBREAK` substitution logic itself, or a table's alignment/column-width convention (e.g., centered vs. left-aligned changelog text) — and the one page carrying that content settles it.
+- An `Overfull \hbox` fired above and its actual on-page severity (a barely-clipped character vs. a line spilling into the margin) needs confirming before deciding it's worth a source fix.
+
+In both cases the target page is already known in advance — from the change itself, or from the warning's line number cross-referenced against the `pagenum.aux` `newlabel` page numbers used in step 4 — so render only that page (or two), answer the one question, and stop. Don't fan out into a general sweep of the document this way, and don't treat it as a substitute for the checklist below: that full pass is still the user's job on the finished PDF, spot-checks only resolve what's needed to have confidence going into it.
+
+If neither scenario applies, or `pdftoppm` isn't available for some reason, the log-based checks above still run in full, but the visual checklist below has to be done by the user directly — say so plainly rather than silently skipping it or claiming the visual pass happened.
 
 Then open the final, index-updated `guide/output/claude-api-features-<version>.pdf` and check what only shows up once it's paginated:
 
