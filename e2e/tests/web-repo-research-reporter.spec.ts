@@ -29,7 +29,8 @@ test('is reachable from the nav, loads its docs, and runs a research brief with 
     const result = page.getByTestId('brief-result');
     await expect(result.getByText(fallbackText).first()).toBeVisible();
 
-    await expect(page.getByTestId('searches-performed')).toContainText('1');
+    await expect(page.getByTestId('searches-visible')).toContainText('1');
+    await expect(page.getByTestId('searches-billed')).toContainText('3');
     await expect(page.getByTestId('mcp-calls-performed')).toContainText('1');
 
     const inspector = page.locator('app-inspector-panel');

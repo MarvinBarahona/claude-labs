@@ -94,11 +94,24 @@ to:
 }
 ```
 
-This lab counts the `server_tool_use` blocks named `web_search` and the
-`mcp_tool_use` blocks in the response to show **Searches performed** and
-**DeepWiki calls** below — a quick way to see how much lookup work a given
-question actually triggered. Open the inspector panel to see every raw
-block from a real run, including the ones not rendered in the brief itself.
+This lab counts the `mcp_tool_use` blocks in the response to show **DeepWiki
+calls** below — a quick way to see how much lookup work a given question
+actually triggered against that one tool.
+
+Web search gets two separate counters instead of one, because counting its
+top-level `server_tool_use` blocks the same way can under-report what
+actually happened. This tool version runs searches through dynamic
+filtering by default, which lets Claude call web search *from inside* the
+code execution tool rather than only directly — and a search run that way
+comes back nested inside code execution's own result, not as a top-level
+block in the response you can just count. A call can run and be billed for
+several searches while its visible top-level block count reads low, or even
+zero. **Searches performed (visible)** is that top-level block count;
+**Billed** is `usage.server_tool_use.web_search_requests`, the actual number
+of searches Claude ran and was charged for, regardless of whether they
+happened directly or nested under code execution. Open the inspector panel
+to see the raw `usage` object and cross-check the billed figure yourself,
+alongside every raw content block from a real run.
 
 ## Gotcha
 

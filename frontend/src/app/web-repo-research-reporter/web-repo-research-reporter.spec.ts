@@ -61,7 +61,8 @@ describe('WebRepoResearchReporter', () => {
         summary: 'ok',
         findings: [{ claim: 'a claim', source: 'https://example.com' }],
       },
-      searchesPerformed: 2,
+      searchesVisible: 2,
+      searchesBilled: 3,
       mcpCallsPerformed: 1,
       ...overrides,
     };
@@ -166,7 +167,8 @@ describe('WebRepoResearchReporter', () => {
             { claim: 'Unit tests mock external clients.', source: 'https://example.com/testing' },
           ],
         },
-        searchesPerformed: 3,
+        searchesVisible: 3,
+        searchesBilled: 7,
         mcpCallsPerformed: 2,
       }),
     );
@@ -180,7 +182,8 @@ describe('WebRepoResearchReporter', () => {
     expect(findingItem?.textContent).toContain('Unit tests mock external clients.');
     const link = findingItem?.querySelector('a') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('https://example.com/testing');
-    expect(el.querySelector('[data-testid="searches-performed"]')?.textContent).toContain('3');
+    expect(el.querySelector('[data-testid="searches-visible"]')?.textContent).toContain('3');
+    expect(el.querySelector('[data-testid="searches-billed"]')?.textContent).toContain('7');
     expect(el.querySelector('[data-testid="mcp-calls-performed"]')?.textContent).toContain('2');
   });
 

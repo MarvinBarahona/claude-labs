@@ -42,13 +42,15 @@ interface ResearchEnvelope {
   readonly usage?: InspectorUsage;
   readonly stopReason: string | null;
   readonly brief: ResearchBrief;
-  readonly searchesPerformed: number;
+  readonly searchesVisible: number;
+  readonly searchesBilled: number;
   readonly mcpCallsPerformed: number;
 }
 
 interface RunResult {
   readonly brief: ResearchBrief;
-  readonly searchesPerformed: number;
+  readonly searchesVisible: number;
+  readonly searchesBilled: number;
   readonly mcpCallsPerformed: number;
 }
 
@@ -147,7 +149,8 @@ export class WebRepoResearchReporter {
   private applyEnvelope(envelope: ResearchEnvelope): void {
     this.result.set({
       brief: envelope.brief,
-      searchesPerformed: envelope.searchesPerformed,
+      searchesVisible: envelope.searchesVisible,
+      searchesBilled: envelope.searchesBilled,
       mcpCallsPerformed: envelope.mcpCallsPerformed,
     });
     this.inspectorCall.set({
