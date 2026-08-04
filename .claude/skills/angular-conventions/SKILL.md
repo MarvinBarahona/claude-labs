@@ -43,6 +43,12 @@ Never reference another skill by name here, project-specific or otherwise — th
 - Lazy-load at the route level: `loadComponent` for standalone components, `loadChildren` for route groups — not eagerly-imported feature modules.
 - Use functional guards/resolvers (`CanActivateFn`, `ResolveFn`) over class-based guards.
 
+## Styling
+
+- **Component-scoped styles** colocate with the component they belong to — same folder, same filename stem as the component.
+- **Cross-cutting styles that don't belong to any single component** (global element resets, base-layer tweaks, utility classes meant to be used app-wide) don't belong inline in the root global stylesheet once they're more than a trivial rule or two, and don't get colocated under an arbitrary component's folder either. Give each such concern its own file under a dedicated global-styles directory (e.g. `src/styles/`), and import it from the root global stylesheet — one file per concern, named for what it covers, not for where it happened to be written first.
+- Keep the root global stylesheet itself a thin entry point: framework/theme setup and a list of imports, not a growing pile of unrelated rules.
+
 ## Project structure and naming
 
 - Follow the Angular CLI conventions and generated project structure for the installed Angular version — file naming, folder layout, and schematic defaults change across major versions, so match whatever `ng generate` produces for the version actually in use rather than an older convention from memory.
