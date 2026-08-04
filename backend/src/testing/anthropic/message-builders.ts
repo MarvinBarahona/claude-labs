@@ -9,7 +9,7 @@ export type FakeTextCitation = NonNullable<
   Extract<ContentBlock, { type: 'text' }>['citations']
 >[number];
 
-const DEFAULT_USAGE: Anthropic.Messages.Usage = {
+export const DEFAULT_USAGE: Anthropic.Messages.Usage = {
   input_tokens: 10,
   output_tokens: 10,
   cache_creation: null,

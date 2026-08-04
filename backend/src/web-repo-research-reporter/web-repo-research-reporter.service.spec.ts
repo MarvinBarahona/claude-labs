@@ -7,6 +7,7 @@ import { DeepwikiConnectorService } from '../shared/deepwiki-connector/deepwiki-
 import { ExternalApiError } from '../shared/api-error-handling';
 import { FakeAnthropicClient } from '../testing/anthropic/fake-anthropic-client';
 import {
+  DEFAULT_USAGE,
   fakeTextMessage,
   fakeToolUseMessage,
 } from '../testing/anthropic/message-builders';
@@ -137,7 +138,7 @@ describe('WebRepoResearchReporterService', () => {
       });
     });
 
-    it('counts searchesPerformed/mcpCallsPerformed from server_tool_use/mcp_tool_use blocks', async () => {
+    it('computes searchesVisible from top-level server_tool_use blocks and searchesBilled from usage independently', async () => {
       const response = fakeTextMessage(
         JSON.stringify({ summary: 'ok', findings: [] }),
         {
@@ -164,14 +165,27 @@ describe('WebRepoResearchReporterService', () => {
               citations: null,
             },
           ] as unknown as ReturnType<typeof fakeTextMessage>['content'],
+          usage: {
+            ...DEFAULT_USAGE,
+            server_tool_use: { web_search_requests: 5 },
+          } as unknown as ReturnType<typeof fakeTextMessage>['usage'],
         },
       );
       fakeClient.queueMessage(response);
 
       const envelope = await service.run(buildDto());
 
-      expect(envelope.searchesPerformed).toBe(2);
+      expect(envelope.searchesVisible).toBe(2);
+      expect(envelope.searchesBilled).toBe(5);
       expect(envelope.mcpCallsPerformed).toBe(1);
+    });
+
+    it('defaults searchesBilled to 0 when usage.server_tool_use is null', async () => {
+      fakeClient.queueMessage(briefResponse());
+
+      const envelope = await service.run(buildDto());
+
+      expect(envelope.searchesBilled).toBe(0);
     });
 
     it('parses `brief` from the final text block', async () => {

@@ -6,6 +6,7 @@ import {
   AnthropicStreamEvent,
 } from '../../shared/anthropic-client/anthropic-client';
 import {
+  DEFAULT_USAGE,
   fakeTextMessage,
   fakeTextStreamEvents,
   fakeToolUseMessage,
@@ -13,6 +14,8 @@ import {
   FakeTextCitation,
   FakeToolCall,
 } from './message-builders';
+
+const FALLBACK_BILLED_WEB_SEARCHES = 3;
 
 type AnthropicOfferedTool = NonNullable<
   AnthropicMessageParams['tools']
@@ -321,6 +324,12 @@ function fallbackMessage(params: AnthropicMessageParams): AnthropicMessage {
   if (offersWebSearchTool(params) && offersMcpToolset(params)) {
     return fakeTextMessage(FALLBACK_TEXT, {
       content: fallbackWebSearchMcpContent(params),
+      usage: {
+        ...DEFAULT_USAGE,
+        server_tool_use: {
+          web_search_requests: FALLBACK_BILLED_WEB_SEARCHES,
+        },
+      } as unknown as Anthropic.Messages.Usage,
     });
   }
 

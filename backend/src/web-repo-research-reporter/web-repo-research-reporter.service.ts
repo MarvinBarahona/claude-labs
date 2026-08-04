@@ -42,13 +42,18 @@ export interface ResearchBrief {
 
 export interface ResearchEnvelope extends TurnEnvelope {
   brief: ResearchBrief;
-  searchesPerformed: number;
+  searchesVisible: number;
+  searchesBilled: number;
   mcpCallsPerformed: number;
 }
 
 interface RawBlock {
   type: string;
   name?: string;
+}
+
+interface RawUsage {
+  server_tool_use?: { web_search_requests?: number } | null;
 }
 
 @Injectable()
@@ -117,7 +122,8 @@ export class WebRepoResearchReporterService {
     return {
       ...this.envelopeBuilder.build(params, response),
       brief,
-      searchesPerformed: this.countSearches(response),
+      searchesVisible: this.countSearches(response),
+      searchesBilled: this.countBilledSearches(response),
       mcpCallsPerformed: this.countMcpCalls(response),
     };
   }
@@ -128,6 +134,12 @@ export class WebRepoResearchReporterService {
       (block) =>
         block.type === 'server_tool_use' && block.name === 'web_search',
     ).length;
+  }
+
+  /** Unlike countSearches, unaffected by dynamic-filtering nesting under code execution. */
+  private countBilledSearches(response: AnthropicMessage): number {
+    const usage = response.usage as unknown as RawUsage;
+    return usage.server_tool_use?.web_search_requests ?? 0;
   }
 
   private countMcpCalls(response: AnthropicMessage): number {

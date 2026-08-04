@@ -5,7 +5,10 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { useNockFixtures } from '../src/testing/http-fixtures/nock-lifecycle';
 import { mockAnthropicBetaMessagesCreate } from '../src/testing/http-fixtures/anthropic.fixtures';
-import { fakeTextMessage } from '../src/testing/anthropic/message-builders';
+import {
+  DEFAULT_USAGE,
+  fakeTextMessage,
+} from '../src/testing/anthropic/message-builders';
 import type { ResearchEnvelope } from '../src/web-repo-research-reporter/web-repo-research-reporter.service';
 
 interface ShapedErrorBody {
@@ -91,6 +94,10 @@ describe('WebRepoResearchReporterController (e2e)', () => {
             citations: null,
           },
         ] as unknown as ReturnType<typeof fakeTextMessage>['content'],
+        usage: {
+          ...DEFAULT_USAGE,
+          server_tool_use: { web_search_requests: 3 },
+        } as unknown as ReturnType<typeof fakeTextMessage>['usage'],
       },
     );
   }
@@ -121,7 +128,8 @@ describe('WebRepoResearchReporterController (e2e)', () => {
         },
       ],
     });
-    expect(envelope.searchesPerformed).toBe(1);
+    expect(envelope.searchesVisible).toBe(1);
+    expect(envelope.searchesBilled).toBe(3);
     expect(envelope.mcpCallsPerformed).toBe(1);
   });
 

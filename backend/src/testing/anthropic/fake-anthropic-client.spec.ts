@@ -387,6 +387,9 @@ describe('FakeAnthropicClient', () => {
       expect(
         blocks.find((block) => block['type'] === 'mcp_tool_result'),
       ).toBeTruthy();
+      expect(message.usage.server_tool_use).toMatchObject({
+        web_search_requests: 3,
+      });
 
       const textBlock = blocks.find((block) => block['type'] === 'text') as {
         text: string;
