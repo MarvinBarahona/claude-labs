@@ -1,0 +1,17 @@
+button:not(:disabled),
+[role="button"]:not(:disabled),
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled),
+select:not(:disabled) {
+  cursor: pointer;
+}
+
+label:has(> input[type="checkbox"]:not(:disabled)),
+label:has(> input[type="radio"]:not(:disabled)) {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

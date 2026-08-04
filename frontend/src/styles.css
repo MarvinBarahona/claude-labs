@@ -5,6 +5,7 @@
 
 @import "@spartan-ng/brain/hlm-tailwind-preset.css";
 @import "./app/shared/markdown/markdown-content.css";
+@import "./styles/interactive-elements.css" layer(base);
 
 :root {
 color-scheme: light;
